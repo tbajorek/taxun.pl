@@ -16,7 +16,6 @@ import { env, envAny, stripQuotes } from './env';
 import {
   renderMail,
   renderMailText,
-  replyByCallout,
   submissionTimestamp,
   type MailDocument,
   type MailRow,
@@ -378,9 +377,6 @@ export function createFormRoute(def: FormDefinition): APIRoute {
     const doc: MailDocument = {
       ...outcome.doc,
       actions: defaultActions(outcome.doc),
-      // Termin odpowiedzi jest obietnicą całej strony, nie pojedynczego
-      // formularza - dokładamy go tutaj, żeby był w każdej wiadomości.
-      replyBy: outcome.doc.replyBy ?? replyByCallout(),
       consents: [...consentLines(body), ...(outcome.doc.consents ?? [])],
       meta: [
         { label: 'Data zgłoszenia', value: submissionTimestamp() },

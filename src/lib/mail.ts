@@ -61,8 +61,6 @@ export type MailDocument = {
   actions?: MailAction[];
   tiles?: MailTile[];
   callout?: MailCallout;
-  /** Termin odpowiedzi - wspólny dla wszystkich formularzy, dokłada go trasa. */
-  replyBy?: MailCallout;
   sections: MailSection[];
   message?: { title: string; body: string };
   consents: string[];
@@ -139,29 +137,6 @@ const calloutBlock = (callout?: MailCallout): string => {
           <p style="margin:0 0 4px;font-family:${FONT};font-size:11px;line-height:16px;letter-spacing:0.06em;text-transform:uppercase;color:${ACCENT_DARK};">${escapeHtml(callout.label)}</p>
           <p style="margin:0;font-family:${FONT};font-size:24px;line-height:30px;font-weight:bold;color:#065F46;">${escapeHtml(callout.value)}</p>
           ${callout.note ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:12px;line-height:18px;color:${ACCENT_DARK};">${escapeHtml(callout.note)}</p>` : ''}
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>`;
-};
-
-/**
- * Termin odpowiedzi. Węższy wariant wyróżnienia niż `calloutBlock`, bo w części
- * wiadomości (np. wycena) nad nim stoi już kwota - dwa bloki tej samej wagi
- * biłyby się o uwagę.
- */
-const replyByBlock = (replyBy?: MailCallout): string => {
-  if (!replyBy) return '';
-  return `
-<tr>
-  <td class="pad" style="padding:20px 32px 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <td bgcolor="${ACCENT_SOFT}" style="background:${ACCENT_SOFT};border:1px solid ${ACCENT_LINE};border-radius:12px;padding:14px 18px;">
-          <p style="margin:0 0 3px;font-family:${FONT};font-size:11px;line-height:16px;letter-spacing:0.06em;text-transform:uppercase;color:${ACCENT_DARK};">${escapeHtml(replyBy.label)}</p>
-          <p style="margin:0;font-family:${FONT};font-size:18px;line-height:24px;font-weight:bold;color:#065F46;">${escapeHtml(replyBy.value)}</p>
-          ${replyBy.note ? `<p style="margin:5px 0 0;font-family:${FONT};font-size:12px;line-height:18px;color:${ACCENT_DARK};">${escapeHtml(replyBy.note)}</p>` : ''}
         </td>
       </tr>
     </table>
@@ -319,7 +294,6 @@ export function renderMail(doc: MailDocument): string {
         ${contactBlock(doc)}
         ${actionsBlock(doc.actions)}
         ${calloutBlock(doc.callout)}
-        ${replyByBlock(doc.replyBy)}
         ${tilesBlock(doc.tiles ?? [])}
         ${doc.sections.map(sectionBlock).join('')}
         ${messageBlock(doc.message)}
@@ -361,10 +335,9 @@ export function renderMailText(doc: MailDocument): string {
     doc.phone ? `Telefon: ${doc.phone}` : null,
   ].filter((l): l is string => l !== null);
 
-  for (const box of [doc.callout, doc.replyBy]) {
-    if (!box) continue;
-    lines.push('', `${box.label}: ${box.value}`);
-    if (box.note) lines.push(box.note);
+  if (doc.callout) {
+    lines.push('', `${doc.callout.label}: ${doc.callout.value}`);
+    if (doc.callout.note) lines.push(doc.callout.note);
   }
   for (const tileItem of doc.tiles ?? []) lines.push('', `${tileItem.label}: ${tileItem.value}`);
   for (const section of doc.sections) {
@@ -387,98 +360,4 @@ export function submissionTimestamp(date = new Date()): string {
     timeStyle: 'short',
     timeZone: 'Europe/Warsaw',
   }).format(date);
-}
-
-/* ── Termin odpowiedzi ───────────────────────────────────────────────────── */
-
-const WORK_START = 8;
-const WORK_END = 18;
-/** Standardowy czas odpowiedzi podawany na stronie, liczony w godzinach roboczych. */
-const SLA_HOURS = 4;
-
-/** Rozkłada datę na "zegar ścienny" w Warszawie (bez przesunięcia strefy). */
-function warsawParts(date: Date): { y: number; m: number; d: number; h: number; min: number } {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Warsaw',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
-  return { y: get('year'), m: get('month'), d: get('day'), h: get('hour'), min: get('minute') };
-}
-
-/**
- * Termin odpowiedzi zgodny z obietnicą ze strony: cztery godziny robocze,
- * w dni powszednie między 8:00 a 18:00.
- *
- * Liczymy na zegarze ściennym Warszawy zapisanym jako czas UTC. Wynik służy
- * wyłącznie do sformatowania tekstu, więc nie wraca do strefy czasowej i nie
- * gubi się na zmianie czasu.
- */
-export function replyDeadline(from = new Date()): string {
-  const p = warsawParts(from);
-  const submitted = new Date(Date.UTC(p.y, p.m - 1, p.d, p.h, p.min));
-  const cursor = new Date(submitted);
-
-  const startOfNextWorkday = () => {
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-    cursor.setUTCHours(WORK_START, 0, 0, 0);
-  };
-
-  // Przesuwamy się na najbliższą godzinę roboczą.
-  if (cursor.getUTCHours() >= WORK_END) startOfNextWorkday();
-  else if (cursor.getUTCHours() < WORK_START) cursor.setUTCHours(WORK_START, 0, 0, 0);
-  while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) startOfNextWorkday();
-
-  // Dodajemy godziny SLA, przenosząc nadmiar na kolejne dni robocze.
-  let left = SLA_HOURS * 60;
-  while (left > 0) {
-    const endOfDay = new Date(cursor);
-    endOfDay.setUTCHours(WORK_END, 0, 0, 0);
-    const available = (endOfDay.getTime() - cursor.getTime()) / 60_000;
-    if (left <= available) {
-      cursor.setUTCMinutes(cursor.getUTCMinutes() + left);
-      left = 0;
-      break;
-    }
-    left -= available;
-    startOfNextWorkday();
-    while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) startOfNextWorkday();
-  }
-
-  const time = new Intl.DateTimeFormat('pl-PL', {
-    timeZone: 'UTC',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(cursor);
-
-  const sameDay =
-    cursor.getUTCFullYear() === submitted.getUTCFullYear() &&
-    cursor.getUTCMonth() === submitted.getUTCMonth() &&
-    cursor.getUTCDate() === submitted.getUTCDate();
-  if (sameDay) return `dziś do ${time}`;
-
-  const day = new Intl.DateTimeFormat('pl-PL', {
-    timeZone: 'UTC',
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(cursor);
-  return `${day}, do ${time}`;
-}
-
-/**
- * Gotowy blok "Termin odpowiedzi" - ten sam dla każdego formularza, więc
- * wystarczy go dołożyć raz we wspólnej trasie (`createFormRoute`).
- */
-export function replyByCallout(from = new Date()): MailCallout {
-  return {
-    label: 'Szacunkowy czas odpowiedzi',
-    value: replyDeadline(from),
-    note: `Standardowy czas odpowiedzi podawany na stronie: ${SLA_HOURS} godziny robocze (pon - pt, ${WORK_START}:00 - ${WORK_END}:00).`,
-  };
 }
