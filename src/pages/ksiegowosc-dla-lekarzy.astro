@@ -1,0 +1,1535 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  AMORT_JEDNORAZOWA_LIMIT,
+  AMORT_JEDNORAZOWA_LIMIT_EUR,
+  AMORT_NISKOCENNE,
+  KASA_LIMIT_ROCZNY,
+  KASA_TERMIN_MIESIACE,
+  KIF_SKLADKA_MIESIECZNA,
+  OC_FIZJOTERAPIA_EUR,
+  OPLATA_SKARBOWA_PELNOMOCNICTWO,
+  PKD_AKTUALIZACJA_DO,
+  PKD_NOWA_OD,
+  RPWDL_WPIS_STAWKA,
+  RYCZALT_MEDYCZNY,
+  RYCZALT_SPORT,
+  RYCZALT_USLUGI,
+  USTAWA_PSYCHOLOG_DZU,
+  USTAWA_PSYCHOLOG_WEJSCIE,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { num, pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaMedyczna = pct(RYCZALT_MEDYCZNY);
+const stawkaUslugowa = pct(RYCZALT_USLUGI);
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ */
+const priceRow = (id: 'ryczalt' | 'kpir' | 'fk', upTo: number, situation: string) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.noVat : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'Kontrakt lub gabinet online, kilka faktur miesięcznie'),
+  priceRow('ryczalt', 30, 'Praca w kilku placówkach albo niewielki gabinet'),
+  priceRow('kpir', 10, 'Podatek liniowy lub skala przy niewielkich kosztach'),
+  priceRow('kpir', 30, 'Gabinet z wyposażeniem, najmem i sprzętem'),
+  priceRow('fk', 10, 'Spółka lub podmiot leczniczy'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt ${stawkaMedyczna} od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'file',
+    title: 'Lekarz na kontrakcie B2B',
+    description: 'Rozliczamy przychody z jednej placówki albo z kilku naraz. Sprawdzamy, czy Twoje usługi mieszczą się w stawce ryczałtu przewidzianej dla opieki zdrowotnej, i pilnujemy terminów zaliczek oraz składki zdrowotnej.',
+    points: [
+      'Faktury dla szpitali, przychodni i podmiotów leczniczych',
+      'Weryfikacja prawa do ryczałtu przy współpracy z byłym pracodawcą',
+      'Monitorowanie progów przychodu, od których zależy składka zdrowotna',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Prywatny gabinet lekarski',
+    description: 'Obsługujemy gabinety przyjmujące pacjentów indywidualnych. Poza samą księgowością pilnujemy obowiązków, o których łatwo zapomnieć, czyli kasy fiskalnej i prawidłowego dokumentowania sprzedaży.',
+    points: [
+      'Ewidencja sprzedaży gabinetowej i raporty z kasy fiskalnej',
+      'Zakup sprzętu medycznego, leasing i amortyzacja',
+      'Najem lokalu i pozostałe koszty prowadzenia gabinetu',
+    ],
+  },
+  {
+    icon: 'sparkle',
+    title: 'Lekarz dentysta i medycyna estetyczna',
+    description: 'W stomatologii i medycynie estetycznej część usług korzysta ze zwolnienia z VAT, a część nie. Pomagamy rozdzielić te dwa strumienie sprzedaży, zanim zrobi to za Ciebie urząd skarbowy. Gabinet stomatologiczny to też spory majątek trwały, który trzeba poprawnie rozliczyć.',
+    points: [
+      'Podział sprzedaży na zwolnioną i opodatkowaną VAT',
+      'Protetyka, wybielanie i zabiegi estetyczne według właściwej stawki',
+      'Unit, RTG i wyposażenie: amortyzacja albo leasing',
+    ],
+  },
+  {
+    icon: 'trending-up',
+    title: 'Fizjoterapeuta',
+    description: 'Fizjoterapeuta prowadzi działalność leczniczą tak samo jak lekarz, ale rejestr praktyk prowadzi dla niego Krajowa Rada Fizjoterapeutów. Podatkowo najczęściej wychodzi ryczałt, a linia sporna przebiega tam, gdzie do terapii dochodzi masaż relaksacyjny, trening albo odnowa biologiczna.',
+    points: [
+      'Kontrakt z przychodnią, gabinet własny i wizyty domowe',
+      `Rozdzielenie terapii (${stawkaMedyczna}) od usług wellness (${stawkaUslugowa})`,
+      'Wpis praktyki fizjoterapeutycznej do RPWDL i obowiązkowe OC',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Psycholog i psychoterapeuta',
+    description: 'Gabinet psychologiczny nie jest praktyką zawodową w rozumieniu ustawy o działalności leczniczej, więc formalności na starcie są prostsze niż u lekarza. Za to granica zwolnienia z VAT bywa cieńsza, bo obok terapii szybko pojawiają się szkolenia, warsztaty i usługi dla firm.',
+    points: [
+      'Sesje stacjonarne i online, także rozliczane przelewem bez kasy fiskalnej',
+      'Podział na terapię zwolnioną z VAT i usługi dla firm opodatkowane',
+      'Współpraca z poradnią, platformą terapeutyczną albo pracodawcą',
+    ],
+  },
+  {
+    icon: 'chart',
+    title: 'Spółka lub podmiot leczniczy',
+    description: 'Dla spółek z ograniczoną odpowiedzialnością i innych podmiotów prowadzących działalność leczniczą prowadzimy pełną księgowość zgodną z ustawą o rachunkowości. Przygotowujemy sprawozdanie finansowe i raporty dla zarządu.',
+    points: [
+      'Plan kont dopasowany do struktury placówki',
+      'CIT-8, JPK_KR oraz e-sprawozdanie do KRS',
+      'Wynagrodzenia wspólników i personelu',
+    ],
+  },
+  {
+    icon: 'heart',
+    title: 'Pozostałe zawody medyczne',
+    wide: true,
+    description: 'Rozliczamy też pielęgniarki, położne, diagnostów laboratoryjnych, ratowników medycznych, techników masażystów, logopedów i terapeutów zajęciowych. Podatkowo wygląda to podobnie jak u lekarza, fizjoterapeuty czy psychologa, ale formalności przed startem różnią się zawód od zawodu, bo nie każdy z nich rejestruje własną praktykę.',
+    points: [
+      'Rozliczenia kontraktowe i gabinetowe w każdym z tych zawodów',
+      'Weryfikacja stawki ryczałtu właściwej dla danej usługi',
+      'Ustalenie, czy potrzebny jest wpis do rejestru, czy nie',
+    ],
+  },
+];
+
+const taxForms = [
+  {
+    badge: 'najczęstszy wybór',
+    featured: true,
+    title: 'Ryczałt od przychodów ewidencjonowanych',
+    body: `Usługi w zakresie opieki zdrowotnej mieszczą się w dziale 86 klasyfikacji PKWiU, dla którego przewidziano stawkę ${stawkaMedyczna}. Obejmuje ona nie tylko lekarzy: od 2022 roku psycholodzy, psychoterapeuci i fizjoterapeuci zostali wykreśleni z katalogu wolnych zawodów i rozliczają się tą samą stawką. Podatek liczy się od przychodu, bez pomniejszania go o koszty, więc sprawdza się tam, gdzie wydatki firmowe są niewielkie w stosunku do przychodu.`,
+    note: `Na ryczałcie nie rozliczysz się wspólnie z małżonkiem i nie skorzystasz z ulgi na dzieci. Część odliczeń zostaje, między innymi ulga termomodernizacyjna i wpłaty na IKZE. Jeśli obok terapii sprzedajesz coś jeszcze, na przykład masaż relaksacyjny, odnowę biologiczną albo szkolenie, ta część idzie zwykle po stawce ${stawkaUslugowa} i wymaga ewidencji z podziałem na stawki. Przy treningach stawka zależy od klasyfikacji samej usługi, więc sprawdzamy ją osobno.`,
+  },
+  {
+    badge: 'przy realnych kosztach',
+    title: 'Podatek liniowy 19%',
+    body: 'Podatek liczy się od dochodu, czyli od przychodu pomniejszonego o koszty. Ta forma bywa korzystniejsza, jeśli inwestujesz w wyposażenie gabinetu, kupujesz aparaturę albo stół rehabilitacyjny, wynajmujesz lokal, spłacasz leasing albo płacisz za certyfikację i superwizję.',
+    note: 'Składkę zdrowotną liczy się wtedy od dochodu, więc na jej wysokość wpływa każdy poniesiony koszt.',
+  },
+  {
+    badge: 'przy niższych dochodach',
+    title: 'Skala podatkowa',
+    body: 'Skala z dwiema stawkami bywa rozsądnym wyborem przy niższych dochodach albo wtedy, gdy zależy Ci na wspólnym rozliczeniu z małżonkiem lub na uldze na dzieci.',
+    note: 'Przy wyższych dochodach warto policzyć łączny efekt drugiego progu i składki zdrowotnej, zanim podejmiesz decyzję.',
+  },
+];
+
+const vatYes = [
+  'Konsultacje, diagnostyka i leczenie pacjentów',
+  'Dyżury i świadczenia realizowane na rzecz podmiotów leczniczych',
+  'Zabiegi wykonywane w celu leczniczym',
+  'Fizjoterapia, rehabilitacja i masaż leczniczy prowadzone w celu terapeutycznym',
+  'Konsultacje psychologiczne, diagnoza i terapia prowadzona przez psychologa',
+];
+
+const vatCheck = [
+  'Zabiegi wykonywane wyłącznie dla poprawy wyglądu, w tym wybielanie zębów',
+  'Orzeczenia i opinie dla sądu, ubezpieczyciela lub pracodawcy',
+  'Szkolenia i kursy, w tym kursy pierwszej pomocy oraz superwizja dla szkolących się',
+  'Zabezpieczenie medyczne imprez i transport pacjenta bez opieki',
+  'Masaż relaksacyjny, odnowa biologiczna i trening personalny',
+  'Coaching, warsztaty rozwojowe, testy i rekrutacja dla firm',
+  'Psychoterapia prowadzona przez osobę bez zawodu medycznego i bez certyfikatu',
+  'Podnajem gabinetu i sprzedaż suplementów lub kosmetyków',
+];
+
+/**
+ * Zwolnienie z art. 43 ust. 1 pkt 19 ustawy o VAT ma cztery podstawy i każdy
+ * z tych zawodów wchodzi w nie inną furtką. To rozróżnienie decyduje o tym,
+ * czy w ogóle rozmawiamy o rejestracji do VAT, stąd osobny blok na stronie.
+ */
+const vatBasis = [
+  {
+    icon: 'heart',
+    title: 'Lekarz, dentysta, pielęgniarka, położna',
+    description: 'Te zawody ustawa o VAT wymienia wprost. Zwolnienie obejmuje usługi opieki medycznej służące profilaktyce, zachowaniu, ratowaniu, przywracaniu i poprawie zdrowia, niezależnie od wysokości obrotu.',
+  },
+  {
+    icon: 'trending-up',
+    title: 'Fizjoterapeuta i inne zawody medyczne',
+    description: 'Fizjoterapeuta korzysta ze zwolnienia jako osoba wykonująca zawód medyczny w rozumieniu ustawy o działalności leczniczej. Decyduje cel usługi: ta sama technika masażu bywa zwolniona przy terapii i opodatkowana przy relaksie, a interpretacje organów bywają w tym punkcie rozbieżne.',
+  },
+  {
+    icon: 'users',
+    title: 'Psycholog',
+    description: 'Psycholog jest w przepisie wymieniony osobno, więc terapia, diagnoza i konsultacje są zwolnione bez badania, czy to zawód medyczny. Zwolnienie nie sięga jednak coachingu, warsztatów rozwojowych ani testów rekrutacyjnych dla firm.',
+  },
+  {
+    icon: 'search',
+    title: 'Psychoterapeuta bez dyplomu psychologa',
+    description: 'Tu zwolnienie nie jest oczywiste. Organy podatkowe uznają je, gdy terapeuta ma certyfikat albo jest w trakcie szkolenia podyplomowego i pracuje pod superwizją. Bez tego bezpieczniej jest wystąpić o interpretację indywidualną, zanim zaczniesz fakturować bez VAT.',
+  },
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów albo księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: ['Ewidencja przychodów przy ryczałcie i roczny PIT-28', 'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L', 'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym'],
+  },
+  {
+    icon: 'zap',
+    title: 'VAT, kasa fiskalna i KSeF',
+    description: 'Weryfikujemy podstawę zwolnienia z VAT, a przy sprzedaży mieszanej ustawiamy prawidłowy podział. Obsługujemy KSeF, a dokumenty wczytujemy przez OCR.',
+    points: ['Weryfikacja zwolnienia przedmiotowego i podmiotowego', 'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT', 'Wysyłka i odbiór e-faktur w KSeF, w cenie abonamentu'],
+  },
+  {
+    icon: 'shield',
+    title: 'ZUS i składka zdrowotna',
+    description: 'Naliczamy składki właściciela działalności i pilnujemy progów przychodu, od których zależy wysokość składki zdrowotnej na ryczałcie. O zbliżającym się progu informujemy z wyprzedzeniem.',
+    points: ['Obsługa ZUS właściciela JDG w cenie abonamentu', 'Ulga na start i preferencyjne składki na początku działalności', 'Roczne rozliczenie składki zdrowotnej'],
+  },
+  {
+    icon: 'headset',
+    title: 'Wsparcie i kontakt z urzędami',
+    description: 'Odpowiadamy na bieżące pytania księgowe. W kontaktach z urzędem skarbowym i ZUS wspieramy Cię dokumentacją: kompletujemy zestawienia z ksiąg i przygotowujemy wyjaśnienia dotyczące ujęcia zdarzeń.',
+    points: ['Analiza i rekomendacja przy wyborze lub zmianie formy opodatkowania', 'Przygotowanie wniosku o interpretację indywidualną', 'Wsparcie w kontaktach z US, ZUS i CEIDG - dokumentacja i wyjaśnienia'],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które uważamy za standard nowoczesnego biura.' },
+  { icon: 'globe', title: 'Dokumenty bez wizyt w biurze', description: 'Faktury i raporty z kasy przesyłasz przez portal klienta albo zdjęciem, które odczytujemy automatycznie. Nie musisz wozić segregatora ani dopasowywać się do godzin otwarcia.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twoją praktykę i historię Twoich rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Wybór formy opodatkowania', description: 'Zanim cokolwiek zgłosimy, liczymy warianty i sprawdzamy, czy w Twojej sytuacji ryczałt w ogóle wchodzi w grę.' },
+  { title: 'Wniosek CEIDG-1', description: 'Przy praktyce lekarskiej nazwa działalności musi wskazywać jej rodzaj oraz Twoje imię i nazwisko. Dobieramy kody PKD do zakresu usług: 86.21.Z, 86.22.Z lub 86.23.Z dla praktyki lekarskiej, 86.95.Z dla fizjoterapii, 86.93.Z dla działalności psychologicznej i psychoterapeutycznej.' },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia oraz to, czy przysługuje Ci ulga na start albo preferencyjne składki.' },
+  { title: 'Wpis do RPWDL, jeśli jest wymagany', description: 'Rejestr praktyk lekarskich prowadzą okręgowe izby lekarskie, a praktyk fizjoterapeutycznych Krajowa Rada Fizjoterapeutów. Psycholog i psychoterapeuta tego kroku nie mają w ogóle. Wniosek składamy elektronicznie za Ciebie, na podstawie pełnomocnictwa.' },
+  { title: 'Ubezpieczenie OC', description: `Praktyka zawodowa musi mieć ważne OC najpóźniej w dniu poprzedzającym start działalności. Dla praktyki fizjoterapeutycznej minimalne sumy gwarancyjne to ${fmt.format(OC_FIZJOTERAPIA_EUR.zdarzenie)} euro na jedno zdarzenie i ${fmt.format(OC_FIZJOTERAPIA_EUR.wszystkie)} euro na wszystkie. Przypominamy o terminie i ujmujemy składkę w rozliczeniach.` },
+  { title: 'VAT-R, KSeF i kasa fiskalna', description: 'Rejestrujemy do VAT, jeśli jest to potrzebne, konfigurujemy dostęp do KSeF i ustalamy, czy potrzebujesz kasy fiskalnej.' },
+];
+
+/**
+ * Praktykę zawodową wpisaną do rejestru mogą prowadzić wyłącznie zawody
+ * wymienione w art. 5 ustawy o działalności leczniczej. Pozostałe zawody
+ * medyczne rozliczają się tak samo, ale przed startem mają inną drogę
+ * formalną - stąd ten podział na stronie.
+ */
+const withPractice = [
+  { profession: 'Lekarze i lekarze dentyści', registry: 'Rejestr prowadzi okręgowa izba lekarska właściwa dla miejsca wykonywania praktyki.' },
+  { profession: 'Pielęgniarki i położne', registry: 'Rejestr prowadzi okręgowa izba pielęgniarek i położnych.' },
+  { profession: 'Fizjoterapeuci', registry: 'Rejestr prowadzi Krajowa Rada Fizjoterapeutów. Do wyboru są cztery formy: praktyka indywidualna, wyłącznie w miejscu wezwania, wyłącznie w zakładzie leczniczym na podstawie umowy z podmiotem leczniczym albo praktyka grupowa w spółce.' },
+  { profession: 'Diagności laboratoryjni', registry: 'Rejestr prowadzi Krajowa Izba Diagnostów Laboratoryjnych.' },
+];
+
+const withoutPractice = [
+  {
+    profession: 'Ratownicy medyczni',
+    note: 'Ustawa nie przewiduje dla nich praktyki zawodowej, więc albo fakturują podmiot leczniczy, który sam ma wpis do rejestru, albo zakładają własny podmiot leczniczy.',
+  },
+  {
+    profession: 'Psycholodzy i psychoterapeuci',
+    note: `Prowadzą zwykłą działalność gospodarczą, bez wpisu do rejestru podmiotów wykonujących działalność leczniczą. Wpis staje się potrzebny dopiero wtedy, gdy zamiast gabinetu rejestrują podmiot leczniczy, na przykład poradnię zdrowia psychicznego - wtedy rejestr prowadzi wojewoda. Ustawa o zawodzie psychologa i samorządzie zawodowym psychologów (${USTAWA_PSYCHOLOG_DZU}) wprowadzi osobny rejestr psychologów i obowiązkową przynależność do izby, ale co do zasady zacznie obowiązywać od ${USTAWA_PSYCHOLOG_WEJSCIE}.`,
+  },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Rozmawiamy o tym, jak wygląda Twoja praktyka, ile masz źródeł przychodu i jakie ponosisz koszty. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, przypominamy o dokumentach i informujemy o tym, co wymaga Twojej decyzji. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Która forma opodatkowania jest najlepsza dla lekarza, fizjoterapeuty albo psychologa?',
+    a: `To zależy od Twoich kosztów, a nie od zawodu. Jeśli wystawiasz faktury placówce i praktycznie nie ponosisz wydatków firmowych, ryczałt ze stawką ${stawkaMedyczna} jest zwykle rozwiązaniem najprostszym i najkorzystniejszym. Jeśli inwestujesz w sprzęt, wynajmujesz gabinet, spłacasz leasing albo płacisz za certyfikację i superwizję, warto policzyć podatek liniowy. Przed podjęciem decyzji przygotowujemy porównanie na Twoich liczbach.`,
+  },
+  {
+    q: 'Czy mogę rozliczać się ryczałtem, jeśli pracuję dla szpitala, w którym byłem zatrudniony na etacie?',
+    a: 'Zależy to od tego, czy usługi świadczone w ramach działalności odpowiadają czynnościom wykonywanym wcześniej na umowie o pracę. Ograniczenie obejmuje bieżący i poprzedni rok podatkowy. Organy podatkowe przyjmują, że częściowa zbieżność czynności nie wyklucza ryczałtu, ale ocena zawsze zależy od konkretnego zakresu obowiązków. Analizujemy to przed wyborem formy opodatkowania, a przy wątpliwościach przygotowujemy wniosek o interpretację indywidualną.',
+  },
+  {
+    q: 'Czy usługi lekarskie są zwolnione z VAT?',
+    a: 'Usługi opieki medycznej służące profilaktyce, zachowaniu, ratowaniu, przywracaniu i poprawie zdrowia korzystają ze zwolnienia przedmiotowego i nie obowiązuje przy nim limit obrotu. Zwolnienie nie obejmuje jednak wszystkiego. Zabiegi estetyczne bez celu leczniczego, orzeczenia dla ubezpieczycieli, szkolenia czy podnajem gabinetu mogą podlegać opodatkowaniu. Zabiegi kosmetyczne wykonywane przez personel niemedyczny rozliczane są jeszcze inaczej, co opisujemy na podstronie o <a href="/ksiegowosc-dla-branzy-beauty">księgowości dla branży beauty</a>. Sprawdzamy to przy każdym nowym rodzaju sprzedaży.',
+  },
+  {
+    q: 'Czy muszę mieć kasę fiskalną?',
+    a: `To zależy od zawodu. Usługi lekarzy i lekarzy dentystów zostały wyłączone ze zwolnień z obowiązku ewidencjonowania, więc przy pacjentach prywatnych kasa jest potrzebna od pierwszej wizyty, niezależnie od obrotu. Fizjoterapeuty, psychologa ani psychoterapeuty na tej liście wyłączeń nie ma, więc do ${zl(KASA_LIMIT_ROCZNY)} obrotu rocznie z osobami prywatnymi kasa nie jest wymagana. Jeśli pracujesz wyłącznie na kontrakcie i fakturujesz podmiot leczniczy, obowiązek nie powstaje w ogóle, bo nie sprzedajesz osobom fizycznym.`,
+  },
+  {
+    q: 'Czy pomagacie założyć praktykę i uzyskać wpis do RPWDL?',
+    a: `Tak, zarówno przy praktyce lekarskiej, jak i fizjoterapeutycznej. Przeprowadzamy rejestrację w CEIDG z właściwymi kodami PKD, zgłaszamy Cię do ZUS i urzędu skarbowego oraz składamy wniosek o wpis do rejestru podmiotów wykonujących działalność leczniczą. Wniosek do rejestru możemy złożyć za Ciebie na podstawie pełnomocnictwa, więc nie musisz przechodzić przez system samodzielnie. Dochodzą wtedy dwie opłaty urzędowe: za wpis praktyki zawodowej oraz ${OPLATA_SKARBOWA_PELNOMOCNICTWO} zł opłaty skarbowej od pełnomocnictwa. Sama obsługa wniosku jest dla klientów biura bezpłatna.`,
+  },
+  {
+    q: 'Czy protetyka i wybielanie zębów są zwolnione z VAT?',
+    a: 'To dwie różne sprawy. Dostawa protez dentystycznych i sztucznych zębów przez lekarza dentystę oraz technika dentystycznego ma własne zwolnienie w ustawie o VAT. Wybielanie zębów i pozostałe zabiegi wykonywane wyłącznie dla poprawy wyglądu nie służą leczeniu, więc organy podatkowe traktują je jako sprzedaż opodatkowaną stawką podstawową. W gabinecie, który robi jedno i drugie, ustawiamy podział sprzedaży i pilnujemy, żeby paragony i faktury wychodziły z właściwą stawką.',
+  },
+  {
+    q: 'Czy ratownik medyczny może zarejestrować praktykę tak jak lekarz?',
+    a: 'Nie. Ustawa o działalności leczniczej przewiduje praktykę zawodową dla lekarzy, pielęgniarek i położnych, fizjoterapeutów oraz diagnostów laboratoryjnych. Ratownika medycznego na tej liście nie ma, więc na własnej działalności albo fakturuje podmiot leczniczy, który sam ma wpis do rejestru, albo zakłada własny podmiot leczniczy. Sposób rozliczenia jest przy tym taki sam jak u lekarza kontraktowego. Ustalamy to przed rejestracją działalności, bo od tego zależy komplet formalności na starcie.',
+  },
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje fizjoterapeutę, psychologa albo pielęgniarkę?',
+    a: `Dla usług w zakresie opieki zdrowotnej, czyli działu 86 klasyfikacji PKWiU, stawka wynosi ${stawkaMedyczna} i obejmuje także te zawody. Psycholodzy, psychoterapeuci i fizjoterapeuci zostali w 2022 roku wykreśleni z katalogu wolnych zawodów, więc rozliczają się tą samą stawką co lekarz, a nie wyższą. Stawka zależy jednak od tego, co faktycznie sprzedajesz, a nie od kodu PKD w CEIDG. Przy kilku rodzajach przychodu prowadzimy ewidencję z podziałem na stawki.`,
+  },
+  {
+    q: 'Fizjoterapeuta robi też masaże relaksacyjne i treningi. Jak to rozliczyć?',
+    a: `Osobno. Fizjoterapia i masaż leczniczy mieszczą się w dziale 86 PKWiU ze stawką ${stawkaMedyczna}, natomiast masaż relaksacyjny i odnowa biologiczna to usługi związane z poprawą kondycji fizycznej, dla których stawka wynosi zwykle ${stawkaUslugowa}. Przy treningu personalnym trzeba pójść o krok dalej, bo bywa klasyfikowany albo jako usługa w zakresie edukacji (${stawkaUslugowa}), albo jako usługa związana ze sportem i rekreacją (${pct(RYCZALT_SPORT)}); rozróżnienie opisujemy na podstronie <a href="/ksiegowosc-dla-trenerow-i-sportowcow#ryczalt">dla trenerów i sportowców</a>. Te same granice przebiegają w VAT: usługa w celu terapeutycznym jest zwolniona, a wykonana wyłącznie dla relaksu podlega opodatkowaniu. Ustawiamy ewidencję przychodów z podziałem na stawki i opisujemy sprzedaż tak, żeby przy kontroli dało się wykazać cel każdej usługi.`,
+  },
+  {
+    q: 'Czy fizjoterapeuta musi mieć wpis do RPWDL?',
+    a: `Tak, jeśli udziela świadczeń zdrowotnych w ramach własnej działalności. Obowiązek działa od 31 października 2019 roku, a rejestr praktyk fizjoterapeutycznych prowadzi Krajowa Rada Fizjoterapeutów. Do wyboru są cztery formy: praktyka indywidualna, wyłącznie w miejscu wezwania, wyłącznie w zakładzie leczniczym na podstawie umowy z podmiotem leczniczym oraz praktyka grupowa w spółce. Formę dobieramy do tego, gdzie faktycznie pracujesz, bo od niej zależą wymagania lokalowe. Przed wpisem potrzebne jest obowiązkowe OC na minimum ${fmt.format(OC_FIZJOTERAPIA_EUR.zdarzenie)} euro na jedno zdarzenie i ${fmt.format(OC_FIZJOTERAPIA_EUR.wszystkie)} euro na wszystkie zdarzenia.`,
+  },
+  {
+    q: 'Czy składka na Krajową Izbę Fizjoterapeutów jest kosztem?',
+    a: `Miesięczna składka członkowska wynosi ${KIF_SKLADKA_MIESIECZNA} zł i jest obowiązkowa dla każdego fizjoterapeuty wpisanego do Krajowego Rejestru Fizjoterapeutów, płatna do 10. dnia miesiąca. Przy rozliczeniu na skali albo podatku liniowym składka oraz obowiązkowe OC mogą stanowić koszt uzyskania przychodu. Na ryczałcie kosztów nie rozlicza się w ogóle, więc te wydatki nie obniżą podatku - i to jeden z argumentów, które bierzemy pod uwagę przy wyborze formy opodatkowania.`,
+  },
+  {
+    q: 'Czy psycholog musi zarejestrować praktykę i uzyskać wpis do rejestru?',
+    a: `Nie. Ustawa o działalności leczniczej przewiduje praktykę zawodową dla lekarzy, pielęgniarek i położnych, fizjoterapeutów oraz diagnostów laboratoryjnych. Psychologa i psychoterapeuty na tej liście nie ma, więc gabinet prowadzi się jako zwykłą działalność gospodarczą: CEIDG, ZUS, urząd skarbowy i tyle. Wpis do rejestru staje się potrzebny dopiero wtedy, gdy zamiast gabinetu rejestrujesz podmiot leczniczy, na przykład poradnię zdrowia psychicznego - wtedy rejestr prowadzi wojewoda, a opłata jest wyższa niż przy praktyce zawodowej.`,
+  },
+  {
+    q: 'Czy usługi psychologa i psychoterapeuty są zwolnione z VAT?',
+    a: 'Psycholog jest w ustawie o VAT wymieniony wprost, więc konsultacje, diagnoza i terapia służące zdrowiu psychicznemu korzystają ze zwolnienia przedmiotowego, bez limitu obrotu. U psychoterapeuty bez dyplomu psychologa podstawą jest wykonywanie zawodu medycznego, a organy podatkowe uznają zwolnienie, gdy terapeuta ma certyfikat albo jest w trakcie szkolenia podyplomowego i pracuje pod superwizją. Zwolnienie nie obejmuje natomiast coachingu, warsztatów rozwojowych, testów i rekrutacji dla firm ani szkoleń i superwizji sprzedawanych osobom szkolącym się w psychoterapii. W wątpliwych sytuacjach przygotowujemy wniosek o interpretację indywidualną, zanim zaczniesz fakturować bez VAT.',
+  },
+  {
+    q: 'Prowadzę terapię online. Czy potrzebuję kasy fiskalnej?',
+    a: `Do ${zl(KASA_LIMIT_ROCZNY)} obrotu rocznie z osobami prywatnymi kasa nie jest potrzebna, a w pierwszym roku działalności limit liczy się proporcjonalnie do liczby dni. Powyżej limitu masz jeszcze drugą furtkę: jeśli całą zapłatę otrzymujesz na rachunek bankowy, a z opisu przelewu wynika, której konkretnie usługi dotyczy, zwolnienie utrzymuje się dalej. Wystarczy jednak przyjąć jedną płatność gotówką i to zwolnienie przepada. Po przekroczeniu limitu na instalację kasy są ${KASA_TERMIN_MIESIACE} miesiące, licząc od końca miesiąca przekroczenia - pilnujemy tego terminu za Ciebie.`,
+  },
+  {
+    q: 'Co zmienia nowa ustawa o zawodzie psychologa?',
+    a: `Ustawa o zawodzie psychologa oraz samorządzie zawodowym psychologów (${USTAWA_PSYCHOLOG_DZU}) wprowadza rejestr psychologów, prawo wykonywania zawodu i obowiązkową przynależność do samorządu wraz ze składkami. Co do zasady zaczyna obowiązywać ${USTAWA_PSYCHOLOG_WEJSCIE}, a pierwsze przepisy organizacyjne weszły w życie już w 2026 roku. Podatkowo dziś nic się przez nią nie zmienia: nadal prowadzisz zwykłą działalność gospodarczą i rozliczasz się na tych samych zasadach. Gdy składki samorządowe zaczną obowiązywać, będą kosztem uzyskania przychodu przy rozliczeniu na skali albo liniowym, a na ryczałcie pozostaną bez wpływu na podatek.`,
+  },
+  {
+    q: 'Jaki kod PKD wpisać przy gabinecie fizjoterapeutycznym albo psychologicznym?',
+    a: `Od ${PKD_NOWA_OD} obowiązuje nowa klasyfikacja. Fizjoterapia ma własny kod 86.95.Z, który zastąpił dawne 86.90.A, a działalność psychologiczna i psychoterapeutyczna otrzymała kod 86.93.Z zamiast ogólnego 86.90.E. Kody praktyki lekarskiej, czyli 86.21.Z, 86.22.Z i 86.23.Z, pozostały bez zmian. Jeśli zarejestrowałeś działalność wcześniej, na aktualizację wpisu masz czas do ${PKD_AKTUALIZACJA_DO}. Zmiana w CEIDG jest bezpłatna, weryfikujemy ją u każdego klienta i zgłaszamy za Ciebie. Warto pamiętać, że kod PKD porządkuje wpis w rejestrze, ale o stawce ryczałtu decyduje PKWiU konkretnej usługi.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla lekarza, fizjoterapeuty albo psychologa?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie przy liczbie do 10 dokumentów, czyli w sytuacji typowej dla kontraktu albo niewielkiego gabinetu. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto. W każdym pakiecie masz KSeF, OCR, portal klienta, ZUS właściciela i roczne zeznanie z działalności.`,
+  },
+  {
+    q: 'Czy obsługujecie gabinety z całej Polski?',
+    a: 'Tak. Pracujemy w pełni zdalnie, a nasza siedziba mieści się w Krakowie. Niezależnie od tego, gdzie prowadzisz praktykę, otrzymujesz ten sam standard obsługi: portal klienta dostępny całą dobę, jednego opiekuna i standardowo odpowiedź w ciągu 4 godzin roboczych.',
+  },
+  {
+    q: 'Mam etat, kontrakt i własny gabinet jednocześnie. Rozliczycie to?',
+    a: 'Tak i zalecamy prowadzenie wszystkich rozliczeń w jednym miejscu. Każde źródło przychodu wpływa na zaliczki, na roczne zeznanie oraz na sposób ujęcia składek. Rozproszenie tych danych między kilka osób zwiększa ryzyko rozbieżności i opóźnień.',
+  },
+  {
+    q: 'Czy składka członkowska izby lekarskiej oraz OC są kosztem?',
+    a: 'Przy rozliczeniu na podatku liniowym lub według skali obowiązkowe wydatki związane z wykonywaniem zawodu, w tym składka na rzecz okręgowej izby lekarskiej lub Krajowej Izby Fizjoterapeutów oraz obowiązkowe ubezpieczenie odpowiedzialności cywilnej, mogą stanowić koszt uzyskania przychodu. Na ryczałcie kosztów nie rozlicza się w ogóle, ponieważ podatek liczy się od przychodu. To jeden z argumentów branych pod uwagę przy wyborze formy opodatkowania.',
+  },
+  {
+    q: 'Jak wygląda KSeF w gabinecie?',
+    a: 'Od 1 lutego 2026 roku wszyscy przedsiębiorcy odbierają faktury zakupowe przez Krajowy System e-Faktur. Obowiązek ich wystawiania objął od tej samej daty największe firmy, a od 1 kwietnia 2026 roku pozostałych przedsiębiorców, w tym zwolnionych z VAT. Dla podmiotów o najniższej sprzedaży termin przesunięto na 1 stycznia 2027 roku. Obsługa KSeF jest u nas elementem abonamentu, bez dopłat. Konfigurujemy dostęp, nadajemy uprawnienia i możemy wystawiać faktury w Twoim imieniu.',
+  },
+  {
+    q: 'Zatrudniam rejestratorkę. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla lekarzy, fizjoterapeutów i psychologów', href: '/ksiegowosc-dla-lekarzy' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-lekarzy#service`,
+  name: 'Księgowość dla lekarzy, fizjoterapeutów i psychologów',
+  serviceType: 'Usługi księgowe dla zawodów medycznych',
+  description: 'Obsługa księgowa lekarzy i dentystów na kontrakcie i we własnym gabinecie, gabinetów fizjoterapeutycznych, psychologicznych i psychoterapeutycznych oraz spółek prowadzących działalność leczniczą. Ryczałt, KPiR i pełna księgowość, VAT, kasa fiskalna, ZUS i KSeF.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-lekarzy`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Lekarze, lekarze dentyści, fizjoterapeuci, psycholodzy, psychoterapeuci, pielęgniarki, położne, diagności laboratoryjni, ratownicy medyczni',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla praktyk medycznych i gabinetów',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla lekarzy i zawodów medycznych"
+  description={`Księgowość dla lekarzy, dentystów, fizjoterapeutów i psychologów. Ryczałt ${stawkaMedyczna}, zwolnienie z VAT, kasa fiskalna i wpis do RPWDL. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla lekarzy, fizjoterapeutów i psychologów"
+    description="Prowadzimy rozliczenia lekarzy i dentystów pracujących na kontraktach i we własnych gabinetach, fizjoterapeutów, psychologów i psychoterapeutów oraz spółek działających w ochronie zdrowia. Dobieramy formę opodatkowania do tego, jak naprawdę pracujesz, pilnujemy zwolnienia z VAT i obowiązków związanych z kasą fiskalną, które w każdym z tych zawodów wyglądają inaczej. Ty zajmujesz się pacjentami, a my resztą."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla lekarzy, fizjoterapeutów i psychologów' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=zdrowie" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Księgowość dopasowana do tego, jak pracujesz</h2>
+        <p>Praca w ochronie zdrowia rzadko mieści się w jednym schemacie. Jeden lekarz wystawia miesięcznie jedną fakturę szpitalowi, fizjoterapeutka jeździ do pacjentów i wynajmuje gabinet na godziny, a psycholog prowadzi połowę sesji online. Poniżej opisujemy sytuacje, w których rozliczenia wyglądają inaczej, i to, czym zajmujemy się w każdej z nich.</p>
+      </div>
+      <div class="med-segments">
+        {segments.map((s) => (
+          <article class="med-segment">
+            <div class="med-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Forma opodatkowania ───────────────────────────────────────────── -->
+  <section class="section section--alt" id="forma-opodatkowania">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt {stawkaMedyczna}, podatek liniowy czy skala podatkowa</h2>
+        <p>Wybór formy opodatkowania zostaje z Tobą na cały rok podatkowy i w każdym z tych zawodów sprowadza się do tego samego pytania: czy ponosisz realne koszty, czy raczej wystawiasz fakturę i na tym kończy się Twoja strona kosztowa. Lekarz kontraktowy i psycholog prowadzący sesje online są tu bliżej siebie, niż się wydaje, a gabinet fizjoterapeutyczny z leasingowanym sprzętem wygląda już inaczej.</p>
+      </div>
+
+      <div class="med-forms">
+        {taxForms.map((f) => (
+          <article class={`med-form ${f.featured ? 'med-form--featured' : ''}`}>
+            <span class={`med-form__badge ${f.featured ? 'med-form__badge--featured' : ''}`}>{f.badge}</span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+            <p class="med-form__note">{f.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <aside class="med-warning">
+        <div class="med-warning__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Uwaga na współpracę z byłym pracodawcą</h3>
+          <p>To najczęstszy błąd lekarzy kończących rezydenturę, ale dokładnie tak samo dotyczy fizjoterapeuty przechodzącego z etatu w przychodni na własną działalność i psychologa, który zaczyna fakturować dawną poradnię. Przepisy o ryczałcie odbierają prawo do tej formy opodatkowania, jeśli świadczysz na rzecz obecnego lub byłego pracodawcy usługi odpowiadające czynnościom wykonywanym wcześniej w ramach umowy o pracę. Ograniczenie obejmuje rok bieżący oraz rok poprzedni.</p>
+          <p>Organy podatkowe przyjmują, że częściowa zbieżność czynności nie jest równoznaczna z ich tożsamością, więc wielu lekarzy zachowuje prawo do ryczałtu. Ocena zależy jednak od faktycznego zakresu obowiązków z umowy o pracę i od treści kontraktu. Analizujemy to przed wyborem formy opodatkowania, a w sytuacjach niejednoznacznych przygotowujemy wniosek o interpretację indywidualną.</p>
+        </div>
+      </aside>
+
+      <div class="med-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT</span>
+        <h2>Zwolnienie z VAT w gabinecie nie zawsze obejmuje wszystko</h2>
+        <p>Usługi opieki medycznej służące profilaktyce, zachowaniu, ratowaniu, przywracaniu i poprawie zdrowia korzystają ze zwolnienia przedmiotowego z VAT. Nie jest ono ograniczone limitem obrotu, więc dotyczy także gabinetów o wysokich przychodach. Problem zaczyna się wtedy, gdy obok leczenia i terapii pojawia się sprzedaż, która pod tę definicję nie podpada, a w fizjoterapii i psychologii dzieje się to szczególnie łatwo.</p>
+      </div>
+
+      <div class="med-split">
+        <article class="med-split__col med-split__col--yes">
+          <div class="med-split__head">
+            <Icon name="check-circle" size={20}/>
+            <h3>Kiedy zwolnienie zwykle działa</h3>
+          </div>
+          <ul>
+            {vatYes.map((v) => <li><Icon name="check" size={14}/>{v}</li>)}
+          </ul>
+        </article>
+        <article class="med-split__col med-split__col--check">
+          <div class="med-split__head">
+            <Icon name="search" size={20}/>
+            <h3>Kiedy trzeba się zastanowić</h3>
+          </div>
+          <ul>
+            {vatCheck.map((v) => <li><Icon name="chevron-right" size={14}/>{v}</li>)}
+          </ul>
+        </article>
+      </div>
+
+      <div class="med-basis">
+        <h3>Każdy z tych zawodów wchodzi w zwolnienie inną furtką</h3>
+        <p>Przepis o zwolnieniu wymienia część zawodów wprost, a pozostałe obejmuje przez odesłanie do zawodów medycznych. Od tego, która podstawa Cię dotyczy, zależy, jak łatwo obronić zwolnienie przy nietypowej usłudze.</p>
+        <div class="med-basis__grid">
+          {vatBasis.map((b) => (
+            <article class="med-basis__item">
+              <div class="med-basis__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h4>{b.title}</h4>
+                <p>{b.description}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <p class="med-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Jeśli obok usług medycznych prowadzisz sprzedaż opodatkowaną, do limitu zwolnienia podmiotowego, czyli {zl(VAT_ZWOLNIENIE_LIMIT)} rocznie, liczy się wyłącznie ta druga część. Przychód zwolniony przedmiotowo nie wchodzi do tego limitu, więc gabinet z wysokim przychodem z leczenia i niewielką sprzedażą towarów zwykle nadal się w nim mieści. Pilnujemy tego podziału, a po przekroczeniu limitu rejestrujemy Cię do VAT i ustawiamy prawidłowe odliczanie podatku naliczonego.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obowiązki gabinetu</span>
+        <h2>Kasa fiskalna w gabinecie zależy od tego, jaki zawód wykonujesz</h2>
+        <p>To miejsce, w którym rozliczenia tych zawodów rozchodzą się najmocniej. Rozporządzenie o zwolnieniach z obowiązku ewidencjonowania wyłącza ze zwolnień usługi opieki medycznej świadczone przez lekarzy i lekarzy dentystów, ale nie wymienia fizjoterapeutów, psychologów ani psychoterapeutów. W efekcie ten sam prywatny pacjent u dentysty oznacza kasę od pierwszej wizyty, a w gabinecie fizjoterapeutycznym czy psychologicznym jeszcze nie.</p>
+      </div>
+
+      <div class="med-cards">
+        <article class="med-card">
+          <div class="med-card__icon"><Icon name="heart" size={22}/></div>
+          <h3>Lekarz i lekarz dentysta: od pierwszej wizyty</h3>
+          <p>Usługi opieki medycznej świadczone przez lekarzy i lekarzy dentystów zostały wyłączone ze zwolnień, więc przy pacjentach prywatnych nie obowiązuje żaden limit obrotu. Kasa jest potrzebna od pierwszej przyjętej wizyty, niezależnie od tego, ile wizyt będzie w roku.</p>
+        </article>
+        <article class="med-card">
+          <div class="med-card__icon"><Icon name="trending-up" size={22}/></div>
+          <h3>Fizjoterapeuta i psycholog: limit obrotu</h3>
+          <p>Fizjoterapeuty, psychologa ani psychoterapeuty to wyłączenie nie obejmuje, więc korzystają ze zwolnienia do {zl(KASA_LIMIT_ROCZNY)} obrotu rocznie z osobami prywatnymi. W pierwszym roku działalności limit liczy się proporcjonalnie do liczby dni. Po jego przekroczeniu na instalację kasy są {KASA_TERMIN_MIESIACE} miesiące, licząc od końca miesiąca, w którym limit został przekroczony.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Zapłata wyłącznie przelewem pozwala zostać bez kasy także powyżej limitu</li>
+            <li><Icon name="check" size={14}/>Warunek: z opisu przelewu wynika, której usługi dotyczy</li>
+            <li><Icon name="check" size={14}/>Jedna płatność gotówką albo BLIK-iem do ręki przekreśla to zwolnienie</li>
+          </ul>
+        </article>
+        <article class="med-card">
+          <div class="med-card__icon"><Icon name="headset" size={22}/></div>
+          <h3>W czym pomagamy</h3>
+          <ul>
+            <li><Icon name="check" size={14}/>Ustalamy, czy i od kiedy obowiązek Cię dotyczy</li>
+            <li><Icon name="check" size={14}/>Monitorujemy obrót z osobami prywatnymi i uprzedzamy przed limitem</li>
+            <li><Icon name="check" size={14}/>Pomagamy złożyć wniosek o ulgę na zakup kasy</li>
+            <li><Icon name="check" size={14}/>Zgłaszamy kasę do urzędu i ustawiamy stawki w bazie towarowej</li>
+            <li><Icon name="check" size={14}/>Rozliczamy raporty okresowe i wiążemy je z ewidencją sprzedaży</li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="med-note">
+        <Icon name="shield" size={16}/>
+        <span>Zwolnienie z VAT i obowiązek posiadania kasy to dwie odrębne sprawy. To, że Twoje usługi są zwolnione z VAT, nie zwalnia Cię z ewidencjonowania sprzedaży. Kasa nie jest za to potrzebna wtedy, gdy pracujesz wyłącznie na kontrakcie i fakturujesz podmiot leczniczy, bo wtedy w ogóle nie sprzedajesz osobom fizycznym. Te różnice bywają źródłem kosztownych nieporozumień, dlatego przechodzimy przez nie, zanim otworzysz gabinet. Progi zwolnienia sprawdzisz w <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <!-- ── Stomatologia ──────────────────────────────────────────────────── -->
+  <section class="section" id="dentysci">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Stomatologia</span>
+        <h2>Księgowość dla dentystów i gabinetów stomatologicznych</h2>
+        <p>Stomatologia różni się od reszty zawodów medycznych dwiema rzeczami: sprzedażą podzieloną między usługi zwolnione z VAT i opodatkowane oraz majątkiem trwałym, którego w gabinecie psychologicznym po prostu nie ma. Poniżej zbieramy to, o co pytają nas dentyści najczęściej.</p>
+      </div>
+
+      <div class="dent-grid">
+        <article class="dent-card">
+          <h3>JDG dentysty i wpis do rejestru</h3>
+          <p>Praktykę zawodową rejestrujesz w dwóch miejscach: w CEIDG jako działalność gospodarczą oraz w rejestrze podmiotów wykonujących działalność leczniczą, prowadzonym przez okręgową izbę lekarską. Wpis praktyki kosztuje {pct(RPWDL_WPIS_STAWKA)} przeciętnego wynagrodzenia i jest warunkiem legalnego przyjmowania pacjentów, a nie formalnością do zrobienia później.</p>
+          <p>Zgłoszenia do CEIDG, ZUS i urzędu skarbowego oraz przygotowanie wniosku o wpis prowadzimy razem z Tobą. Dla klientów biura jest to bezpłatne. Alternatywą dla praktyki zawodowej jest podmiot leczniczy, na przykład w formie spółki - ma wyższą opłatę za wpis i inne wymogi, więc formę dobieramy do skali gabinetu.</p>
+        </article>
+
+        <article class="dent-card">
+          <h3>Forma opodatkowania: ryczałt czy KPiR</h3>
+          <p>Usługi stomatologiczne mieszczą się w dziale 86 PKWiU, więc na ryczałcie obowiązuje stawka {stawkaMedyczna}. To atrakcyjna opcja przy pracy na kontrakcie albo w gabinecie o niewielkich kosztach, bo ewidencja sprowadza się do przychodu.</p>
+          <p>Gabinet z własnym unitem, RTG i stałą dostawą materiałów zwykle wychodzi lepiej na podatku liniowym albo skali, bo na ryczałcie ani sprzęt, ani materiały nie obniżają podstawy opodatkowania. Liczymy oba warianty przed startem, a nie po zamknięciu roku - przy inwestycji w wyposażenie różnica bywa czterocyfrowa rocznie. Porównanie form opisujemy w <a href="#forma-opodatkowania">sekcji o formie opodatkowania</a>.</p>
+        </article>
+
+        <article class="dent-card">
+          <h3>VAT: leczenie kontra estetyka</h3>
+          <p>Leczenie zachowawcze, protetyka, chirurgia i profilaktyka są zwolnione z VAT jako usługi opieki medycznej świadczone w ramach zawodu lekarza dentysty. Dostawa protez dentystycznych i sztucznych zębów ma w ustawie własne, odrębne zwolnienie.</p>
+          <p>Zabiegi wykonywane wyłącznie dla poprawy wyglądu, z wybielaniem na czele, nie służą leczeniu, więc organy podatkowe traktują je jako sprzedaż opodatkowaną stawką podstawową. Gabinet robiący jedno i drugie prowadzi sprzedaż mieszaną: ustawiamy podział na kasie i w fakturach, pilnujemy proporcji odliczenia i momentu, w którym trzeba zarejestrować się do VAT. Szczegóły w <a href="#vat">sekcji o VAT</a>.</p>
+        </article>
+
+        <article class="dent-card">
+          <h3>Kasa fiskalna od pierwszego pacjenta</h3>
+          <p>Usługi opieki medycznej świadczone przez lekarzy i lekarzy dentystów zostały wyłączone ze zwolnień z obowiązku ewidencjonowania. Przy pacjentach prywatnych nie obowiązuje więc żaden limit obrotu: kasa online musi być gotowa przed pierwszą przyjętą wizytą.</p>
+          <p>Obowiązek nie powstaje tylko wtedy, gdy pracujesz wyłącznie na kontrakcie i fakturujesz podmiot leczniczy, bo nie sprzedajesz wtedy osobom fizycznym. Więcej w <a href="#kasa-fiskalna">sekcji o kasie fiskalnej</a>.</p>
+        </article>
+
+        <article class="dent-card">
+          <h3>Sprzęt, amortyzacja i materiały</h3>
+          <p>Unit stomatologiczny, aparat RTG, skaner wewnątrzustny czy autoklaw to zwykle wydatki powyżej {zl(AMORT_NISKOCENNE)}, więc wprowadzamy je do ewidencji środków trwałych i rozliczamy przez amortyzację, stawką z Wykazu właściwą dla danej grupy. Zakupy poniżej tej kwoty wrzucamy w koszty jednorazowo.</p>
+          <p>Mały podatnik oraz przedsiębiorca rozpoczynający działalność mogą skorzystać z jednorazowej amortyzacji w ramach pomocy de minimis, do równowartości {num(AMORT_JEDNORAZOWA_LIMIT_EUR)} euro rocznie, czyli {zl(AMORT_JEDNORAZOWA_LIMIT)} w tym roku. Przy zakupie unitu potrafi to przesunąć cały koszt do jednego roku podatkowego, więc pytamy o planowane inwestycje, zanim wybierzemy formę opodatkowania.</p>
+          <p>Materiały zużywalne - kompozyty, wypełnienia, narzędzia jednorazowe, środki do sterylizacji - są kosztem bieżącym w miesiącu zakupu. Przy regularnych dostawach od jednego hurtownika to zwykle kilka faktur miesięcznie, co bezpośrednio przekłada się na próg cenowy abonamentu.</p>
+        </article>
+
+        <article class="dent-card">
+          <h3>Koszty gabinetu i zespół</h3>
+          <p>Do rozliczenia wchodzą także najem lokalu, media, przystosowanie gabinetu do wymogów sanitarnych, obowiązkowe ubezpieczenie odpowiedzialności cywilnej, składki izbowe, szkolenia i kursy podyplomowe oraz utylizacja odpadów medycznych. Przy podatku liniowym i skali obniżają dochód, przy ryczałcie nie mają wpływu na podatek.</p>
+          <p>Gabinet z asystentką stomatologiczną, higienistką i rejestracją potrzebuje obsługi kadrowej: listy płac, akta osobowe, deklaracje ZUS i PIT-11. Prowadzimy to od {hrMin} zł netto miesięcznie za osobę na umowie o pracę, w jednej stałej cenie. Współpraca z drugim lekarzem na własnej działalności to z kolei rozliczenie B2B, nie kadry - pomagamy ustawić je tak, żeby nie było kwestionowane jako ukryty stosunek pracy.</p>
+        </article>
+
+        <article class="dent-card dent-card--wide">
+          <h3>Księgowość online dla gabinetu stomatologicznego</h3>
+          <p>Faktury od hurtowni materiałów, raporty z kasy fiskalnej i umowy z technikami dentystycznymi trafiają do nas elektronicznie - zdjęciem z telefonu, plikiem albo automatycznie z KSeF. Nie musisz odkładać niczego do teczki ani wygospodarowywać wieczoru na dojazd do biura rachunkowego. Rozliczenia dostajesz przed terminem płatności, a pytania zadajesz opiekunowi mailem między pacjentami. Jak dokładnie wygląda taka współpraca, opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+        </article>
+      </div>
+
+      <p class="dent-note">
+        <Icon name="search" size={16}/>
+        <span>Nie prowadzimy osobnej podstrony dla stomatologii, bo większość obowiązków jest wspólna dla całej medycyny. Jeżeli masz pytanie, którego tu nie ma, napisz do nas - odpowiemy konkretnie, a nie odsyłając do konsultacji.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Prowadzenie praktyki lekarskiej wiąże się z kalendarzem obowiązków, który nie ma nic wspólnego z medycyną. Bierzemy go na siebie w całości, w ramach jednego abonamentu i bez dopłat za rzeczy uznawane przez nas za standard. Pracujemy zdalnie, więc rozliczenia nie zabierają Ci czasu między pacjentami - jak to wygląda w praktyce, opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+      </div>
+      <div class="med-scope">
+        {scope.map((s) => (
+          <article class="med-scope__item">
+            <div class="med-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="med-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia, o których nie musisz pamiętać między&nbsp;dyżurami</h2>
+          <p class="lede">Między wizytami zwykle nie ma jak zadzwonić do księgowej w godzinach pracy biura. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze i na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="med-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow med-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="med-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="med-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie praktyki ───────────────────────────────────────────── -->
+  <section class="section" id="zakladanie-praktyki">
+    <div class="container">
+      <div class="med-startup">
+        <div class="med-startup__head">
+          <span class="eyebrow">Zakładanie praktyki</span>
+          <h2>Otwierasz własny gabinet? Przeprowadzimy Cię przez formalności</h2>
+          <p class="lede">Rejestracja praktyki to więcej niż wniosek CEIDG. Działalność lecznicza jest działalnością regulowaną, więc lekarz i fizjoterapeuta przed przyjęciem pierwszego pacjenta potrzebują wpisu do rejestru podmiotów wykonujących działalność leczniczą oraz obowiązkowego OC. Psycholog i psychoterapeuta tych dwóch kroków nie mają, więc ich start jest krótszy. Ustalamy to na początku, bo od tego zależy komplet formalności i kolejność, w jakiej trzeba je załatwić.</p>
+        </div>
+
+        <ol class="med-steps">
+          {startupSteps.map((s, i) => (
+            <li class="med-step">
+              <span class="med-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="med-registry">
+          <h3>Nie każdy zawód medyczny rejestruje własną praktykę</h3>
+          <p>Praktykę zawodową wpisaną do rejestru mogą prowadzić tylko zawody wymienione w ustawie o działalności leczniczej. Dla pozostałych droga jest inna i lepiej wiedzieć o tym przed rejestracją działalności, a nie po niej.</p>
+          <div class="med-registry__cols">
+            <div class="med-registry__col">
+              <h4><Icon name="check-circle" size={18}/>Prowadzą własną praktykę</h4>
+              <ul>
+                {withPractice.map((w) => (
+                  <li>
+                    <strong>{w.profession}</strong>
+                    <span>{w.registry}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div class="med-registry__col">
+              <h4><Icon name="search" size={18}/>Rozliczają się bez wpisu do rejestru</h4>
+              <ul>
+                {withoutPractice.map((w) => (
+                  <li>
+                    <strong>{w.profession}</strong>
+                    <span>{w.note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p class="med-registry__foot">Sama forma opodatkowania wygląda w tych zawodach tak samo jak u lekarza. Różni się to, co trzeba załatwić przed przyjęciem pierwszego pacjenta, i to sprawdzamy na starcie. Do stałych obciążeń dochodzą jeszcze składki samorządowe: fizjoterapeuta wpisany do Krajowego Rejestru Fizjoterapeutów płaci {KIF_SKLADKA_MIESIECZNA} zł miesięcznie do 10. dnia miesiąca, a psycholog własnego samorządu na razie nie ma.</p>
+        </div>
+
+        <p class="med-note">
+          <Icon name="search" size={16}/>
+          <span>Od {PKD_NOWA_OD} obowiązuje nowa klasyfikacja PKD i dwa z tych zawodów dostały wreszcie własne kody. Fizjoterapia to dziś 86.95.Z zamiast dawnego 86.90.A, a działalność psychologiczna i psychoterapeutyczna to 86.93.Z zamiast ogólnego 86.90.E. Kody praktyki lekarskiej, czyli 86.21.Z, 86.22.Z i 86.23.Z, zostały bez zmian. Jeśli rejestrowałeś działalność wcześniej, wpis trzeba zaktualizować do {PKD_AKTUALIZACJA_DO} - zmiana w CEIDG jest bezpłatna i zgłaszamy ją za Ciebie. Na wysokość ryczałtu kod PKD i tak nie wpływa, bo o stawce decyduje PKWiU konkretnej usługi.</span>
+        </p>
+
+        <p class="med-note med-startup__fees">
+          <Icon name="file" size={16}/>
+          <span>Poza naszym wynagrodzeniem dochodzą dwie opłaty urzędowe, które trafiają do izby zawodowej i do urzędu miasta, a nie do nas. Wpis praktyki zawodowej do rejestru, zarówno lekarskiej, jak i fizjoterapeutycznej, kosztuje {pct(RPWDL_WPIS_STAWKA)} przeciętnego miesięcznego wynagrodzenia w sektorze przedsiębiorstw za rok ubiegły, więc kwota zmienia się co roku wraz z obwieszczeniem GUS. Zmiana wpisu kosztuje połowę tej stawki. Od pełnomocnictwa, na podstawie którego składamy wniosek, dochodzi {OPLATA_SKARBOWA_PELNOMOCNICTWO} zł opłaty skarbowej.</span>
+        </p>
+
+        <div class="med-startup__cols">
+          <div class="med-startup__col med-startup__col--primary">
+            <span class="med-startup__pill med-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="med-startup__col">
+            <span class="med-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=zdrowie" class="btn btn--accent btn--lg med-startup__cta">
+          <span>Otwórz gabinet z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Kadry i płace ─────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="kadry">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Kadry i płace</span>
+        <h2>Zatrudniasz personel w gabinecie? Zajmiemy się dokumentacją</h2>
+        <p>Gabinet, który rośnie, prędzej czy później zatrudnia rejestratorkę, asystentkę stomatologiczną, higienistkę, pielęgniarkę albo drugiego terapeutę. Wtedy do obowiązków podatkowych dochodzą listy płac, akta osobowe i deklaracje ZUS. Prowadzimy to w jednej stałej cenie za osobę.</p>
+      </div>
+
+      <div class="med-hr">
+        {hrPricing.map((h) => (
+          <div class="med-hr__row">
+            <div class="med-hr__name">
+              <strong>{h.name}</strong>
+              {h.note && <small>{h.note}</small>}
+            </div>
+            <div class="med-hr__price">
+              <strong>{fmt.format(h.price)} zł</strong>
+              <small>netto / mies. / osobę</small>
+            </div>
+          </div>
+        ))}
+        <p class="med-hr__foot">
+          <Icon name="check-circle" size={14}/>
+          <span>W cenie masz akta osobowe prowadzone elektronicznie, ewidencję czasu pracy, deklaracje ZUS DRA, RCA i RSA, PIT-11 oraz PIT-4R, a także panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi online. Minimalny abonament kadrowy wynosi {hrMin} zł miesięcznie niezależnie od liczby zatrudnionych.</span>
+        </p>
+      </div>
+
+      <div class="med-actions">
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Pełna oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla gabinetu</h2>
+        <p>Nie stosujemy widełek ani tajemniczej prośby o kontakt w celu wyceny. Cały cennik jest publiczny i taki sam niezależnie od zawodu - płacisz za liczbę dokumentów, a nie za to, co masz na pieczątce. Ponieważ usługi medyczne korzystają zwykle ze zwolnienia z VAT, większość klientów z tej branży rozlicza się u nas według stawki przewidzianej dla podatników zwolnionych.</p>
+      </div>
+
+      <div class="med-price">
+        <div class="med-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="med-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="med-price__row">
+            <span class="med-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów</small>
+            </span>
+            <span class="med-price__situation">{r.situation}</span>
+            <span class="med-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="med-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy. Zakres każdej z form rozliczenia opisujemy szerzej na stronie <a href="/ksiegowosc">księgowości</a>.</span>
+      </p>
+
+      <div class="med-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/slownik" class="btn btn--ghost btn--lg">
+          <Icon name="search" size={18}/>
+          <span>Słownik księgowy</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość dla zawodów medycznych"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej praktyki"
+    description="Jeśli jesteś lekarzem, fizjoterapeutą albo psychologiem, prowadzisz gabinet lub dopiero planujesz go otworzyć, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoją sytuację, policzymy formy opodatkowania i powiemy wprost, co da się uprościć. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=zdrowie"
+  />
+</BaseLayout>
+
+<style>
+/* Sekcja stomatologiczna */
+.dent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) { .dent-grid { grid-template-columns: repeat(2, 1fr); } }
+.dent-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.625rem 1.75rem;
+}
+.dent-card--wide { grid-column: 1 / -1; }
+.dent-card h3 { font-size: 1.0625rem; margin-bottom: 0.5rem; }
+.dent-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.dent-card p + p { margin-top: 0.75rem; }
+.dent-card a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.dent-note {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 76ch;
+}
+.dent-note svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.med-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.med-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.med-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.med-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.med-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa sześć kart po trzy w rzędzie. Ostatnia karta zbiera
+     pozostałe zawody medyczne, więc idzie przez całą szerokość, a jej listę
+     rozkładamy wtedy na trzy kolumny, żeby nie rozciągała się w jedną linijkę. */
+  .med-segments { grid-template-columns: repeat(6, 1fr); }
+  .med-segments > * { grid-column: span 2; }
+  .med-segments > :last-child { grid-column: span 6; }
+  .med-segments > :last-child ul {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem 1.5rem;
+  }
+}
+.med-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.med-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.med-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.med-segment h3 { font-size: 1.125rem; }
+.med-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.med-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.med-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.med-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Formy opodatkowania ──────────────────────────────────────────────── */
+.med-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .med-forms { grid-template-columns: repeat(3, 1fr); } }
+.med-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.med-form--featured {
+  border-color: var(--accent-300, var(--accent-200));
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.med-form__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.med-form__badge--featured { background: var(--accent-500); color: var(--ink-950); }
+.med-form h3 { font-size: 1.25rem; }
+.med-form p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.med-form p.med-form__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+.med-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.med-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.med-warning h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.med-warning p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.med-warning p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .med-warning { flex-direction: column; gap: 1rem; }
+}
+
+/* ── VAT ──────────────────────────────────────────────────────────────── */
+.med-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .med-split { grid-template-columns: 1fr 1fr; } }
+.med-split__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.med-split__col--yes { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.med-split__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+.med-split__head h3 { font-size: 1.125rem; }
+.med-split__col--yes .med-split__head :global(svg) { color: var(--accent-600); }
+.med-split__col--check .med-split__head :global(svg) { color: var(--warning); }
+.med-split__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.med-split__col li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.med-split__col--yes li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+.med-split__col--check li :global(svg) { color: var(--warning); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Kasa fiskalna ────────────────────────────────────────────────────── */
+/* ── VAT: podstawy zwolnienia ─────────────────────────────────────────── */
+.med-basis {
+  margin-top: 1.75rem;
+  padding: 1.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.med-basis > h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.med-basis > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; max-width: 75ch; }
+.med-basis__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+@media (min-width: 900px) { .med-basis__grid { grid-template-columns: 1fr 1fr; } }
+.med-basis__item {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  padding: 1.125rem 1.25rem;
+  background: var(--surface-subtle, var(--accent-50));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.med-basis__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border: 1px solid var(--border);
+  color: var(--accent-700);
+}
+.med-basis__item h4 { font-size: 1rem; margin-bottom: 0.25rem; color: var(--text-strong); }
+.med-basis__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+.med-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .med-cards { grid-template-columns: repeat(3, 1fr); } }
+.med-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.med-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.med-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.med-card h3 { font-size: 1.125rem; }
+.med-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.med-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.med-card li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.med-card li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.med-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .med-scope { grid-template-columns: repeat(2, 1fr); } }
+.med-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.med-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.med-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.med-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.med-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.med-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.med-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.med-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.med-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .med-benefits { grid-template-columns: 1fr; } }
+.med-benefits .lede { margin-top: 1rem; }
+.med-benefits__stats { margin-top: 2rem; }
+.med-benefits__link { margin-top: 1.75rem; }
+.med-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.med-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.med-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.med-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.med-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.med-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie praktyki ──────────────────────────────────────────────── */
+.med-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.med-startup__head { max-width: 70ch; }
+.med-startup__head .lede { margin-top: 1rem; }
+
+.med-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .med-steps { grid-template-columns: repeat(3, 1fr); } }
+.med-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.med-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.med-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.med-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.med-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .med-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.med-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.med-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.med-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.med-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.med-startup__col h3 { font-size: 1.1875rem; }
+.med-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+/* Kto rejestruje praktykę, a kto nie */
+.med-registry {
+  margin: 2rem 0 1.5rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.med-registry > h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.med-registry > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; max-width: 75ch; }
+.med-registry__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+@media (min-width: 900px) { .med-registry__cols { grid-template-columns: 1fr 1fr; } }
+.med-registry__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.med-registry__col h4 {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.875rem;
+}
+/* Nagłówek łamie się na wąskich ekranach - ikona zostaje przy pierwszej linii. */
+.med-registry__col h4 :global(svg) { flex-shrink: 0; margin-top: 2px; }
+.med-registry__col:first-child h4 :global(svg) { color: var(--accent-600); }
+.med-registry__col:last-child h4 :global(svg) { color: var(--warning); }
+.med-registry__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.med-registry__col li { font-size: 0.9375rem; line-height: 1.5; }
+.med-registry__col strong { display: block; color: var(--text-strong); font-weight: 600; }
+.med-registry__col span { display: block; font-size: 0.875rem; color: var(--text-muted); margin-top: 2px; }
+.med-registry__foot {
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+.med-startup__fees { margin-top: 0; margin-bottom: 1.5rem; }
+.med-startup__cta { margin-top: 1.75rem; }
+
+/* ── Kadry ────────────────────────────────────────────────────────────── */
+.med-hr {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  max-width: 760px;
+  margin: 0 auto;
+}
+.med-hr__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.med-hr__row:last-of-type { border-bottom: none; }
+.med-hr__name strong { display: block; font-weight: 600; color: var(--text-strong); font-size: 0.9375rem; }
+.med-hr__name small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.med-hr__price { text-align: right; }
+.med-hr__price strong {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+}
+.med-hr__price small { display: block; font-size: 0.75rem; color: var(--text-subtle); margin-top: 2px; }
+.med-hr__foot {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 1.125rem 1.5rem;
+  background: var(--accent-50);
+  border-top: 1px solid var(--accent-200);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink-900);
+  margin: 0;
+}
+.med-hr__foot :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.med-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.med-price__head,
+.med-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.med-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.med-price__row { border-bottom: 1px solid var(--border-subtle); }
+.med-price__row:last-child { border-bottom: none; }
+.med-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.med-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.med-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.med-price__amount { text-align: right; }
+.med-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .med-price__head { display: none; }
+  .med-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .med-price__situation { grid-column: 1 / -1; }
+}
+</style>

@@ -1,0 +1,249 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  DIETA_KRAJOWA, RYCZALT_NOCLEG, RYCZALT_DOJAZD, MEAL_DEDUCTIONS, DIETA_NIEPELNA,
+  DIETA_NIEPELNA_GODZINY, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl2, pct } from '../../lib/format';
+
+// Ryczałty są pochodnymi diety - stąd mnożniki obok kwot
+const mnoznikNocleg = RYCZALT_NOCLEG / DIETA_KRAJOWA;
+const mnoznikDojazd = RYCZALT_DOJAZD / DIETA_KRAJOWA;
+const dietaNiepelnaDo8 = DIETA_KRAJOWA * DIETA_NIEPELNA.do8h;
+const dietaNiepelnaPonad8 = DIETA_KRAJOWA * DIETA_NIEPELNA.ponad8h;
+
+const stawkiTabela = [
+  { skladnik: 'Dieta (pełna doba)', kwota: DIETA_KRAJOWA },
+  { skladnik: `Ryczałt za nocleg (${pct(mnoznikNocleg)} diety)`, kwota: RYCZALT_NOCLEG },
+  { skladnik: `Ryczałt na dojazdy (${pct(mnoznikDojazd)} diety, za dobę)`, kwota: RYCZALT_DOJAZD },
+];
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/podrozy-sluzbowej#webpage',
+  name: `Kalkulator podróży służbowej ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator krajowej podróży służbowej na ${TAX_YEAR} r. Liczy diety, ryczałt za nocleg i ryczałt na dojazdy z uwzględnieniem zapewnionych posiłków.`,
+  url: 'https://taxun.pl/kalkulatory/podrozy-sluzbowej',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ile wynosi dieta krajowa w ${TAX_YEAR} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Pełna dieta krajowa za dobę podróży służbowej wynosi ${zl2(DIETA_KRAJOWA)}. Ryczałt za nocleg bez rachunku to ${pct(mnoznikNocleg)} diety, czyli ${zl2(RYCZALT_NOCLEG)}, a ryczałt na dojazdy komunikacją miejscową to ${pct(mnoznikDojazd)} diety, czyli ${zl2(RYCZALT_DOJAZD)} za każdą rozpoczętą dobę.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się dietę za niepełną dobę?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Za każdą pełną dobę przysługuje ${zl2(DIETA_KRAJOWA)}. Za niepełną dobę: do ${DIETA_NIEPELNA_GODZINY} godzin - ${pct(DIETA_NIEPELNA.do8h)} diety (${zl2(dietaNiepelnaDo8)}), powyżej ${DIETA_NIEPELNA_GODZINY} godzin - ${pct(DIETA_NIEPELNA.ponad8h)} diety (${zl2(dietaNiepelnaPonad8)}). Dla podróży krótszej niż doba: poniżej ${DIETA_NIEPELNA_GODZINY} godzin dieta nie przysługuje.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy zapewnione wyżywienie obniża dietę?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Tak. Zapewniony posiłek pomniejsza dietę: śniadanie i kolacja po ${pct(MEAL_DEDUCTIONS.sniadanie)}, a obiad o ${pct(MEAL_DEDUCTIONS.obiad)} wartości diety. Jeśli zapewnione są wszystkie posiłki, dieta nie przysługuje.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator podróży służbowej ${TAX_YEAR}`}
+  description="Policz dietę krajową, ryczałt za nocleg i ryczałt na dojazdy. Uwzględnia zapewnione posiłki i niepełne doby. Liczy się w przeglądarce, bez wysyłania danych."
+  metaTitle={`Kalkulator podróży służbowej ${TAX_YEAR} - diety krajowe`}
+  metaDescription={`Bezpłatny kalkulator krajowej podróży służbowej ${TAX_YEAR}. Dieta ${zl2(DIETA_KRAJOWA)}, ryczałt za nocleg i dojazdy, potrącenia za posiłki. Bez logowania.`}
+  breadcrumbLabel="Podróż służbowa"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="pod-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="pd-doby">
+          Liczba pełnych dób
+          <small>całe doby podróży</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="pd-doby" min="0" step="1" value="2" inputmode="numeric"/>
+          <span class="calc-field__suffix">dób</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="pd-niepelna">
+          Ostatnia niepełna doba
+        </label>
+        <div class="calc-field__input">
+          <select id="pd-niepelna">
+            <option value="0" selected>Brak / podróż w pełnych dobach</option>
+            <option value={DIETA_NIEPELNA.do8h}>{`Do ${DIETA_NIEPELNA_GODZINY} godzin (${pct(DIETA_NIEPELNA.do8h)} diety)`}</option>
+            <option value={DIETA_NIEPELNA.ponad8h}>{`Ponad ${DIETA_NIEPELNA_GODZINY} godzin (${pct(DIETA_NIEPELNA.ponad8h)} diety)`}</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="pd-noclegi">
+          Noclegi bez rachunku
+          <small>ryczałt {zl2(RYCZALT_NOCLEG)} / nocleg</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="pd-noclegi" min="0" step="1" value="1" inputmode="numeric"/>
+          <span class="calc-field__suffix">szt.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="pd-nocleg-rach">
+          Noclegi wg rachunku
+          <small>suma faktur za hotel</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="pd-nocleg-rach" min="0" step="10" value="0" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-field" style="margin-top: 1rem;">
+      <label>Zapewnione posiłki <small>obniżają dietę</small></label>
+      <div style="display:flex; flex-wrap:wrap; gap:1rem; padding:0.5rem 0;">
+        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:500;">
+          <input type="checkbox" id="pd-sniadanie"/> Śniadanie (-{pct(MEAL_DEDUCTIONS.sniadanie)})
+        </label>
+        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:500;">
+          <input type="checkbox" id="pd-obiad"/> Obiad (-{pct(MEAL_DEDUCTIONS.obiad)})
+        </label>
+        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:500;">
+          <input type="checkbox" id="pd-kolacja"/> Kolacja (-{pct(MEAL_DEDUCTIONS.kolacja)})
+        </label>
+        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:500;">
+          <input type="checkbox" id="pd-dojazd" checked/> Ryczałt na dojazdy ({zl2(RYCZALT_DOJAZD)} / dobę)
+        </label>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Łączna kwota delegacji</div>
+      <div class="calc-result__value">
+        <span id="pd-total">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        W tym diety: <strong id="pd-diety-sum">-</strong>.
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Diety (po potrąceniu posiłków)</span>
+          <span class="calc-breakdown__value" id="pd-diety">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Ryczałt za noclegi bez rachunku</span>
+          <span class="calc-breakdown__value" id="pd-rycz-nocleg">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Noclegi wg rachunku</span>
+          <span class="calc-breakdown__value" id="pd-nocleg-fakt">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Ryczałt na dojazdy</span>
+          <span class="calc-breakdown__value" id="pd-rycz-dojazd">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak rozliczamy krajową podróż służbową</h2>
+    <p>Na rozliczenie delegacji krajowej składają się <strong>diety</strong> (na pokrycie kosztów wyżywienia), <strong>zwrot kosztów noclegu</strong> (wg rachunku lub ryczałt) oraz <strong>ryczałt na dojazdy</strong> komunikacją miejscową.</p>
+
+    <h3>{`Stawki ${TAX_YEAR}`}</h3>
+    <table>
+      <thead>
+        <tr><th>Składnik</th><th>Kwota</th></tr>
+      </thead>
+      <tbody>
+        {stawkiTabela.map((s) => (
+          <tr><td>{s.skladnik}</td><td>{zl2(s.kwota)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h3>Dieta za czas podróży</h3>
+    <ul>
+      <li><strong>Pełna doba</strong> - {zl2(DIETA_KRAJOWA)}.</li>
+      <li><strong>{`Niepełna doba do ${DIETA_NIEPELNA_GODZINY} h`}</strong> - {pct(DIETA_NIEPELNA.do8h)} ({zl2(dietaNiepelnaDo8)}).</li>
+      <li><strong>{`Niepełna doba ponad ${DIETA_NIEPELNA_GODZINY} h`}</strong> - {pct(DIETA_NIEPELNA.ponad8h)} ({zl2(dietaNiepelnaPonad8)}).</li>
+      <li>Podróż <strong>{`poniżej ${DIETA_NIEPELNA_GODZINY} godzin`}</strong> (krótsza niż doba) - dieta nie przysługuje.</li>
+    </ul>
+
+    <h3>Potrącenia za posiłki</h3>
+    <p>Zapewniony posiłek obniża dietę: śniadanie -{pct(MEAL_DEDUCTIONS.sniadanie)}, obiad -{pct(MEAL_DEDUCTIONS.obiad)}, kolacja -{pct(MEAL_DEDUCTIONS.kolacja)}. Pełne wyżywienie oznacza brak diety.</p>
+    <p style="font-size: 0.875rem; color: var(--text-muted);">Kalkulator stosuje potrącenia za posiłki proporcjonalnie do całej diety - przy zmiennym wyżywieniu w poszczególnych dniach rozlicz każdą dobę osobno.</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> rozporządzenie Ministra Rodziny i Polityki Społecznej w sprawie należności za podróże służbowe, <a href="https://www.gov.pl/" rel="noopener" target="_blank">gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Rozliczasz delegacje pracowników? <a href="/kadry-place" style="color: var(--accent-700)">Zajmiemy się tym w ramach kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { DIETA_KRAJOWA as DIETA, RYCZALT_NOCLEG, RYCZALT_DOJAZD, MEAL_DEDUCTIONS } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+  const checked = (id: string) => (document.getElementById(id) as HTMLInputElement).checked;
+
+  function calculate() {
+    const pelne = Math.max(0, Number(($('pd-doby') as HTMLInputElement).value) || 0);
+    const niepelnaFrac = Number(($('pd-niepelna') as HTMLSelectElement).value);
+    const noclegiBezRach = Math.max(0, Number(($('pd-noclegi') as HTMLInputElement).value) || 0);
+    const noclegRach = Math.max(0, Number(($('pd-nocleg-rach') as HTMLInputElement).value) || 0);
+
+    const rozpoczeteDoby = pelne + (niepelnaFrac > 0 ? 1 : 0);
+    const dietaBrutto = pelne * DIETA + niepelnaFrac * DIETA;
+
+    let redukcja = 0;
+    if (checked('pd-sniadanie')) redukcja += MEAL_DEDUCTIONS.sniadanie;
+    if (checked('pd-obiad')) redukcja += MEAL_DEDUCTIONS.obiad;
+    if (checked('pd-kolacja')) redukcja += MEAL_DEDUCTIONS.kolacja;
+    redukcja = Math.min(1, redukcja);
+    const diety = dietaBrutto * (1 - redukcja);
+
+    const ryczNocleg = noclegiBezRach * RYCZALT_NOCLEG;
+    const ryczDojazd = checked('pd-dojazd') ? rozpoczeteDoby * RYCZALT_DOJAZD : 0;
+    const total = diety + ryczNocleg + noclegRach + ryczDojazd;
+
+    $span('pd-total').textContent = fmt2.format(total);
+    $span('pd-diety-sum').textContent = fmtMoney2(diety);
+    $span('pd-diety').textContent = fmtMoney2(diety);
+    $span('pd-rycz-nocleg').textContent = fmtMoney2(ryczNocleg);
+    $span('pd-nocleg-fakt').textContent = fmtMoney2(noclegRach);
+    $span('pd-rycz-dojazd').textContent = fmtMoney2(ryczDojazd);
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#pod-calc input, #pod-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

@@ -1,0 +1,942 @@
+---
+import Icon from './Icon.astro';
+import Pagination from './Pagination.astro';
+import CoverImage from './CoverImage.astro';
+import type { BlogPost, CategoryInfo } from '../lib/blog';
+import { articleCount, blogPath, categoryPath, formatDate, getPostAuthor, getPostCover, postPath } from '../lib/blog';
+
+interface Props {
+  /** Artykuły z bieżącej strony. */
+  posts: BlogPost[];
+  currentPage: number;
+  lastPage: number;
+  /** Łączna liczba artykułów w bieżącym widoku (wszystkie strony). */
+  total: number;
+  /** Buduje adres n-tej strony bieżącego widoku. */
+  hrefFor: (page: number) => string;
+  /** Wyróżniony artykuł - pokazywany tylko na pierwszej stronie głównej listy. */
+  featured?: BlogPost | null;
+  categories?: CategoryInfo[];
+  /** Slug aktywnej kategorii (dla archiwum kategorii). */
+  activeCategory?: string | null;
+  /** Nazwa aktywnej kategorii - pojawia się w nagłówku wyników wyszukiwania. */
+  activeCategoryName?: string | null;
+  popularTags?: string[];
+  /** Komunikat, gdy w widoku nie ma żadnych artykułów. */
+  emptyMessage?: string;
+}
+
+const {
+  posts,
+  currentPage,
+  lastPage,
+  total,
+  hrefFor,
+  featured = null,
+  categories = [],
+  activeCategory = null,
+  activeCategoryName = null,
+  popularTags = [],
+  emptyMessage = 'Nie ma jeszcze artykułów w tym widoku.',
+} = Astro.props;
+
+/*
+ * Wyróżniony wpis ma h2, więc karty poniżej schodzą na h3. Na widokach bez
+ * wyróżnionego wpisu (kategorie, kolejne strony) karty są pierwszym poziomem
+ * pod h1 strony i muszą być h2 - inaczej kolejność nagłówków przeskakuje.
+ */
+const PostTitleTag = featured ? 'h3' : 'h2';
+
+/*
+ * Szerokości, jakie zdjęcia zajmują w layoucie - przeglądarka wybiera po nich
+ * wariant z srcset. Wartości odpowiadają punktom łamania siatki niżej:
+ * poniżej 640 px karta jest jedna w wierszu, do 1240 px siatka rozciąga się na
+ * szerokość okna, powyżej - lista ma stałą szerokość (kontener 1200 px).
+ */
+const CARD_SIZES = '(max-width: 640px) 100vw, (max-width: 1240px) 46vw, 390px';
+const FEATURED_SIZES = '(max-width: 760px) 100vw, (max-width: 1240px) 42vw, 380px';
+
+const featuredCover = featured ? getPostCover(featured) : null;
+---
+<div
+  class="blog-toolbar"
+  data-blog-toolbar
+  data-active-category={activeCategory ?? ''}
+  data-active-category-name={activeCategoryName ?? ''}
+>
+  {categories.length > 0 && (
+    <div class="blog-filters" aria-label="Filtruj według kategorii">
+      {/* data-base-href: adres bez zapytania - wyszukiwarka dokleja do niego ?q=, żeby wybór kategorii nie gubił frazy. */}
+      <a
+        class:list={['blog-filter', { 'is-active': !activeCategory }]}
+        href={blogPath()}
+        data-base-href={blogPath()}
+      >Wszystkie</a>
+      {/* data-filter-count, nie data-count: `data-count` przechwytuje animacja liczników z BaseLayout i podmienia całą treść elementu. */}
+      {categories.map((c) => (
+        <a
+          class:list={['blog-filter', { 'is-active': activeCategory === c.slug }]}
+          href={categoryPath(c.name)}
+          data-base-href={categoryPath(c.name)}
+          data-category={c.slug}
+          data-filter-count={c.count}
+          aria-current={activeCategory === c.slug ? 'page' : undefined}
+        >
+          {c.name} <span class="blog-filter__count">{c.count}</span>
+        </a>
+      ))}
+    </div>
+  )}
+  <div class="blog-search">
+    <Icon name="search" size={16} class="blog-search__icon"/>
+    <input type="search" id="blog-search" placeholder="Szukaj artykułu lub tagu…" aria-label="Szukaj artykułu" autocomplete="off"/>
+    <button type="button" class="blog-search__reset" data-blog-search-reset hidden aria-label="Wyczyść wyszukiwanie">
+      <Icon name="close" size={14}/>
+    </button>
+  </div>
+</div>
+
+<div class="blog-grid">
+  <div class="blog-grid__main" data-blog-main>
+    {featured && (
+      <article class="post post--featured">
+        <a href={postPath(featured)} class="post__link">
+          <div class:list={['post__cover', 'post__cover--featured', { 'post__cover--photo': featuredCover }]}>
+            {featuredCover
+              ? <CoverImage cover={featuredCover} sizes={FEATURED_SIZES} priority class="post__photo" />
+              : <span class="post__cover-pattern" aria-hidden="true"></span>}
+            <span class="post__cover-mark" aria-hidden="true">{featured.data.category}</span>
+          </div>
+          <div class="post__body">
+            <span class="post__category">{featured.data.category}</span>
+            <h2 class="post__title">{featured.data.title}</h2>
+            <p class="post__excerpt">{featured.data.description}</p>
+            <div class="post__meta">
+              <span class="post__author">
+                <span class="post__avatar">{getPostAuthor(featured).initials}</span>
+                {getPostAuthor(featured).name}
+              </span>
+              <span>{formatDate(featured.data.pubDate)}</span>
+              {featured.data.readingTime && <span>{featured.data.readingTime} min czytania</span>}
+            </div>
+          </div>
+        </a>
+      </article>
+    )}
+
+    {posts.length > 0 ? (
+      <div class="blog-grid__rest">
+        {posts.map((post, index) => {
+          const author = getPostAuthor(post);
+          const cover = getPostCover(post);
+          return (
+            <article class="post">
+              <a href={postPath(post)} class="post__link">
+                <div class:list={['post__cover', { 'post__cover--photo': cover }]}>
+                  {cover
+                    ? <CoverImage cover={cover} sizes={CARD_SIZES} priority={index === 0 && !featured} class="post__photo" />
+                    : <span class="post__cover-pattern" aria-hidden="true"></span>}
+                  <span class="post__cover-mark" aria-hidden="true">{post.data.category}</span>
+                </div>
+                <div class="post__body">
+                  <span class="post__category">{post.data.category}</span>
+                  <PostTitleTag class="post__title">{post.data.title}</PostTitleTag>
+                  <p class="post__excerpt">{post.data.description}</p>
+                  <div class="post__meta">
+                    <span class="post__author">
+                      <span class="post__avatar">{author.initials}</span>
+                      {author.name}
+                    </span>
+                    <span>{formatDate(post.data.pubDate)}</span>
+                    {post.data.readingTime && <span>{post.data.readingTime} min</span>}
+                  </div>
+                </div>
+              </a>
+            </article>
+          );
+        })}
+      </div>
+    ) : !featured && (
+      /* Wyróżniony artykuł też się liczy - komunikat tylko przy naprawdę pustym widoku. */
+      <p class="blog-empty">{emptyMessage}</p>
+    )}
+
+    <Pagination currentPage={currentPage} lastPage={lastPage} hrefFor={hrefFor} />
+
+    {lastPage > 1 && (
+      <p class="blog-count">Strona {currentPage} z {lastPage} · {articleCount(total)}</p>
+    )}
+  </div>
+
+  <!-- Wyniki wyszukiwania zastępują siatkę; renderowane po stronie klienta z /wiedza/index.json -->
+  <section class="blog-results" data-blog-results hidden aria-live="polite">
+    <div class="blog-results__header">
+      <div class="blog-results__heading">
+        <h2 class="blog-results__title" data-blog-results-title>Wyniki wyszukiwania</h2>
+        <p class="blog-results__hint" data-blog-results-hint></p>
+      </div>
+      <button type="button" class="blog-results__clear" data-blog-results-clear>
+        <Icon name="close" size={14}/>
+        Wyczyść
+      </button>
+    </div>
+    <ol class="blog-results__list" data-blog-results-list></ol>
+  </section>
+
+  <aside class="blog-side">
+    {popularTags.length > 0 && (
+      <div class="blog-side__card">
+        <h3>Popularne tagi</h3>
+        <ul class="tag-list">
+          {popularTags.map((t) => (
+            <li><button type="button" class="tag" data-tag={t}>#{t}</button></li>
+          ))}
+        </ul>
+      </div>
+    )}
+    <div class="blog-side__card blog-side__card--accent">
+      <h3>Newsletter od założyciela</h3>
+      <p>Najważniejsze zmiany podatkowe i praktyczne porady w jednym mailu. ~1 e-mail miesięcznie. Pisze osobiście Tomasz, założyciel Taxun - bez delegowania do agencji marketingowej. Możesz wypisać się jednym kliknięciem.</p>
+      <form class="newsletter" id="newsletter">
+        <input type="email" name="email" placeholder="Twój e-mail" aria-label="E-mail" required/>
+        <button type="submit" class="btn btn--accent">Zapisz mnie</button>
+        <label class="check">
+          <input type="checkbox" required/>
+          <span>Akceptuję <a href="/polityka-prywatnosci">politykę prywatności</a>.</span>
+        </label>
+        <p class="newsletter__notice" hidden role="status"></p>
+      </form>
+    </div>
+  </aside>
+</div>
+
+<style>
+.blog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.blog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.blog-filter {
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.blog-filter:hover { background: var(--ink-100); color: var(--ink-900); }
+.blog-filter.is-active { background: var(--ink-900); color: var(--white); }
+.blog-filter__count { opacity: 0.6; font-size: 0.75rem; }
+/* Kategorie bez trafień znikają na czas wyszukiwania (ustawiane z JS). */
+.blog-filter[hidden] { display: none; }
+
+.blog-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--text-subtle);
+  /* Na wąskich ekranach pole ląduje w osobnym wierszu i zajmuje jego całą szerokość. */
+  flex: 1 1 260px;
+  max-width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+.blog-search__icon { flex: none; }
+.blog-search input {
+  border: none; background: transparent;
+  font-size: 0.9375rem;
+  outline: none; color: var(--text);
+  width: 100%;
+  min-width: 0;
+}
+/* Własny przycisk czyszczenia zamiast natywnego "x" WebKita. */
+.blog-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.blog-search:focus-within {
+  background: var(--white);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+.blog-search__reset {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.blog-search__reset:hover { background: var(--ink-900); color: var(--white); }
+.blog-search__reset[hidden] { display: none; }
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 2rem;
+  align-items: start;
+}
+.blog-grid__main { min-width: 0; }
+.blog-grid__rest {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+.post--featured { margin-bottom: 1.5rem; }
+.blog-side { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 100px; }
+.blog-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+}
+.blog-count { margin-top: 1rem; text-align: center; font-size: 0.8125rem; color: var(--text-subtle); }
+
+.blog-results { grid-column: 1; min-width: 0; scroll-margin-top: calc(var(--nav-height) + 1.5rem); }
+.blog-results__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.blog-results__title { font-size: 1.25rem; }
+.blog-results__hint { margin-top: 0.375rem; font-size: 0.8125rem; color: var(--text-subtle); }
+.blog-results__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.blog-results__clear:hover { background: var(--ink-900); color: var(--white); }
+.blog-results__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+
+/*
+ * Karty wyników wstawiamy z JS (innerHTML), więc nie dostają atrybutu scope'u Astro.
+ * Dlatego poniższe reguły muszą być globalne - bez tego lista renderowała się bez stylów.
+ */
+:global(.blog-results__item) {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-base), transform var(--transition-base);
+}
+:global(.blog-results__item:hover) {
+  border-color: var(--ink-100);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+:global(.blog-results__link) { display: block; padding: 1.125rem 1.375rem; }
+:global(.blog-results__top) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.625rem;
+  margin-bottom: 0.5rem;
+}
+:global(.blog-results__cat) {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:global(.blog-results__date) { font-size: 0.75rem; color: var(--text-faint); }
+:global(.blog-results__item h3) {
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  margin-bottom: 0.375rem;
+  transition: color var(--transition-fast);
+}
+:global(.blog-results__item:hover h3) { color: var(--accent-700); }
+:global(.blog-results__item p) {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 0.75rem;
+}
+:global(.blog-results__item mark) {
+  background: var(--accent-100);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.15em;
+}
+:global(.blog-results__meta) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+:global(.blog-results__meta > span + span::before) {
+  content: '·';
+  margin-right: 0.75rem;
+  color: var(--text-faint);
+}
+:global(.blog-results__author) { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 500; }
+:global(.blog-results__avatar) {
+  display: grid; place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--ink-900); color: var(--accent-400);
+  font-size: 0.625rem; font-weight: 700;
+  font-family: var(--font-display);
+}
+:global(.blog-results__tags) { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.625rem; }
+:global(.blog-results__tag) {
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+:global(.blog-results__tag.is-match) { background: var(--accent-50); color: var(--accent-700); font-weight: 600; }
+:global(.blog-results__empty) {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  background: var(--surface-alt);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+:global(.blog-results__more) {
+  padding: 0.875rem 1rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+}
+
+@media (max-width: 980px) {
+  .blog-grid { grid-template-columns: 1fr; }
+  .blog-side { position: static; }
+}
+@media (max-width: 560px) {
+  .blog-results__header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  :global(.blog-results__link) { padding: 1rem; }
+}
+
+.post {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.post:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--ink-100); }
+.post__link { display: flex; flex-direction: column; height: 100%; }
+.post--featured .post__link { flex-direction: row; }
+@media (max-width: 760px) { .post--featured .post__link { flex-direction: column; } }
+.post--featured .post__cover { flex: 0 0 45%; min-height: 280px; }
+
+.post__cover {
+  position: relative;
+  min-height: 200px;
+  background: linear-gradient(135deg, var(--ink-800), var(--ink-950));
+  overflow: hidden;
+  isolation: isolate;
+}
+.post__cover-pattern {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(16,185,129,0.4), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(16,185,129,0.18), transparent 60%);
+  z-index: -1;
+}
+.post__cover:not(.post__cover--photo)::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+/*
+ * Zdjęcie wypełnia gotowy kadr kafelki - wysokość ustala CSS karty, nie plik.
+ * Dzięki temu karta ze zdjęciem i bez zdjęcia mają tę samą wysokość, a treść
+ * nie skacze w trakcie ładowania.
+ */
+.post__cover--photo {
+  background: var(--ink-100);
+  --cover-position: absolute;
+  --cover-height: 100%;
+}
+.post__link:hover .post__cover--photo { --cover-scale: 1.03; }
+/* Czytelność plakietki kategorii na jasnym zdjęciu. */
+.post__cover--photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2,6,23,0.45), rgba(2,6,23,0) 45%);
+  pointer-events: none;
+}
+
+.post__cover-mark {
+  position: absolute;
+  z-index: 1;
+  top: 1.25rem;
+  left: 1.25rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.post__body {
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.post--featured .post__body { padding: clamp(2rem, 3vw, 2.75rem); justify-content: center; }
+.post__category { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-700); }
+.post__title { font-size: 1.3125rem; line-height: 1.25; transition: color var(--transition-fast); }
+.post--featured .post__title { font-size: clamp(1.625rem, 3vw, 2.125rem); }
+.post__link:hover .post__title { color: var(--accent-700); }
+.post__excerpt { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.post__meta {
+  display: flex;
+  gap: 0.875rem;
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+  margin-top: auto;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.post__author { display: inline-flex; align-items: center; gap: 0.4rem; }
+.post__avatar {
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--ink-900); color: var(--accent-400);
+  font-size: 0.6875rem; font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.blog-side__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+.blog-side__card h3 { font-size: 1rem; margin-bottom: 1rem; }
+.tag-list { list-style: none; display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.tag {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.tag:hover { background: var(--ink-900); color: var(--white); }
+.tag.is-active { background: var(--ink-900); color: var(--white); }
+
+.blog-side__card--accent {
+  background: linear-gradient(180deg, var(--ink-900), var(--ink-950));
+  color: var(--white);
+  border-color: transparent;
+}
+.blog-side__card--accent h3 { color: var(--white); }
+.blog-side__card--accent p { color: rgba(255,255,255,0.78); font-size: 0.9375rem; margin-bottom: 1rem; }
+.newsletter { display: flex; flex-direction: column; gap: 0.625rem; }
+.newsletter input[type="email"] {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: var(--radius-md);
+  color: var(--white);
+  font-size: 0.9375rem;
+}
+.newsletter input[type="email"]::placeholder { color: rgba(255,255,255,0.45); }
+.newsletter input[type="email"]:focus { outline: none; border-color: var(--accent-400); box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
+.newsletter .check { color: rgba(255,255,255,0.65); font-size: 0.75rem; }
+.newsletter .check a { color: var(--accent-400); }
+.newsletter__notice { background: rgba(16,185,129,0.16); color: var(--accent-400); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.8125rem; }
+/*
+ * Palcem trafia się gorzej niż kursorem, więc na ekranach dotykowych chipy
+ * i pole wyszukiwania dostają 44 px wysokości - tyle zalecają wytyczne
+ * iOS-a i Androida. Na myszy zostaje kompaktowy układ.
+ */
+@media (pointer: coarse) {
+  .blog-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 44px;
+  }
+  /* Pole wypełnia całą pigułkę - dotknięcie przy krawędzi też ustawia kursor. */
+  .blog-search { min-height: 44px; padding-block: 0; }
+  .blog-search input { align-self: stretch; }
+  /* Zgoda przy newsletterze: cały wiersz z etykietą jest celem dotyku. */
+  .newsletter .check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+  }
+  .newsletter .check input[type="checkbox"] { flex: none; width: 18px; height: 18px; }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.25rem 0.875rem;
+  }
+}
+</style>
+
+<script>
+  interface IndexedPost {
+    slug: string;
+    title: string;
+    description: string;
+    category: string;
+    categorySlug?: string;
+    tags: string[];
+    author: string;
+    initials?: string;
+    date: string;
+    readingTime?: number;
+  }
+
+  const search = document.getElementById('blog-search') as HTMLInputElement | null;
+  const toolbar = document.querySelector<HTMLElement>('[data-blog-toolbar]');
+  const filters = Array.from(document.querySelectorAll<HTMLAnchorElement>('.blog-filter'));
+  /*
+   * Archiwum kategorii zawęża też wyszukiwanie. Tagi w bocznej kolumnie
+   * pochodzą wtedy wyłącznie z tej kategorii, więc kliknięcie tagu musi zostać
+   * w jej obrębie - inaczej lista tagów obiecywałaby co innego, niż pokazuje.
+   */
+  const activeCategory = toolbar?.dataset.activeCategory || '';
+  const activeCategoryName = toolbar?.dataset.activeCategoryName || '';
+  const main = document.querySelector<HTMLElement>('[data-blog-main]');
+  const results = document.querySelector<HTMLElement>('[data-blog-results]');
+  const resultsList = document.querySelector<HTMLElement>('[data-blog-results-list]');
+  const resultsTitle = document.querySelector<HTMLElement>('[data-blog-results-title]');
+  const resultsHint = document.querySelector<HTMLElement>('[data-blog-results-hint]');
+  const clearBtn = document.querySelector<HTMLElement>('[data-blog-results-clear]');
+  const resetBtn = document.querySelector<HTMLElement>('[data-blog-search-reset]');
+
+  // Indeks pobieramy dopiero przy pierwszym wyszukiwaniu i tylko raz na sesję strony.
+  // Dzięki temu lista działa tak samo szybko przy 7 i przy 700 artykułach.
+  let indexPromise: Promise<IndexedPost[]> | null = null;
+  function loadIndex(): Promise<IndexedPost[]> {
+    if (!indexPromise) {
+      indexPromise = fetch('/wiedza/index.json')
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []);
+    }
+    return indexPromise;
+  }
+
+  const PL_CHARS: Record<string, string> = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
+  function normalize(value: string): string {
+    return value.toLowerCase().replace(/[ąćęłńóśźż]/g, (c) => PL_CHARS[c] ?? c);
+  }
+
+  function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string
+    );
+  }
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return Number.isNaN(d.valueOf())
+      ? ''
+      : d.toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  /** Polska odmiana: 1 artykuł / 2-4 artykuły / 5+ artykułów. */
+  function articleCount(count: number): string {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (count === 1) return '1 artykuł';
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${count} artykuły`;
+    return `${count} artykułów`;
+  }
+
+  /** Inicjały autora, gdy indeks ich nie zawiera (starszy cache /wiedza/index.json). */
+  function initialsOf(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('');
+  }
+
+  /**
+   * Podświetla trafienia w tekście. `normalize` zamienia znaki 1:1, więc pozycje
+   * w tekście znormalizowanym odpowiadają pozycjom w oryginale.
+   */
+  function highlight(text: string, needle: string): string {
+    const hay = normalize(text);
+    if (!needle || hay.length !== text.length) return escapeHtml(text);
+    const out: string[] = [];
+    let from = 0;
+    for (let at = hay.indexOf(needle); at !== -1; at = hay.indexOf(needle, from)) {
+      out.push(escapeHtml(text.slice(from, at)), `<mark>${escapeHtml(text.slice(at, at + needle.length))}</mark>`);
+      from = at + needle.length;
+    }
+    out.push(escapeHtml(text.slice(from)));
+    return out.join('');
+  }
+
+  /** Trafność wyniku - tytuł waży najwięcej, autor najmniej. 0 = brak dopasowania. */
+  function scoreOf(post: IndexedPost, needle: string): number {
+    const title = normalize(post.title);
+    const tags = post.tags.map(normalize);
+    let score = 0;
+    if (title.startsWith(needle)) score += 100;
+    else if (title.includes(needle)) score += 60;
+    if (tags.includes(needle)) score += 45;
+    else if (tags.some((tag) => tag.includes(needle))) score += 22;
+    if (normalize(post.category).includes(needle)) score += 18;
+    if (normalize(post.description).includes(needle)) score += 10;
+    if (normalize(post.author).includes(needle)) score += 4;
+    return score;
+  }
+
+  const MAX_RESULTS = 30;
+  const MAX_TAGS = 4;
+
+  function card(post: IndexedPost, needle: string): string {
+    const initials = escapeHtml(post.initials || initialsOf(post.author));
+    const tags = [...post.tags]
+      // Dopasowany tag na początek - od razu widać, dlaczego artykuł jest na liście.
+      .sort((a, b) => Number(normalize(b).includes(needle)) - Number(normalize(a).includes(needle)))
+      .slice(0, MAX_TAGS);
+    return `
+      <li class="blog-results__item">
+        <a class="blog-results__link" href="/wiedza/${encodeURIComponent(post.slug)}">
+          <div class="blog-results__top">
+            <span class="blog-results__cat">${escapeHtml(post.category)}</span>
+            <span class="blog-results__date">${formatDate(post.date)}</span>
+          </div>
+          <h3>${highlight(post.title, needle)}</h3>
+          <p>${highlight(post.description, needle)}</p>
+          <div class="blog-results__meta">
+            <span class="blog-results__author"><span class="blog-results__avatar">${initials}</span>${escapeHtml(post.author)}</span>
+            ${post.readingTime ? `<span>${post.readingTime} min czytania</span>` : ''}
+          </div>
+          ${tags.length ? `<div class="blog-results__tags">${tags
+            .map((tag) => `<span class="blog-results__tag${normalize(tag).includes(needle) ? ' is-match' : ''}">#${escapeHtml(tag)}</span>`)
+            .join('')}</div>` : ''}
+        </a>
+      </li>`;
+  }
+
+  /**
+   * Odświeża filtry kategorii pod bieżące wyniki.
+   *
+   * Liczniki pokazują trafienia w danej kategorii, kategorie bez trafień
+   * znikają, a do adresów dochodzi `?q=`, żeby przejście do kategorii nie
+   * gubiło szukanej frazy. Bez zapytania wracają wartości z serwera.
+   *
+   * Liczymy po wszystkich trafieniach, także spoza bieżącej kategorii - to
+   * właśnie te chipy mówią, gdzie jeszcze szukana fraza występuje.
+   */
+  function updateFilters(matches: IndexedPost[] | null, query: string) {
+    const counts = new Map<string, number>();
+    for (const post of matches ?? []) {
+      const slug = post.categorySlug;
+      if (slug) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+    const suffix = query ? `?q=${encodeURIComponent(query)}` : '';
+    for (const filter of filters) {
+      const base = filter.dataset.baseHref;
+      if (base) filter.href = `${base}${suffix}`;
+
+      const slug = filter.dataset.category;
+      // "Wszystkie" nie ma licznika i nigdy nie znika - to wyjście z zawężenia.
+      if (!slug) continue;
+
+      const hits = counts.get(slug) ?? 0;
+      // Aktywną kategorię zostawiamy widoczną nawet bez trafień - czytelnik musi
+      // widzieć, gdzie jest, zwłaszcza gdy wyniki są puste właśnie przez nią.
+      filter.hidden = Boolean(matches) && hits === 0 && slug !== activeCategory;
+      const counter = filter.querySelector('.blog-filter__count');
+      if (counter) counter.textContent = matches ? String(hits) : (filter.dataset.filterCount ?? '');
+    }
+  }
+
+  function render(query: string, needle: string, matches: IndexedPost[], totalMatches: number) {
+    if (!results || !resultsList || !main) return;
+    main.hidden = true;
+    results.hidden = false;
+    const inCategory = activeCategoryName ? ` w kategorii ${activeCategoryName}` : '';
+    if (resultsTitle) {
+      resultsTitle.textContent = matches.length
+        ? `Wyniki dla „${query}”${inCategory}`
+        : `Brak wyników dla „${query}”${inCategory}`;
+    }
+    // Trafienia poza bieżącą kategorią - widoczne w filtrach nad listą.
+    const elsewhere = totalMatches - matches.length;
+    if (resultsHint) {
+      resultsHint.textContent = matches.length
+        ? `${articleCount(matches.length)} · posortowane według trafności` +
+          (elsewhere > 0 ? ` · ${articleCount(elsewhere)} w innych kategoriach` : '')
+        : elsewhere > 0
+          ? 'Zmień kategorię nad wynikami, żeby zobaczyć trafienia.'
+          : 'Spróbuj innego słowa lub wybierz tag z listy obok.';
+    }
+    if (!matches.length) {
+      resultsList.innerHTML = elsewhere > 0
+        ? `<li class="blog-results__empty">W tej kategorii nie ma artykułu dla „${escapeHtml(query)}”, ale ${articleCount(elsewhere)} pasuje w pozostałych. Wybierz kategorię z listy nad wynikami.</li>`
+        : '<li class="blog-results__empty">Nie znaleźliśmy artykułu pasującego do tego zapytania. Spróbuj innego słowa albo przejrzyj wszystkie artykuły.</li>';
+      return;
+    }
+    resultsList.innerHTML = matches.slice(0, MAX_RESULTS).map((post) => card(post, needle)).join('');
+    if (matches.length > MAX_RESULTS) {
+      resultsList.insertAdjacentHTML(
+        'beforeend',
+        `<li class="blog-results__more">Pokazujemy ${MAX_RESULTS} najtrafniejszych wyników z ${matches.length}. Doprecyzuj zapytanie, aby zawęzić listę.</li>`
+      );
+    }
+  }
+
+  function syncResetButton() {
+    if (resetBtn) resetBtn.hidden = !(search?.value || '').length;
+  }
+
+  function restore() {
+    if (!results || !main) return;
+    results.hidden = true;
+    main.hidden = false;
+    updateFilters(null, '');
+    document.querySelectorAll<HTMLElement>('.tag-list .tag').forEach((t) => t.classList.remove('is-active'));
+    syncResetButton();
+  }
+
+  async function runSearch(rawQuery: string) {
+    const query = rawQuery.trim();
+    if (query.length < 2) {
+      restore();
+      return;
+    }
+    const needle = normalize(query);
+    const index = await loadIndex();
+    // Ignorujemy wynik, jeśli w międzyczasie użytkownik zmienił zapytanie.
+    if ((search?.value || '').trim() !== query) return;
+    const matches = index
+      .map((post) => ({ post, score: scoreOf(post, needle) }))
+      .filter((entry) => entry.score > 0)
+      // Przy równej trafności decyduje data - indeks przychodzi już posortowany malejąco.
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.post);
+    // Filtry kategorii opisują wszystkie trafienia, lista - tylko bieżącą kategorię.
+    updateFilters(matches, query);
+    const shown = activeCategory
+      ? matches.filter((post) => post.categorySlug === activeCategory)
+      : matches;
+    render(query, needle, shown, matches.length);
+    syncResetButton();
+    document.querySelectorAll<HTMLElement>('.tag-list .tag').forEach((t) => {
+      t.classList.toggle('is-active', normalize(t.dataset.tag || '') === needle);
+    });
+  }
+
+  let debounce: number | undefined;
+  search?.addEventListener('input', () => {
+    const value = search.value;
+    syncResetButton();
+    window.clearTimeout(debounce);
+    debounce = window.setTimeout(() => {
+      const trimmed = value.trim();
+      const url = trimmed ? `${location.pathname}?q=${encodeURIComponent(trimmed)}` : location.pathname;
+      history.replaceState(null, '', url);
+      runSearch(value);
+    }, 180);
+  });
+
+  function clearSearch() {
+    if (search) search.value = '';
+    history.replaceState(null, '', location.pathname);
+    restore();
+    search?.focus();
+  }
+
+  clearBtn?.addEventListener('click', clearSearch);
+  resetBtn?.addEventListener('click', clearSearch);
+  search?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && search.value) {
+      event.preventDefault();
+      clearSearch();
+    }
+  });
+
+  document.querySelectorAll<HTMLElement>('.tag-list .tag').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tag = button.dataset.tag || '';
+      if (!search || !tag) return;
+      search.value = tag;
+      history.replaceState(null, '', `${location.pathname}?q=${encodeURIComponent(tag)}`);
+      runSearch(tag);
+      syncResetButton();
+      // Na wąskich ekranach tagi są pod listą - bez tego wynik pozostałby poza ekranem.
+      document.querySelector('[data-blog-results]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // Zapytanie z adresu URL (np. link do wyszukiwania) uruchamiamy po wczytaniu strony.
+  const qParam = new URLSearchParams(location.search).get('q');
+  if (qParam && search) {
+    search.value = qParam;
+    runSearch(qParam);
+  }
+  syncResetButton();
+
+  const news = document.getElementById('newsletter') as HTMLFormElement | null;
+  news?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const n = news.querySelector<HTMLElement>('.newsletter__notice');
+    if (n) {
+      n.textContent = 'Dziękujemy! Zapis potwierdzony. Pierwszy mail otrzymasz w pierwszej dekadzie miesiąca.';
+      n.hidden = false;
+    }
+    news.reset();
+  });
+</script>

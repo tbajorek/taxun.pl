@@ -1,0 +1,334 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import Icon from '../../components/Icon.astro';
+import {
+  TAX_YEAR, MIN_WAGE, AVG_WAGE_Q4, HEALTH_RATE, HEALTH_RATE_LINIOWY,
+  HEALTH_MIN_MONTH, HEALTH_MIN_MONTH_JANUARY, HEALTH_MIN_BASE_JANUARY, HEALTH_MIN_JANUARY_RATIO,
+  MIN_WAGE_PREV_EFFECTIVE, HEALTH_RYCZALT, RYCZALT_TIER_LIMITS, RYCZALT_HEALTH_MULTIPLIERS,
+  HEALTH_LINIOWY_DEDUCT_LIMIT, HEALTH_KARTA_MONTH, KARTA_HEALTH_DEDUCT_RATE,
+  PIT_RATE_1, PIT_RATE_2, PIT_RATE_LINIOWY, ULGA_NA_START_MONTHS, RYCZALT_HEALTH_DEDUCT_RATE,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, zl2, pct } from '../../lib/format';
+
+const year = TAX_YEAR;
+
+// Progi zdrowotnej na ryczałcie - jedna definicja dla tabeli, FAQ i opisu
+const ryczaltProgi = [
+  { zakres: `do ${zl(RYCZALT_TIER_LIMITS.tier1)}`, mnoznik: RYCZALT_HEALTH_MULTIPLIERS.tier1, skladka: HEALTH_RYCZALT.tier1 },
+  { zakres: `${zl(RYCZALT_TIER_LIMITS.tier1)}  -  ${zl(RYCZALT_TIER_LIMITS.tier2)}`, mnoznik: RYCZALT_HEALTH_MULTIPLIERS.tier2, skladka: HEALTH_RYCZALT.tier2 },
+  { zakres: `powyżej ${zl(RYCZALT_TIER_LIMITS.tier2)}`, mnoznik: RYCZALT_HEALTH_MULTIPLIERS.tier3, skladka: HEALTH_RYCZALT.tier3 },
+];
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/skladka-zdrowotna#webpage',
+  name: `Kalkulator składki zdrowotnej ${year}`,
+  description: `Bezpłatny kalkulator składki zdrowotnej dla przedsiębiorców na ${year} rok. Obsługuje ryczałt, skalę podatkową, podatek liniowy i kartę podatkową.`,
+  url: 'https://taxun.pl/kalkulatory/skladka-zdrowotna',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ile wynosi składka zdrowotna na ryczałcie w ${year} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `W ${year} r. składka zdrowotna na ryczałcie wynosi ${zl2(HEALTH_RYCZALT.tier1)} miesięcznie przy przychodzie do ${zl(RYCZALT_TIER_LIMITS.tier1)}, ${zl2(HEALTH_RYCZALT.tier2)} przy przychodzie ${zl(RYCZALT_TIER_LIMITS.tier1)} - ${zl(RYCZALT_TIER_LIMITS.tier2)} oraz ${zl2(HEALTH_RYCZALT.tier3)} powyżej ${zl(RYCZALT_TIER_LIMITS.tier2)}.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Jak liczy się składkę zdrowotną na skali podatkowej i liniówce w ${year}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Na skali podatkowej składka to ${pct(HEALTH_RATE)} dochodu, a na podatku liniowym ${pct(HEALTH_RATE_LINIOWY)} dochodu. W obu przypadkach nie może być niższa niż ${pct(HEALTH_RATE)} minimalnego wynagrodzenia, czyli ${zl2(HEALTH_MIN_MONTH)} miesięcznie w ${year} r. Wyjątkiem jest styczeń: podstawę minimalnej składki liczy się wtedy od ${pct(HEALTH_MIN_JANUARY_RATIO)} minimalnego wynagrodzenia z roku poprzedniego, co daje ${zl2(HEALTH_MIN_MONTH_JANUARY)}.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy składkę zdrowotną można odliczyć od podatku?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Na skali podatkowej nie. Na podatku liniowym można odliczyć zapłaconą składkę od dochodu do rocznego limitu ${zl(HEALTH_LINIOWY_DEDUCT_LIMIT)} w ${year} r., na ryczałcie odliczyć ${pct(RYCZALT_HEALTH_DEDUCT_RATE)} zapłaconej składki od przychodu, a na karcie podatkowej obniżyć podatek o ${pct(KARTA_HEALTH_DEDUCT_RATE)} zapłaconej składki.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Ile wynosi składka zdrowotna na karcie podatkowej w ${year} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Na karcie podatkowej składka jest stała i wynosi ${pct(HEALTH_RATE)} minimalnego wynagrodzenia, czyli ${zl2(HEALTH_KARTA_MONTH)} miesięcznie w ${year} r. Nie zależy ani od przychodu, ani od dochodu. Podatek wynikający z decyzji urzędu skarbowego obniża się o ${pct(KARTA_HEALTH_DEDUCT_RATE)} zapłaconej składki. Karty podatkowej nie można już wybrać - kontynuują ją tylko przedsiębiorcy, którzy stosowali ją 31 grudnia 2021 r.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator składki zdrowotnej ${year}`}
+  description={`Sprawdź, ile wynosi Twoja składka zdrowotna w ${year} roku. Możesz przeprowadzić wyliczenia dla ryczałtu, skali podatkowej, podatku liniowego i karty podatkowej.`}
+  metaTitle={`Kalkulator składki zdrowotnej ${year}`}
+  metaDescription={`Kalkulator składki zdrowotnej dla przedsiębiorców ${year}. Miesięczna i roczna składka dla ryczałtu, skali, liniówki i karty. Bez rejestracji.`}
+  breadcrumbLabel={`Składka zdrowotna ${year}`}
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="zdrow-calc">
+    <div class="calc-segmented" role="group" aria-label="Forma opodatkowania">
+      <button type="button" class="calc-segmented__btn is-active" aria-pressed="true" data-form="ryczalt">Ryczałt</button>
+      <button type="button" class="calc-segmented__btn" aria-pressed="false" data-form="skala">{`Skala ${pct(PIT_RATE_1)}/${pct(PIT_RATE_2)}`}</button>
+      <button type="button" class="calc-segmented__btn" aria-pressed="false" data-form="liniowy">{`Liniowy ${pct(PIT_RATE_LINIOWY)}`}</button>
+      <button type="button" class="calc-segmented__btn" aria-pressed="false" data-form="karta">Karta podatkowa</button>
+    </div>
+
+    <div class="calc-grid-inputs" style="margin-top: 1.5rem;">
+      <div class="calc-field" data-show="ryczalt" hidden>
+        <label for="ryczalt-przychod">
+          Roczny przychód
+          <small>{`za ${year} r., w PLN`}</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ryczalt-przychod" min="0" step="1000" value="180000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / rok</span>
+        </div>
+      </div>
+
+      <div class="calc-field" data-show="skala liniowy" hidden>
+        <label for="dochod-miesieczny">
+          Miesięczny dochód
+          <small>przychód - koszty, w PLN</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="dochod-miesieczny" min="0" step="100" value="12000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / mies.</span>
+        </div>
+      </div>
+
+      <div class="calc-field">
+        <label for="miesiace">
+          Liczba miesięcy działalności
+          <small>w roku</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="miesiace">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+              <option value={n} selected={n === 12}>{n}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Miesięczna składka zdrowotna</div>
+      <div class="calc-result__value">
+        <span id="zdrow-month">{zl2(HEALTH_RYCZALT.tier2).replace(" zł", "")}</span> <small>zł / mies.</small>
+      </div>
+      <div class="calc-result__sub">
+        Rocznie: <strong id="zdrow-year">{zl2(HEALTH_RYCZALT.tier2 * 12)}</strong>. <span id="zdrow-formula">Stała składka ryczałtowa dla 2. progu (przychód 60  -  300 tys. zł).</span>
+      </div>
+
+      <div class="calc-breakdown" id="zdrow-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Podstawa wymiaru</span>
+          <span class="calc-breakdown__value" id="zdrow-base">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Stawka składki</span>
+          <span class="calc-breakdown__value" id="zdrow-rate">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label" id="zdrow-tier-label">Próg ryczałtu</span>
+          <span class="calc-breakdown__value" id="zdrow-tier">-</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="calc-hint" id="zdrow-karta-hint" hidden>
+      <strong>Karta podatkowa jest formą wygasającą.</strong> Od 2022 r. nie da się jej wybrać na nowo - rozliczają się nią wyłącznie przedsiębiorcy, którzy stosowali ją 31 grudnia 2021 r. i od tamtej pory z niej nie zrezygnowali.
+    </p>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>{`Jak liczona jest składka zdrowotna w ${year} r.`}</h2>
+    <p>{`Składka zdrowotna w Polsce zależy od formy opodatkowania. Na ryczałcie jest stała w trzech progach przychodu, na skali podatkowej i liniówce zależy od bieżącego dochodu z działalności - z gwarantowaną składką minimalną liczoną od minimalnego wynagrodzenia (${zl(MIN_WAGE)} w ${year} r.) - a na karcie podatkowej jest jedną, niezmienną kwotą przez cały rok.`}</p>
+
+    <h3>Ryczałt ewidencjonowany</h3>
+    <p>Składka jest <strong>stała w trzech progach</strong> zależnych od rocznego przychodu, liczona od przeciętnego wynagrodzenia ({zl2(AVG_WAGE_Q4)} - IV kw. {year - 1}):</p>
+    <table>
+      <thead>
+        <tr><th>Próg przychodu</th><th>Podstawa</th><th>Składka miesięczna</th></tr>
+      </thead>
+      <tbody>
+        {ryczaltProgi.map((p) => (
+          <tr><td>{p.zakres}</td><td>{pct(p.mnoznik)} przec. wynagr.</td><td>{zl2(p.skladka)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h3>{`Skala podatkowa (${pct(PIT_RATE_1)} / ${pct(PIT_RATE_2)})`}</h3>
+    <p>Składka wynosi <strong>{pct(HEALTH_RATE)} dochodu</strong> z działalności, nie mniej niż {pct(HEALTH_RATE)} minimalnego wynagrodzenia, czyli <strong>{zl2(HEALTH_MIN_MONTH)}</strong> miesięcznie w {year} r. Składki tej nie odliczysz od podatku ani od dochodu.</p>
+
+    <h3>{`Podatek liniowy (${pct(PIT_RATE_LINIOWY)})`}</h3>
+    <p>Składka wynosi <strong>{pct(HEALTH_RATE_LINIOWY)} dochodu</strong>, nie mniej niż {pct(HEALTH_RATE)} minimalnego wynagrodzenia ({zl2(HEALTH_MIN_MONTH)}). Zapłaconą składkę możesz odliczyć od dochodu do rocznego limitu {zl(HEALTH_LINIOWY_DEDUCT_LIMIT)}.</p>
+
+    <h3>Styczeń liczy się inaczej</h3>
+    <p>Na skali i liniówce minimalna składka za styczeń jest niższa niż za pozostałe miesiące. Podstawą jest wtedy {pct(HEALTH_MIN_JANUARY_RATIO)} minimalnego wynagrodzenia z roku poprzedniego ({zl(MIN_WAGE_PREV_EFFECTIVE)}), czyli {zl2(HEALTH_MIN_BASE_JANUARY)} - a składka wynosi <strong>{zl2(HEALTH_MIN_MONTH_JANUARY)}</strong>. Pełne {zl2(HEALTH_MIN_MONTH)} obowiązuje dopiero od lutego. Kalkulator uwzględnia to przy pełnym roku działalności.</p>
+    <p>Karty podatkowej ta różnica nie dotyczy - tam podstawą jest pełne minimalne wynagrodzenie już od stycznia.</p>
+
+    <h3>Karta podatkowa</h3>
+    <p>Tu liczyć praktycznie nie ma czego. Podstawą wymiaru jest <strong>minimalne wynagrodzenie</strong>, więc składka wynosi {pct(HEALTH_RATE)} z {zl(MIN_WAGE)}, czyli <strong>{zl2(HEALTH_KARTA_MONTH)} miesięcznie</strong> przez cały rok. Nie zmieni jej ani wysoki przychód, ani strata - dlatego kalkulator w tym wariancie nie pyta o kwoty.</p>
+    <p>Karta ma za to jedną przewagę nad pozostałymi formami: podatek wynikający z decyzji naczelnika urzędu skarbowego <strong>obniżasz o {pct(KARTA_HEALTH_DEDUCT_RATE)} zapłaconej składki zdrowotnej</strong>. To jedyna forma, w której składka wraca do Ciebie bezpośrednio przez podatek, a nie przez podstawę opodatkowania.</p>
+    <p>Pamiętaj tylko, że karty nie da się już wybrać. Od 2022 r. rozliczają się nią wyłącznie ci, którzy stosowali ją 31 grudnia 2021 r. i od tamtej pory nie zrezygnowali. Rezygnacja jest nieodwracalna - powrotu na kartę nie ma.</p>
+
+    <h3>Co warto wiedzieć</h3>
+    <ul>
+      <li>Składka zdrowotna nie podlega odliczeniu od podatku dla skali podatkowej - to realny koszt.</li>
+      <li>Liniówka pozwala odliczyć do <strong>{zl(HEALTH_LINIOWY_DEDUCT_LIMIT)} rocznie</strong> składki zdrowotnej od dochodu (limit na {year} r.).</li>
+      <li>Ryczałt - można odliczyć <strong>{`${pct(RYCZALT_HEALTH_DEDUCT_RATE)} zapłaconej składki`}</strong> od przychodu.</li>
+      <li>Karta podatkowa - <strong>{pct(KARTA_HEALTH_DEDUCT_RATE)} zapłaconej składki</strong> obniża sam podatek, a nie podstawę jego naliczenia.</li>
+      <li>Jeśli prowadzisz JDG w ramach <strong>ulgi na start</strong> (pierwsze {ULGA_NA_START_MONTHS} miesięcy), składki społeczne są obniżone, ale pełną składkę zdrowotną płacisz od pierwszego dnia.</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> <a href="https://www.zus.pl/baza-wiedzy/skladki-wskazniki-odsetki/skladki/wysokosc-skladek-na-ubezpieczenia-spoleczne" rel="noopener" target="_blank">{`ZUS - wysokość składek ${year}`}</a>, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Kalkulator ma charakter informacyjny. Dla indywidualnej kalkulacji uwzględniającej zbieg tytułów, ulgi i wybrane formy zatrudnienia - <a href="/kontakt" style="color: var(--accent-700)">umów bezpłatną konsultację</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import {
+    MIN_WAGE, AVG_WAGE_Q4, HEALTH_RATE, HEALTH_RATE_LINIOWY, HEALTH_MIN_MONTH,
+    HEALTH_RYCZALT, RYCZALT_TIER_LIMITS, RYCZALT_HEALTH_MULTIPLIERS,
+    HEALTH_KARTA_MONTH, KARTA_HEALTH_DEDUCT_RATE,
+    HEALTH_MIN_MONTH_JANUARY, healthMinForMonths,
+  } from '../../lib/tax-constants';
+
+  type Forma = 'ryczalt' | 'skala' | 'liniowy' | 'karta';
+
+  const pct = (v: number) => `${(v * 100).toString().replace('.', ',')}%`;
+
+  const fmt = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney = (v: number) => `${fmt.format(v)} zł`;
+
+  let activeForm: Forma = 'ryczalt';
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+  const $select = (id: string) => document.getElementById(id) as HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const months = Number($select('miesiace').value);
+    let monthly = 0;
+    let naMinimum = false;
+    let base = '';
+    let rate = '';
+    let tier = '';
+    let formula = '';
+
+    if (activeForm === 'ryczalt') {
+      const przychod = Number($('ryczalt-przychod').value) || 0;
+      if (przychod <= RYCZALT_TIER_LIMITS.tier1) {
+        monthly = HEALTH_RYCZALT.tier1;
+        tier = 'do 60 000 zł (1. próg)';
+        base = `${pct(RYCZALT_HEALTH_MULTIPLIERS.tier1)} przec. wynagrodzenia (~ ${fmtMoney(AVG_WAGE_Q4 * RYCZALT_HEALTH_MULTIPLIERS.tier1)})`;
+        formula = `Stała składka ryczałtowa dla 1. progu (przychód do 60 000 zł).`;
+      } else if (przychod <= RYCZALT_TIER_LIMITS.tier2) {
+        monthly = HEALTH_RYCZALT.tier2;
+        tier = '60 000  -  300 000 zł (2. próg)';
+        base = `${pct(RYCZALT_HEALTH_MULTIPLIERS.tier2)} przec. wynagrodzenia (~ ${fmtMoney(AVG_WAGE_Q4 * RYCZALT_HEALTH_MULTIPLIERS.tier2)})`;
+        formula = `Stała składka ryczałtowa dla 2. progu (przychód 60  -  300 tys. zł).`;
+      } else {
+        monthly = HEALTH_RYCZALT.tier3;
+        tier = 'powyżej 300 000 zł (3. próg)';
+        base = `${pct(RYCZALT_HEALTH_MULTIPLIERS.tier3)} przec. wynagrodzenia (~ ${fmtMoney(AVG_WAGE_Q4 * RYCZALT_HEALTH_MULTIPLIERS.tier3)})`;
+        formula = `Stała składka ryczałtowa dla 3. progu (przychód powyżej 300 tys. zł).`;
+      }
+      rate = 'składka stała wg progu';
+    } else if (activeForm === 'skala') {
+      const dochod = Number($('dochod-miesieczny').value) || 0;
+      const computed = dochod * HEALTH_RATE;
+      monthly = Math.max(computed, HEALTH_MIN_MONTH);
+      naMinimum = computed < HEALTH_MIN_MONTH;
+      base = `${fmtMoney(dochod)} (dochód mies.)`;
+      rate = `${pct(HEALTH_RATE)} dochodu, min. ${fmtMoney(HEALTH_MIN_MONTH)}`;
+      tier = monthly === HEALTH_MIN_MONTH ? 'minimum (od min. wynagrodzenia)' : `standard (${pct(HEALTH_RATE)} dochodu)`;
+      formula = `Składka = max(${pct(HEALTH_RATE)} dochodu, ${pct(HEALTH_RATE)} × ${fmtMoney(MIN_WAGE)}).`;
+    } else if (activeForm === 'liniowy') {
+      const dochod = Number($('dochod-miesieczny').value) || 0;
+      const computed = dochod * HEALTH_RATE_LINIOWY;
+      monthly = Math.max(computed, HEALTH_MIN_MONTH);
+      naMinimum = computed < HEALTH_MIN_MONTH;
+      base = `${fmtMoney(dochod)} (dochód mies.)`;
+      rate = `${pct(HEALTH_RATE_LINIOWY)} dochodu, min. ${fmtMoney(HEALTH_MIN_MONTH)}`;
+      tier = monthly === HEALTH_MIN_MONTH ? 'minimum (od min. wynagrodzenia)' : `standard (${pct(HEALTH_RATE_LINIOWY)} dochodu)`;
+      formula = `Składka = max(${pct(HEALTH_RATE_LINIOWY)} dochodu, ${pct(HEALTH_RATE)} × ${fmtMoney(MIN_WAGE)}).`;
+    } else {
+      // Karta podatkowa: składka stała, liczona od minimalnego wynagrodzenia.
+      // Ani przychód, ani dochód nie mają na nią wpływu - dlatego nie pytamy o nie.
+      monthly = HEALTH_KARTA_MONTH;
+      base = `${fmtMoney(MIN_WAGE)} (minimalne wynagrodzenie)`;
+      rate = `${pct(HEALTH_RATE)} minimalnego wynagrodzenia`;
+      tier = 'stała, niezależna od przychodu';
+      formula = `Składka = ${pct(HEALTH_RATE)} × ${fmtMoney(MIN_WAGE)}. Podatek z decyzji urzędu obniżysz o ${pct(KARTA_HEALTH_DEDUCT_RATE)} zapłaconej składki.`;
+    }
+
+    const tierLabels: Record<Forma, string> = {
+      ryczalt: 'Próg ryczałtu',
+      skala: 'Wariant składki',
+      liniowy: 'Wariant składki',
+      karta: 'Charakter składki',
+    };
+    $span('zdrow-tier-label').textContent = tierLabels[activeForm];
+
+    // Przy składce minimalnej styczeń liczy się od niższej podstawy - dla pełnego
+    // roku roczna kwota jest więc trochę niższa niż 12 × składka miesięczna.
+    const yearly = naMinimum ? healthMinForMonths(months) : monthly * months;
+    if (naMinimum && months >= 12) {
+      formula += ` Za styczeń minimalna składka wynosi ${fmtMoney(HEALTH_MIN_MONTH_JANUARY)} - stąd roczna kwota niższa niż 12 × ${fmtMoney(HEALTH_MIN_MONTH)}.`;
+    }
+
+    $span('zdrow-month').textContent = fmt.format(monthly);
+    $span('zdrow-year').textContent = fmtMoney(yearly);
+    $span('zdrow-formula').textContent = formula;
+    $span('zdrow-base').textContent = base;
+    $span('zdrow-rate').textContent = rate;
+    $span('zdrow-tier').textContent = tier;
+  }
+
+  function setForm(form: Forma) {
+    activeForm = form;
+    document.querySelectorAll<HTMLButtonElement>('.calc-segmented__btn').forEach((b) => {
+      const active = b.dataset.form === form;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-pressed', String(active));
+    });
+    document.querySelectorAll<HTMLElement>('[data-show]').forEach((el) => {
+      const shows = (el.dataset.show || '').split(' ');
+      el.hidden = !shows.includes(form);
+    });
+    $span('zdrow-karta-hint').hidden = form !== 'karta';
+    calculate();
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.calc-segmented__btn').forEach((b) => {
+    b.addEventListener('click', () => setForm(b.dataset.form as Forma));
+  });
+  document.querySelectorAll<HTMLInputElement>('#zdrow-calc input, #zdrow-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+
+  // Initial computation
+  setForm('ryczalt');
+</script>

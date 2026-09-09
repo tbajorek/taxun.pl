@@ -1,0 +1,432 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import LegalNotice from '../components/LegalNotice.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  metaTitle: string;
+  metaDescription: string;
+  eyebrow?: string;
+  intro?: string;
+  schema?: Record<string, unknown> | Record<string, unknown>[];
+  breadcrumbLabel: string;
+  lastUpdated?: string;
+}
+
+const {
+  title,
+  description,
+  metaTitle,
+  metaDescription,
+  eyebrow = 'Kalkulator',
+  intro,
+  schema,
+  breadcrumbLabel,
+  lastUpdated = '2026',
+} = Astro.props;
+
+const breadcrumbs = [
+  { label: 'Kalkulatory', href: '/kalkulatory' },
+  { label: breadcrumbLabel },
+];
+---
+<BaseLayout
+  title={metaTitle}
+  description={metaDescription}
+  schema={schema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow={eyebrow}
+    title={title}
+    description={description}
+    breadcrumbs={breadcrumbs}
+  />
+
+  <section class="section calc-section">
+    <div class="container">
+      <noscript>
+        <div class="calc-noscript">
+          Ten kalkulator wymaga włączonego JavaScript do działania (wszystkie obliczenia odbywają się po stronie Twojej przeglądarki - nie wysyłamy żadnych danych na nasze serwery). Włącz JS lub <a href="/kontakt">napisz do nas</a>, a pomożemy z indywidualną kalkulacją.
+        </div>
+      </noscript>
+      <div class="calc-wrap">
+        <slot />
+      </div>
+
+      {intro && (
+        <div class="calc-meta">
+          <span class="calc-meta__pill">
+            <Icon name="check-circle" size={12}/>
+            Obliczenia wykonywane w przeglądarce
+          </span>
+          <span class="calc-meta__pill">
+            <Icon name="lock" size={12}/>
+            Nie wysyłamy nigdzie Twoich danych
+          </span>
+          <span class="calc-meta__pill">
+            <Icon name="clock" size={12}/>
+            Dane aktualne na: {lastUpdated}
+          </span>
+        </div>
+      )}
+
+      <slot name="explanation" />
+
+      <LegalNotice updated={lastUpdated}>
+        <p>
+          Kalkulator liczy wynik szacunkowy z danych, które sam wpisujesz, i z uproszczonych założeń
+          wspólnych dla typowych przypadków. Nie uwzględnia zbiegu tytułów do ubezpieczeń, ulg,
+          wspólnego rozliczenia ani innych okoliczności, o które nie pyta, i nie jest podstawą do
+          złożenia deklaracji lub zapłaty zobowiązania.
+        </p>
+      </LegalNotice>
+    </div>
+  </section>
+
+  <CTA
+    title="Indywidualna kalkulacja dla Twojej firmy"
+    description="Ten kalkulator pokazuje uniwersalną odpowiedź. Zachęcamy do kontaktu. W trakcie konsultacji, dla konkretnej firmy uwzględnimy ulgi, koszty pośrednie, formy opodatkowania i wybór wariantu ZUS."
+  />
+</BaseLayout>
+
+<style>
+.calc-section { padding-top: clamp(3rem, 5vw, 4rem); }
+.calc-wrap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  box-shadow: var(--shadow-md);
+}
+
+.calc-noscript {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  color: #92400E;
+}
+.calc-noscript a { color: #92400E; text-decoration: underline; font-weight: 600; }
+
+.calc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+.calc-meta__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.calc-meta__pill svg { color: var(--accent-600); }
+</style>
+
+<style is:global>
+/* Calculator-specific component styles, applied via global scope so they
+   can be used inside slotted content without a build-time class hash mismatch. */
+.calc-grid-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 640px) {
+  .calc-grid-inputs { grid-template-columns: 1fr; }
+}
+
+.calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.calc-field[hidden],
+[hidden] { display: none !important; }
+.calc-field > label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.calc-field > label small {
+  font-weight: 500;
+  color: var(--text-subtle);
+  font-size: 0.75rem;
+}
+.calc-field__input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.calc-field__input input,
+.calc-field__input select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+  font-family: var(--font-sans);
+}
+/* Disable native number spinners (increment/decrement) - they collide with the suffix adornment */
+.calc-field__input input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.calc-field__input input[type="number"]::-webkit-outer-spin-button,
+.calc-field__input input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.calc-field__input input:focus,
+.calc-field__input select:focus {
+  outline: none;
+  background: var(--white);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+.calc-field__suffix {
+  position: absolute;
+  right: 0.875rem;
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  font-weight: 500;
+  pointer-events: none;
+}
+.calc-field__input--with-suffix input { padding-right: 3.25rem; }
+
+.calc-segmented {
+  display: inline-flex;
+  padding: 0.3rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-full);
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+.calc-segmented__btn {
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.calc-segmented__btn:hover { color: var(--text-strong); }
+.calc-segmented__btn.is-active {
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.calc-hint {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-alt);
+  border-left: 3px solid var(--accent-500);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.calc-hint strong { color: var(--text-strong); font-weight: 600; }
+.calc-hint--warn { border-left-color: #F59E0B; background: #FFFBEB; color: #92400E; }
+.calc-hint--warn strong { color: #92400E; }
+
+.calc-result {
+  margin-top: 2rem;
+  padding: 1.75rem;
+  background: linear-gradient(160deg, var(--ink-950), var(--ink-900));
+  border-radius: var(--radius-xl);
+  color: var(--white);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.calc-result::before {
+  content: '';
+  position: absolute;
+  inset: -40% -20% auto auto;
+  width: 60%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.2), transparent 60%);
+  z-index: -1;
+}
+.calc-result__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-400);
+  margin-bottom: 0.5rem;
+}
+.calc-result__value {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.calc-result__value small {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  margin-left: 0.4rem;
+}
+.calc-result__sub {
+  margin-top: 0.5rem;
+  color: var(--text-on-dark-muted);
+  font-size: 0.9375rem;
+}
+.calc-result__sub strong { color: var(--accent-400); font-weight: 700; }
+
+.calc-breakdown {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+.calc-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.9375rem;
+}
+.calc-breakdown__row:last-child { border-bottom: none; }
+.calc-breakdown__label { color: rgba(255,255,255,0.78); }
+.calc-breakdown__value {
+  color: var(--white);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-comparison {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.calc-comparison__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.calc-comparison__card.is-best {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 3px var(--accent-100);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.calc-comparison__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.calc-comparison__name {
+  font-weight: 700;
+  color: var(--text-strong);
+  font-size: 1rem;
+}
+.calc-comparison__badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-500);
+  color: var(--ink-950);
+  display: none;
+}
+.calc-comparison__card.is-best .calc-comparison__badge { display: inline-block; }
+.calc-comparison__amount {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.calc-comparison__amount small { font-size: 0.625em; color: var(--text-subtle); font-weight: 600; margin-left: 0.25rem; }
+.calc-comparison__sub { font-size: 0.8125rem; color: var(--text-muted); }
+
+.calc-explanation {
+  margin-top: 3rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+.calc-explanation h2 {
+  font-size: 1.375rem;
+  margin-bottom: 1rem;
+}
+.calc-explanation h3 {
+  font-size: 1.0625rem;
+  margin: 1.5rem 0 0.5rem;
+  color: var(--text-strong);
+}
+.calc-explanation p,
+.calc-explanation li {
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.65;
+}
+.calc-explanation ul {
+  margin: 0.5rem 0 1rem 1.25rem;
+}
+.calc-explanation li { margin-bottom: 0.4rem; }
+.calc-explanation a { color: var(--accent-700); text-decoration: underline; }
+
+.calc-explanation table {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.calc-explanation th,
+.calc-explanation td {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.calc-explanation th {
+  background: var(--surface-alt);
+  font-weight: 600;
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+</style>

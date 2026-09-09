@@ -1,0 +1,83 @@
+---
+import Icon from './Icon.astro';
+interface T { quote: string; author: string; role: string; initials: string }
+interface Props { items: T[]; eyebrow?: string; title?: string; description?: string }
+const { items, eyebrow = 'Opinie klientów', title = 'Zaufały nam firmy z całej Polski', description } = Astro.props;
+---
+<section class="section testimonials">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
+    </div>
+    <div class="testimonials__grid">
+      {items.map((t) => (
+        <figure class="testimonial reveal">
+          <div class="testimonial__rating" aria-label="Ocena 5 z 5">
+            {[1,2,3,4,5].map(() => <Icon name="star" size={16} />)}
+          </div>
+          <blockquote>
+            <p>“{t.quote}”</p>
+          </blockquote>
+          <figcaption>
+            <span class="testimonial__avatar" aria-hidden="true">{t.initials}</span>
+            <span>
+              <strong>{t.author}</strong>
+              <small>{t.role}</small>
+            </span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
+<style>
+.testimonials__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+.testimonial {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.testimonial:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.testimonial__rating { display: inline-flex; gap: 2px; color: #F59E0B; }
+.testimonial__rating svg { fill: currentColor; }
+.testimonial blockquote p {
+  font-size: 1.0625rem;
+  line-height: var(--leading-relaxed);
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.testimonial figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-top: 0.25rem;
+}
+.testimonial__avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ink-700), var(--ink-900));
+  color: var(--accent-400);
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  font-family: var(--font-display);
+}
+.testimonial figcaption strong { display: block; font-weight: 600; color: var(--text-strong); }
+.testimonial figcaption small { display: block; color: var(--text-subtle); font-size: 0.8125rem; margin-top: 2px; }
+</style>

@@ -1,0 +1,166 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  /** Pełny, absolutny adres udostępnianej strony. */
+  url: string;
+  /** Tytuł artykułu - trafia do parametru `title` LinkedIna. */
+  title: string;
+  /** Nagłówek sekcji. */
+  label?: string;
+  class?: string;
+}
+
+const { url, title, label = 'Udostępnij artykuł', class: className = '' } = Astro.props;
+
+const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+const linkedinUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`;
+---
+<div class:list={['share', className]} data-share-url={url}>
+  <span class="share__label">
+    <Icon name="share" size={14}/>
+    <span>{label}</span>
+  </span>
+  <div class="share__actions">
+    <button type="button" class="share__btn share__btn--copy" data-share-copy aria-label="Skopiuj link do artykułu">
+      <Icon name="link" size={15}/>
+      <span data-share-copy-text>Kopiuj link</span>
+    </button>
+    <a
+      class="share__btn"
+      href={facebookUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Udostępnij na Facebooku"
+      data-share-window
+    >
+      <Icon name="facebook" size={15}/>
+      <span>Facebook</span>
+    </a>
+    <a
+      class="share__btn"
+      href={linkedinUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Udostępnij na LinkedIn"
+      data-share-window
+    >
+      <Icon name="linkedin" size={15}/>
+      <span>LinkedIn</span>
+    </a>
+  </div>
+  <p class="share__status" role="status" aria-live="polite"></p>
+</div>
+
+<style>
+.share {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+.share__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.share__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.share .share__btn {
+  display: inline-flex;
+  text-decoration: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--white);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.share .share__btn:hover { background: var(--ink-900); border-color: var(--ink-900); color: var(--white); }
+.share .share__btn:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
+.share .share__btn.is-copied { background: var(--accent-50); border-color: var(--accent-500); color: var(--accent-700); }
+.share__status {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--accent-700);
+  min-height: 1.2em;
+}
+@media print { .share { display: none !important; } }
+</style>
+
+<script>
+  function initShare(root: HTMLElement) {
+    const url = root.dataset.shareUrl || window.location.href;
+    const copyBtn = root.querySelector<HTMLButtonElement>('[data-share-copy]');
+    const copyLabel = root.querySelector<HTMLElement>('[data-share-copy-text]');
+    const status = root.querySelector<HTMLElement>('.share__status');
+    let resetTimer: number | undefined;
+
+    // Fallback dla przeglądarek bez Clipboard API (np. strona serwowana po http).
+    function legacyCopy(text: string): boolean {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        ok = false;
+      }
+      document.body.removeChild(area);
+      return ok;
+    }
+
+    function feedback(ok: boolean) {
+      if (copyLabel) copyLabel.textContent = ok ? 'Skopiowano' : 'Nie udało się';
+      copyBtn?.classList.toggle('is-copied', ok);
+      if (status) status.textContent = ok ? 'Link do artykułu został skopiowany do schowka.' : 'Nie udało się skopiować linku. Skopiuj adres z paska przeglądarki.';
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => {
+        if (copyLabel) copyLabel.textContent = 'Kopiuj link';
+        copyBtn?.classList.remove('is-copied');
+        if (status) status.textContent = '';
+      }, 2500);
+    }
+
+    copyBtn?.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          feedback(true);
+        } else {
+          feedback(legacyCopy(url));
+        }
+      } catch {
+        feedback(legacyCopy(url));
+      }
+    });
+
+    // Otwieramy okno dialogowe zamiast pełnej karty - bez blokowania powrotu do artykułu.
+    root.querySelectorAll<HTMLAnchorElement>('[data-share-window]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        const popup = window.open(link.href, 'taxun-share', 'width=640,height=640,noopener,noreferrer');
+        if (popup) event.preventDefault();
+      });
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('.share').forEach(initShare);
+</script>

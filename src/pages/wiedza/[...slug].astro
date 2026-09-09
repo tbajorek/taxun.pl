@@ -1,0 +1,653 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/prose.css';
+import CTA from '../../components/CTA.astro';
+import Icon from '../../components/Icon.astro';
+import AuthorBox from '../../components/AuthorBox.astro';
+import ShareButtons from '../../components/ShareButtons.astro';
+import CoverImage from '../../components/CoverImage.astro';
+import LegalNotice from '../../components/LegalNotice.astro';
+import { site } from '../../data/site';
+import { personSchema, personSchemaId } from '../../data/team';
+import { authorPath, countPostsByAuthor, formatDate as fmtDate, getPostAuthor, getPostCover, getPostReviewer, getSortedPosts } from '../../lib/blog';
+import { coverUrl } from '../../lib/covers';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({ params: { slug: post.id } }));
+}
+
+/**
+ * Wpis czytamy z kolekcji przy renderowaniu, a nie z propsów getStaticPaths.
+ *
+ * Propsy getStaticPaths to migawka wpisu zrobiona w momencie budowania listy
+ * ścieżek - w trybie dev Astro trzyma ją w cache razem z modułem trasy
+ * (RouteCache). Lista artykułów pyta kolekcję przy każdym renderze, więc obie
+ * strony potrafiły się rozjechać: na liście nowy autor, w samym artykule stary.
+ * Czytając wpis tak samo jak lista, mamy jedno źródło prawdy dla obu widoków.
+ */
+const all = await getSortedPosts();
+const post = all.find((entry) => entry.id === Astro.params.slug);
+if (!post) {
+  throw new Error(
+    `Nie znaleziono artykułu "${Astro.params.slug}" w kolekcji "blog", mimo że trasa dla niego powstała. ` +
+      'Najczęstsza przyczyna: nieaktualny cache warstwy treści - usuń katalog `.astro` i zbuduj ponownie.'
+  );
+}
+
+const { Content, headings } = await render(post);
+const related = all.filter((p) => p.id !== post.id && p.data.category === post.data.category).slice(0, 3);
+const fallback = all.filter((p) => p.id !== post.id).slice(0, 3);
+const relatedPosts = related.length ? related : fallback;
+
+const articleUrl = new URL(`/wiedza/${post.id}`, Astro.site).toString();
+
+// Zdjęcie wyróżniające - to samo, którego używa lista artykułów.
+const cover = getPostCover(post);
+
+/**
+ * Zdjęcie artykułu jako obrazek do udostępnień.
+ *
+ * Bierzemy kadr 1200x630 przygotowany przez `scripts/optimize-covers.mjs`,
+ * a nie samo zdjęcie: serwisy oczekują proporcji 1,91:1 i pionowy kadr
+ * przycięłyby po swojemu. Warunek na szerokość oryginału zostaje - zdjęcie
+ * węższe niż 600 px po powiększeniu do kadru wyglądałoby źle, więc wtedy
+ * zostajemy przy grafice serwisowej.
+ */
+const OG_MIN_WIDTH = 600;
+const ogCover = cover && cover.width >= OG_MIN_WIDTH ? cover : null;
+const ogImageProps = ogCover
+  ? {
+      ogImage: ogCover.og.src,
+      ogImageWidth: ogCover.og.width,
+      ogImageHeight: ogCover.og.height,
+      ogImageType: 'image/jpeg',
+    }
+  : {};
+
+/** Szerokość zdjęcia w hero: na wąskich ekranach cała szerokość, dalej stała kolumna. */
+const HERO_COVER_SIZES = '(max-width: 980px) 100vw, 460px';
+
+// Autor i recenzent pochodzą z konfiguracji zespołu (src/data/team.ts).
+const author = getPostAuthor(post);
+const reviewer = getPostReviewer(post);
+// Data stanu prawnego to data ostatniej aktualizacji artykułu - ta sama, którą
+// widać w nagłówku. Artykuł nietknięty od publikacji podaje datę publikacji.
+const legalDate = post.data.updatedDate ?? post.data.pubDate;
+const authorPostCount = countPostsByAuthor(all, author.id);
+const orgId = `${site.url}/#organization`;
+
+const articleSchema: Record<string, unknown> = {
+  '@type': ['Article', 'BlogPosting'],
+  '@id': `${articleUrl}#article`,
+  headline: post.data.title,
+  name: post.data.title,
+  description: post.data.description,
+  datePublished: post.data.pubDate.toISOString(),
+  dateModified: (post.data.updatedDate ?? post.data.pubDate).toISOString(),
+  inLanguage: 'pl-PL',
+  articleSection: post.data.category,
+  keywords: post.data.tags.join(', '),
+  author: { '@id': personSchemaId(author, site.url) },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+  mainEntityOfPage: articleUrl,
+  image: coverUrl(cover, site.url) ?? `${site.url}/og-image.png`,
+  url: articleUrl,
+  ...(post.data.summary && post.data.summary.length
+    ? {
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.article-tldr'],
+        },
+      }
+    : {}),
+  ...(reviewer
+    ? {
+        contributor: [{ '@id': personSchemaId(reviewer, site.url) }],
+        reviewedBy: { '@id': personSchemaId(reviewer, site.url) },
+      }
+    : {}),
+};
+
+const extraSchemas: Record<string, unknown>[] = [articleSchema];
+
+// Węzeł Person dla osób spoza grafu bazowego (założyciel jest tam już opisany).
+for (const person of [author, reviewer]) {
+  if (person && !person.isFounder && !extraSchemas.some((n) => n['@id'] === personSchemaId(person, site.url))) {
+    extraSchemas.push(personSchema(person, site.url, orgId));
+  }
+}
+
+if (post.data.howTo) {
+  extraSchemas.push({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: post.data.howTo.name,
+    description: post.data.description,
+    ...(post.data.howTo.totalTime ? { totalTime: post.data.howTo.totalTime } : {}),
+    step: post.data.howTo.steps.map((s, i) => ({
+      '@type': 'HowToStep',
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+      ...(s.url ? { url: s.url } : {}),
+    })),
+  });
+}
+
+if (post.data.faq && post.data.faq.length) {
+  extraSchemas.push({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: post.data.faq.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  });
+}
+
+const breadcrumbsArticle = [
+  { label: 'Wiedza', href: '/wiedza' },
+  { label: post.data.title },
+];
+---
+<BaseLayout
+  title={post.data.seoTitle ?? post.data.title}
+  description={post.data.seoDescription ?? post.data.description}
+  ogType="article"
+  {...ogImageProps}
+  schema={extraSchemas}
+  breadcrumbs={breadcrumbsArticle}
+  article={{
+    authorName: author.name,
+    authorUrl: authorPath(author.id),
+    publishedTime: post.data.pubDate.toISOString(),
+    modifiedTime: (post.data.updatedDate ?? post.data.pubDate).toISOString(),
+    section: post.data.category,
+    tags: post.data.tags,
+  }}
+>
+  <article class="article">
+    <header class="article-hero">
+      <div class="article-hero__bg" aria-hidden="true">
+        <div class="article-hero__grid"></div>
+        <div class="article-hero__glow"></div>
+      </div>
+      <div class="container">
+        <div class:list={['article-hero__inner', { 'article-hero__inner--cover': cover }]}>
+        <div class="article-hero__head">
+          <nav class="breadcrumbs" aria-label="Okruszki">
+            <ol>
+              <li><a href="/">Start</a></li>
+              <li><Icon name="chevron-right" size={12}/><a href="/wiedza">Wiedza</a></li>
+              <li class="breadcrumb-current"><Icon name="chevron-right" size={12}/><span>{post.data.title}</span></li>
+            </ol>
+          </nav>
+          <div class="article-hero__chip">
+            <span>{post.data.category}</span>
+            <span aria-hidden="true">·</span>
+            <span>Opublikowano {fmtDate(post.data.pubDate)}</span>
+            {post.data.updatedDate && (<>
+              <span aria-hidden="true">·</span>
+              <span>Zaktualizowano {fmtDate(post.data.updatedDate)}</span>
+            </>)}
+            {post.data.readingTime && (<>
+              <span aria-hidden="true">·</span>
+              <span>{post.data.readingTime} min czytania</span>
+            </>)}
+          </div>
+        </div>
+        <div class="article-hero__content">
+        <h1 class="article-hero__title">{post.data.title}</h1>
+        <p class="article-hero__lede">{post.data.description}</p>
+        <div class="article-hero__author">
+          <span class="article-hero__avatar">{author.initials}</span>
+          <div>
+            <a class="article-hero__author-link" href={authorPath(author.id)}>{author.name}</a>
+            <small>{author.role}</small>
+            {reviewer && (
+              <small>Konsultacja merytoryczna: {reviewer.name} ({reviewer.role})</small>
+            )}
+          </div>
+        </div>
+        </div>{/* article-hero__content */}
+        {cover && (
+          <figure class="article-hero__media">
+            <CoverImage cover={cover} sizes={HERO_COVER_SIZES} priority class="article-hero__photo" />
+          </figure>
+        )}
+        </div>{/* article-hero__inner */}
+      </div>
+    </header>
+
+    <section class="article-body">
+      <div class="container">
+        <div class="article-layout">
+          <aside class="article-toc" aria-label="Spis treści">
+            <div class="article-toc__inner">
+              <h2>W tym artykule</h2>
+              <ol>
+                {headings.filter((h) => h.depth === 2).map((h) => (
+                  <li><a href={`#${h.slug}`}>{h.text}</a></li>
+                ))}
+              </ol>
+              <button class="btn btn--outline btn--sm article-toc__print" id="article-print">
+                <Icon name="printer" size={14}/>
+                <span>Drukuj</span>
+              </button>
+            </div>
+          </aside>
+
+          <div class="prose">
+            {post.data.summary && post.data.summary.length > 0 && (
+              <aside class="article-tldr" aria-labelledby="tldr-heading">
+                <h2 id="tldr-heading">W skrócie</h2>
+                <ul>
+                  {post.data.summary.map((point) => <li set:html={point} />)}
+                </ul>
+              </aside>
+            )}
+            <Content />
+
+            <LegalNotice updated={legalDate} />
+
+            <div class="article-tags">
+              {post.data.tags.map((t) => (
+                <a class="tag" href={`/wiedza?q=${encodeURIComponent(t)}`}>#{t}</a>
+              ))}
+            </div>
+
+            <ShareButtons url={articleUrl} title={post.data.title} />
+
+            <AuthorBox author={author} postCount={authorPostCount} />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {relatedPosts.length > 0 && (
+      <section class="section section--alt">
+        <div class="container">
+          <div class="section-header text-left">
+            <span class="eyebrow">Powiązane</span>
+            <h2>Czytaj dalej</h2>
+          </div>
+          <div class="related">
+            {relatedPosts.map((p) => (
+              <a href={`/wiedza/${p.id}`} class="related__card">
+                <span class="related__category">{p.data.category}</span>
+                <h3>{p.data.title}</h3>
+                <p>{p.data.description}</p>
+                <span class="btn-arrow">
+                  <span>Czytaj artykuł</span>
+                  <svg class="arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <CTA
+      title="Twój przypadek jest inny? Porozmawiajmy konkretnie"
+      description="Każdy artykuł jest ogólnym przewodnikiem. W bezpłatnej rozmowie pokażemy, co konkretnie znaczy to dla Twojej firmy."
+    />
+  </article>
+</BaseLayout>
+
+<style>
+.article-hero {
+  position: relative;
+  background: linear-gradient(180deg, var(--ink-950), var(--ink-900));
+  color: var(--white);
+  padding: clamp(4rem, 8vw, 6rem) 0 clamp(2.5rem, 5vw, 4rem);
+  overflow: hidden;
+  isolation: isolate;
+}
+/* Constrain hero text so it doesn't spread across very wide viewports */
+.article-hero__content {
+  max-width: 860px;
+}
+
+/* Okruszki i pasek metadanych - nad tytułem, na całej szerokości hero. */
+.article-hero__head { max-width: 860px; }
+
+/*
+ * Hero ze zdjęciem: tytuł, zajawka i podpis autora po lewej, zdjęcie po prawej.
+ * Okruszki i pasek metadanych zostają nad nimi, na pełnej szerokości - inaczej
+ * data publikacji łamałaby się w środku plakietki.
+ * Artykuł bez zdjęcia renderuje się dokładnie jak wcześniej: `--cover` dokłada
+ * siatkę tylko wtedy, gdy jest co w niej ustawić.
+ */
+.article-hero__inner--cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  column-gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+.article-hero__inner--cover .article-hero__head {
+  grid-column: 1 / -1;
+  max-width: none;
+}
+.article-hero__inner--cover .article-hero__content { grid-column: 1; }
+.article-hero__inner--cover .article-hero__media { grid-column: 2; }
+/*
+ * Proporcja kadru jest stała, więc wysokość hero nie zależy od tego, jakie
+ * zdjęcie wgrał autor - i nie ma skoku layoutu w trakcie ładowania.
+ */
+.article-hero__media {
+  margin: 0;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 30px 60px -30px rgba(2,6,23,0.9);
+  /* Kolor tła w miejscu zdjęcia - zanim się wczyta, kadr nie świeci na biało. */
+  background: var(--ink-800);
+  --cover-ratio: 3 / 2;
+}
+@media (max-width: 980px) {
+  .article-hero__inner--cover {
+    /* minmax(0, 1fr), nie 1fr: domyślne min-width kolumny to jej min-content,
+       więc pojedynczy szeroki element rozepchnąłby hero poza ekran. */
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2rem;
+  }
+  /* Zdjęcie na całą szerokość - szerszy kadr, żeby hero nie urosło na pół ekranu. */
+  .article-hero__inner--cover .article-hero__media { grid-column: 1; --cover-ratio: 16 / 9; }
+}
+.article-hero__bg { position: absolute; inset: 0; z-index: -1; }
+.article-hero__grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at top, black 30%, transparent 80%);
+}
+.article-hero__glow {
+  position: absolute;
+  top: -10%; right: -10%;
+  width: 60%; aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.22), transparent 60%);
+}
+.article-hero .breadcrumbs ol { color: var(--text-on-dark-muted); margin-bottom: 1.25rem; }
+.article-hero .breadcrumbs li { color: var(--text-on-dark-muted); }
+.article-hero .breadcrumbs a { color: var(--text-on-dark-muted); transition: color var(--transition-fast); }
+.article-hero .breadcrumbs a:hover { color: var(--white); }
+.article-hero .breadcrumbs li:last-child span { color: var(--white); }
+
+.article-hero__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-full);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+.article-hero__chip span[aria-hidden] { opacity: 0.5; }
+
+/*
+ * Poniżej ~860 px cała linia metadanych nie mieści się w jednej plakietce.
+ * Zamiast łamać ją w środku (kropki rozdzielające lądowały wtedy na początku
+ * wiersza), rozbijamy ją na osobne plakietki i chowamy separatory.
+ */
+@media (max-width: 860px) {
+  .article-hero__chip {
+    display: flex;
+    gap: 0.375rem;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+  .article-hero__chip > span[aria-hidden] { display: none; }
+  .article-hero__chip > span {
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-full);
+    background: rgba(16,185,129,0.16);
+  }
+}
+
+.article-hero__title {
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  color: var(--white);
+  letter-spacing: -0.025em;
+}
+.article-hero__lede {
+  margin-top: 1.25rem;
+  font-size: 1.125rem;
+  color: rgba(226,232,240,0.85);
+  max-width: 64ch;
+  line-height: 1.65;
+}
+.article-hero__author {
+  margin-top: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.article-hero__author-link {
+  color: var(--white);
+  font-weight: 700;
+  font-family: var(--font-display);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+.article-hero__author-link:hover { color: var(--accent-400); text-decoration: underline; }
+.article-hero__author small { display: block; color: var(--text-on-dark-muted); font-size: 0.8125rem; margin-top: 2px; }
+.article-hero__avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ink-700), var(--ink-900));
+  color: var(--accent-400);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  display: grid; place-items: center;
+}
+
+.article-body { padding: clamp(3rem, 6vw, 5rem) 0; }
+.article-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .article-layout {
+    grid-template-columns: 1fr;
+  }
+  /* Put prose before TOC on mobile - users should read intro before seeing TOC */
+  .article-toc { order: 2; }
+  .prose { order: 1; }
+}
+
+.article-toc {
+  position: sticky;
+  top: 100px;
+}
+.article-toc__inner {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+.article-toc h2 { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-700); margin-bottom: 1rem; }
+.article-toc ol { list-style: none; counter-reset: toc; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.article-toc li { counter-increment: toc; padding-left: 1.75rem; position: relative; line-height: 1.4; }
+.article-toc li::before {
+  content: counter(toc, decimal-leading-zero);
+  position: absolute; left: 0; top: 0;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-subtle);
+}
+.article-toc a {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  transition: color var(--transition-fast);
+}
+.article-toc a:hover { color: var(--accent-700); }
+.article-toc__print { width: 100%; }
+
+@media (max-width: 980px) {
+  .article-toc { position: static; }
+}
+
+/* Layout context for prose inside the article grid */
+.prose { min-width: 0; }
+
+/* TL;DR / Key takeaways - extractable summary block at top of article */
+.article-tldr {
+  background: linear-gradient(160deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  margin: 0 0 2.5rem;
+}
+.article-tldr h2 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-700);
+  margin: 0 0 0.875rem;
+}
+.article-tldr ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.article-tldr li {
+  position: relative;
+  padding-left: 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+.article-tldr li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.6rem;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-500);
+}
+.article-tldr li strong { color: var(--text-strong); }
+
+.article-tags {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.article-tags .tag:hover { background: var(--ink-900); color: var(--white); }
+.article-tags .tag {
+  display: inline-block;
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  padding: 0.25rem 0.625rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+/* Na ekranie dotykowym tagi pod artykułem też muszą mieć sensowny cel dotyku. */
+@media (pointer: coarse) {
+  .article-tags .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.25rem 0.875rem;
+  }
+}
+
+.related {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.related__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.related__card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.related__category { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-700); }
+.related__card h3 { font-size: 1.125rem; line-height: 1.3; }
+.related__card p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.55; }
+.related__card .btn-arrow { margin-top: auto; }
+
+@media (max-width: 640px) {
+  .article-hero { padding: 2.5rem 0 2rem; }
+  .article-hero__title { font-size: 1.875rem; }
+  /* Na telefonie zdjęcie ma być ilustracją, a nie pierwszym ekranem do przewinięcia. */
+  .article-hero__media { border-radius: var(--radius-lg); --cover-ratio: 16 / 10; }
+  /* Hide the current-page crumb on mobile - redundant since h1 shows the title */
+  .breadcrumb-current { display: none; }
+  .article-toc__inner { border-radius: var(--radius-lg); }
+}
+
+@media print {
+  .article-toc, .site-header, .site-footer, .cta, .related, .to-top, .article-hero__media { display: none !important; }
+  .article-hero { background: white; color: black; padding: 1rem 0; }
+  .article-hero__title { color: black; }
+  .article-hero__lede { color: #444; }
+  .prose { max-width: 100%; }
+}
+</style>
+
+<script>
+  const printBtn = document.getElementById('article-print');
+  printBtn?.addEventListener('click', () => window.print());
+
+  /*
+   * Tabela szersza niż ekran przewija się w poziomie (reguła w global.css).
+   * Taki obszar musi dać się przewinąć również z klawiatury - część przeglądarek
+   * robi to sama, reszcie trzeba wskazać tabelę jako element aktywny. Ustawiamy
+   * to tylko tam, gdzie faktycznie jest co przewijać, żeby nie dokładać
+   * niepotrzebnych przystanków przy tabulatorze.
+   */
+  const tables = document.querySelectorAll<HTMLTableElement>('.prose table');
+  function markScrollableTables() {
+    for (const table of tables) {
+      const scrolls = table.scrollWidth > table.clientWidth + 1;
+      if (scrolls) table.setAttribute('tabindex', '0');
+      else table.removeAttribute('tabindex');
+    }
+  }
+  if (tables.length) {
+    markScrollableTables();
+    // Odczyt scrollWidth wymusza przeliczenie układu - przy zmianie orientacji
+    // zdarzeń resize sypie się kilkadziesiąt, więc liczymy raz na klatkę.
+    let scheduled = 0;
+    window.addEventListener('resize', () => {
+      if (scheduled) return;
+      scheduled = requestAnimationFrame(() => { scheduled = 0; markScrollableTables(); });
+    }, { passive: true });
+  }
+</script>

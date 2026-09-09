@@ -1,0 +1,171 @@
+---
+/**
+ * Komunikat o wstrzymaniu przyjmowania nowych klientów - pokazywany wyłącznie
+ * na stronie kreatora wyceny (`/wycena`) i wyłącznie przy ustawionej zmiennej
+ * środowiskowej `NEW_CLIENTS_PAUSED`.
+ *
+ * Zmienną czytamy podczas budowania (podstrona jest prerenderowana), więc po
+ * jej zmianie w panelu hostingu trzeba wdrożyć stronę ponownie - tak samo jak
+ * przy `PUBLIC_GA_ID` czy kluczu reCAPTCHA. Wartość bierzemy przez
+ * `lib/env.ts`, bo ono zdejmuje cudzysłowy i przedrostek `NEW_CLIENTS_PAUSED=`,
+ * czyli dwie pomyłki, które zdarzają się przy wklejaniu wartości do panelu.
+ *
+ * Okno pokazujemy przy każdym wejściu, zamknięcia nie zapamiętujemy. Zapis
+ * w przeglądarce trzeba by opisać w banerze zgód i w polityce prywatności,
+ * a jedno kliknięcie na wizytę jest tańsze niż kolejna pozycja w tabeli
+ * ciasteczek. Kreator zostaje sprawny: informujemy o kolejce, nie blokujemy
+ * zgłoszenia.
+ */
+import Icon from './Icon.astro';
+import { env } from '../lib/env';
+
+/*
+ * "Ustawiona zmienna" znaczy: niepusta. Wartości wyłączające rozpoznajemy
+ * dodatkowo, bo w panelu hostingu łatwiej przestawić wpis na `0` niż go
+ * skasować, a komunikat zostawiony przez pomyłkę kosztuje nas zgłoszenia.
+ */
+const flag = env('NEW_CLIENTS_PAUSED') ?? '';
+const paused = flag !== '' && !/^(0|false|no|off|nie)$/i.test(flag);
+---
+{paused && (
+  <>
+    {/*
+      Natywny <dialog> zamiast własnej nakładki: przeglądarka sama trzyma go
+      w warstwie wierzchniej (więc nie licytujemy się o z-index z banerem
+      zgód), sama pilnuje fokusa wewnątrz okna, sama zamyka je Escape'em,
+      a `method="dialog"` zamyka je przyciskiem bez ani jednej linii kodu.
+    */}
+    <dialog id="new-clients-paused" class="paused" aria-labelledby="new-clients-paused-title">
+      <form method="dialog" class="paused__inner">
+        <button type="submit" class="paused__close" aria-label="Zamknij komunikat">
+          <Icon name="close" size={22} />
+        </button>
+
+        <span class="paused__badge" aria-hidden="true"><Icon name="users" size={22} /></span>
+
+        <p class="paused__title" id="new-clients-paused-title">
+          Chwilowo nie przyjmujemy nowych klientów
+        </p>
+
+        <p class="paused__text">
+          Dziękujemy za zainteresowanie naszą księgowością. Chętnych mamy w tej chwili więcej,
+          niż jesteśmy w stanie rzetelnie obsłużyć, więc wstrzymaliśmy przyjmowanie nowych klientów.
+        </p>
+        <p class="paused__text">
+          Kreator zostawiamy otwarty - możesz policzyć orientacyjną kwotę z naszego cennika
+          i wysłać zgłoszenie. Odpiszemy na nie, ale terminu rozpoczęcia obsługi nie umiemy
+          dziś podać; odezwiemy się, kiedy zwolni się miejsce.
+        </p>
+
+        <div class="paused__actions">
+          <button type="submit" class="btn btn--accent" autofocus>Rozumiem</button>
+        </div>
+      </form>
+    </dialog>
+
+    {/*
+      Skrypt jest `is:inline` i bez importów, więc Astro zostawia go wprost
+      w dokumencie - okno pokazuje się razem z pierwszym renderowaniem, a nie
+      po dojściu `taxun.js` z sieci. To ten sam wyjątek od zasady jednego
+      skryptu na stronę, co przy banerze zgód: od tego kodu zależy widoczność
+      treści wypełniającej pierwszy ekran.
+
+      Bez `showModal()` (wyłączony JavaScript, przeglądarka bez <dialog>) okno
+      zostaje schowane. Kreator i tak wymaga JS-u, więc lepiej nie pokazać nic,
+      niż zostawić nakładkę, której nie ma czym zamknąć.
+    */}
+    <script is:inline>
+      (function () {
+        var dialog = document.getElementById('new-clients-paused');
+        if (!dialog || typeof dialog.showModal !== 'function') return;
+        dialog.showModal();
+        // Kliknięcie w tło: ::backdrop nie jest osobnym elementem, więc celem
+        // zdarzenia jest samo okno.
+        dialog.addEventListener('click', function (event) {
+          if (event.target === dialog) dialog.close();
+        });
+      })();
+    </script>
+  </>
+)}
+
+<style>
+  /* Przeglądarka bez obsługi <dialog> potraktowałaby znacznik jak nieznany
+     element i pokazała jego treść w tekście strony. */
+  .paused:not([open]) { display: none; }
+
+  .paused {
+    /* Reset domyślnej ramki, tła i szerokości okna. `margin: auto` wraca tu
+       z arkusza przeglądarki: to ono, razem z `inset: 0`, ustawia okno na
+       środku ekranu, a globalny reset (`* { margin: 0 }`) je kasuje. */
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    background: var(--surface-elevated);
+    color: var(--text);
+    width: min(100% - 2rem, 34rem);
+    max-height: calc(100dvh - 2rem);
+    box-shadow: var(--shadow-xl);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Tła nie animujemy. Okno jest największym elementem pierwszego ekranu,
+     a wjazd przejściem odsuwa moment, w którym jest w pełni namalowane. */
+  .paused::backdrop { background: rgb(6 17 42 / 0.72); }
+
+  .paused__inner {
+    position: relative;
+    display: grid;
+    gap: 0.875rem;
+    padding: clamp(1.5rem, 4vw, 2.25rem);
+  }
+
+  .paused__close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    color: var(--text-muted);
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .paused__close:hover { background: var(--ink-50); color: var(--text-strong); }
+
+  .paused__badge {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    background: var(--accent-50);
+    color: var(--accent-text);
+  }
+
+  /* Nagłówek okna zostaje akapitem: konspekt strony opisuje kreator, a nie
+     komunikat, który da się zamknąć. Odstęp z prawej to miejsce na krzyżyk. */
+  .paused__title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    padding-right: 2.5rem;
+  }
+
+  .paused__text {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+  }
+
+  .paused__actions { margin-top: 0.5rem; }
+
+  @media (max-width: 480px) {
+    .paused__actions .btn { width: 100%; justify-content: center; }
+  }
+</style>

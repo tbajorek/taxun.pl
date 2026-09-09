@@ -1,0 +1,1807 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  KASA_EDUKACJA_WYJATKI,
+  KASA_LIMIT_ROCZNY,
+  KASA_TERMIN_MIESIACE,
+  KUP_STANDARD,
+  PIP_DECYZJE_OD,
+  PIP_INTERPRETACJA_DNI,
+  PIP_INTERPRETACJA_OPLATA,
+  PIP_KARENCJA_DO,
+  PIP_KARENCJA_MIESIACE,
+  PIT_FREE_AMOUNT,
+  PIT_RATE_1,
+  PIT_RATE_2,
+  PIT_RATE_LINIOWY,
+  PIT_THRESHOLD,
+  PKD_NOWA_OD,
+  RYCZALT_EDUKACJA,
+  RYCZALT_SPORT,
+  VAT_RATE,
+  VAT_RATE_OBNIZONA,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaEdukacja = pct(RYCZALT_EDUKACJA);
+const stawkaSport = pct(RYCZALT_SPORT);
+const stawkaLiniowy = pct(PIT_RATE_LINIOWY);
+const vatObnizony = pct(VAT_RATE_OBNIZONA);
+const vatPodstawowy = pct(VAT_RATE);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+const limitKasy = zl(KASA_LIMIT_ROCZNY);
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+/** Wyłączenie, przez które trener nie skorzysta ze zwolnienia dla edukacji. */
+const kasaWyjatekSport = KASA_EDUKACJA_WYJATKI[0].toLowerCase();
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * U trenera o kolumnie decyduje status w VAT, a nie liczba treningów: sprzedaż
+ * dla klientów indywidualnych podsumowuje zestawienie okresowe z systemu
+ * rezerwacji albo raport z kasy, więc dokumentów bywa niewiele.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Trener pracujący sam, korzystający jeszcze ze zwolnienia z VAT'),
+  priceRow('ryczalt', 10, 'withVat', 'Trener będący czynnym podatnikiem VAT, kilka faktur kosztowych miesięcznie'),
+  priceRow('ryczalt', 30, 'withVat', 'Studio treningowe z zespołem i regularnymi kosztami obiektu'),
+  priceRow('kpir', 10, 'withVat', 'Klub rozliczający najem obiektu, sprzęt i wyposażenie'),
+  priceRow('fk', 10, 'withVat', 'Klub lub studio prowadzone w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt dla trenera od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'activity',
+    title: 'Trener personalny',
+    description: 'Treningi indywidualne, plany treningowe, konsultacje online. Największa różnica w podatku bierze się tu z tego, jak sklasyfikowane są Twoje usługi, a nie z tego, ile ich sprzedajesz.',
+    points: [
+      'Ustalenie właściwej stawki ryczałtu dla poszczególnych usług',
+      'Rozliczanie współpracy z klubem na własnej działalności',
+      'Weryfikacja obowiązku posiadania kasy fiskalnej',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Instruktor zajęć grupowych',
+    description: 'Fitness, joga, pilates, pływanie, sztuki walki, taniec. Ta grupa najczęściej łączy zajęcia prowadzone dla klubu z zajęciami na własny rachunek, a każdy z tych strumieni rozlicza się inaczej.',
+    points: [
+      'Rozdzielenie przychodów pochodzących z różnych źródeł',
+      'Rozliczanie wynajmu sal i obiektów',
+      'Sprzedaż karnetów i pakietów zajęć',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Klub, studio treningowe lub siłownia',
+    description: 'Własny obiekt, karnety, zajęcia grupowe, treningi personalne i zespół trenerów. Tutaj rozstrzygające jest prawidłowe rozdzielenie stawek VAT oraz forma współpracy z trenerami.',
+    points: [
+      `Podział sprzedaży objętej stawką ${vatObnizony} i ${vatPodstawowy}`,
+      'Rozliczanie karnetów, pakietów i wejść jednorazowych',
+      'Umowy z trenerami i zespołem, etatowe i cywilnoprawne',
+    ],
+  },
+  {
+    icon: 'award',
+    title: 'Sportowiec zawodowy',
+    description: 'Kontrakt z klubem, starty, nagrody, sponsoring, prawa do wizerunku. To jedyna grupa, w której najpierw trzeba rozstrzygnąć, z jakiego źródła pochodzi przychód, a dopiero potem mówić o formie opodatkowania.',
+    points: [
+      'Ustalenie źródła przychodu i możliwości rozliczenia w działalności',
+      'Rozdzielenie wynagrodzenia za grę i za korzystanie z wizerunku',
+      'Rozliczanie startów i nagród, także zagranicznych',
+    ],
+  },
+  {
+    icon: 'shield',
+    title: 'Klub sportowy, akademia i stowarzyszenie',
+    description: 'Sekcje młodzieżowe, składki członkowskie, dotacje z gminy, sponsoring i darowizny. Rozliczenia rządzą się tu innymi zasadami niż w zwykłej działalności gospodarczej.',
+    points: [
+      'Rozdzielenie działalności statutowej i gospodarczej',
+      'Rozliczanie dotacji, składek i wpłat rodziców',
+      'Obsługa kadrowa trenerów i personelu',
+    ],
+  },
+];
+
+/**
+ * Dwie stawki ryczałtu, między którymi przebiega główna oś sporu w tej branży.
+ * Różnica jest niemal dwukrotna, a decyduje o niej klasyfikacja PKWiU, więc
+ * stoją obok siebie, a nie w przypisie.
+ */
+const rates = [
+  {
+    featured: true,
+    rate: stawkaEdukacja,
+    title: 'Usługi w zakresie edukacji',
+    body: 'Dział 85 klasyfikacji PKWiU, w którym ustawa wymienia wprost usługi szkół sportowych oraz usługi instruktorów i trenerów. Liczy się to, że sprzedajesz naukę: prowadzenie przez plan, korektę techniki, przygotowanie zawodnika.',
+    note: 'Ta sama stawka obejmuje pozostałe usługi edukacyjne, więc trener prowadzący dodatkowo kursy i szkolenia rozlicza je tak samo.',
+  },
+  {
+    rate: stawkaSport,
+    title: 'Usługi związane ze sportem, rozrywką i rekreacją',
+    body: 'Dział 93 klasyfikacji PKWiU, czyli udostępnienie obiektu i sprzętu, wstęp na siłownię oraz organizacja aktywności bez komponentu szkoleniowego.',
+    note: 'To ta sama praca w tej samej hali, ale sprzedana jako możliwość ćwiczenia, a nie jako nauka. Stawka jest wtedy prawie dwukrotnie wyższa.',
+  },
+];
+
+/**
+ * Twierdzenia, które w tej branży krążą po internecie i są nieprawdziwe.
+ * Podstrona prostuje je wprost, bo to one najczęściej stoją za błędną stawką
+ * wybraną przy rejestracji działalności.
+ */
+const myths = [
+  {
+    icon: 'search',
+    title: 'Kod PKD nie przesądza o stawce',
+    body: `Krąży twierdzenie, że wpisanie do CEIDG kodu obejmującego pozaszkolne formy edukacji sportowej automatycznie daje prawo do stawki ${stawkaEdukacja}. Tak nie jest. Kod PKD porządkuje wpis w rejestrze, a stawkę wyznacza PKWiU faktycznie wykonywanych czynności. Rozbieżność między kodem a rzeczywistą działalnością bywa natomiast punktem wyjścia do pytań ze strony urzędu.`,
+  },
+  {
+    icon: 'check-circle',
+    title: 'Trener może rozliczać się ryczałtem',
+    body: 'W internecie nadal krążą artykuły twierdzące, że usługi trenera personalnego są z ryczałtu wyłączone. Były prawdziwe przed 2021 rokiem, kiedy obowiązywał załącznik wyłączający określone usługi z tej formy opodatkowania. Załącznik został uchylony i twierdzenie jest dziś nieaktualne.',
+  },
+  {
+    icon: 'award',
+    title: 'Dział 93 to nie jest niższa stawka',
+    body: `Na kilku stronach branżowych można trafić na informację, że usługi związane ze sportem i rekreacją objęte są stawką ${stawkaEdukacja}. Nie są. Ustawa przewiduje dla nich ${stawkaSport}, a niższa stawka dotyczy usług w zakresie edukacji, czyli innej pozycji i innego działu klasyfikacji.`,
+  },
+];
+
+/**
+ * Porównanie form opodatkowania. W tej branży odpowiedź rozjeżdża się między
+ * trenerem pracującym w cudzym obiekcie a osobą utrzymującą własne studio,
+ * więc każda karta mówi wprost, kiedy dana forma wygrywa i co ją psuje.
+ */
+const forms = [
+  {
+    icon: 'zap',
+    name: 'Ryczałt',
+    rate: `${stawkaEdukacja} lub ${stawkaSport}`,
+    when: 'Trener bez własnego obiektu, niewielkie koszty, prostota rozliczeń',
+    watch: 'Kosztów nie odliczysz w ogóle, a przy dwóch rodzajach usług trzeba rozdzielić przychody',
+  },
+  {
+    icon: 'chart',
+    name: 'Podatek liniowy',
+    rate: stawkaLiniowy,
+    when: 'Własne studio, wynajem lokalu, sprzęt, zespół trenerów',
+    watch: `Brak kwoty wolnej ${zl(PIT_FREE_AMOUNT)} i składka zdrowotna liczona od dochodu`,
+  },
+  {
+    icon: 'users',
+    name: 'Skala podatkowa',
+    rate: `${pct(PIT_RATE_1)} / ${pct(PIT_RATE_2)}`,
+    when: 'Niższe dochody, wspólne rozliczenie z małżonkiem, ulga na dzieci',
+    watch: `Drugi próg podatkowy powyżej ${zl(PIT_THRESHOLD)} dochodu w skali roku`,
+  },
+];
+
+/**
+ * Stawki VAT w klubie. Obniżona stawka obejmuje usługi związane z rekreacją
+ * wyłącznie w zakresie wstępu, więc wiersze "warn" to wszystko, co poza sam
+ * wstęp wykracza.
+ */
+const vatRows = [
+  { tone: 'good', what: 'Karnet lub wejście jednorazowe na siłownię', detail: 'z samodzielnym korzystaniem ze sprzętu', rate: vatObnizony },
+  { tone: 'good', what: 'Wstęp na zajęcia grupowe prowadzone przez instruktora', detail: 'fitness, joga, pilates, zajęcia w wodzie', rate: vatObnizony },
+  { tone: 'good', what: 'Wstęp na saunę i do stref rekreacyjnych', detail: 'jako element oferty obiektu', rate: vatObnizony },
+  { tone: 'warn', what: 'Trening personalny prowadzony indywidualnie', detail: 'świadczenie wykraczające poza sam wstęp', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Plan dietetyczny, analiza składu ciała, konsultacje', detail: 'usługi dodatkowe, sprzedawane osobno lub w pakiecie', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Kursy i szkolenia zawodowe dla trenerów', detail: 'poza przypadkami objętymi zwolnieniem dla kształcenia zawodowego', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Karnet kupowany przez trenera spoza klubu', detail: 'wejście po to, żeby obsługiwać własnych klientów', rate: vatPodstawowy },
+];
+
+/** Trzy warianty, w których wypada rozmowa o kasie fiskalnej u trenera. */
+const cashCases = [
+  {
+    icon: 'check-circle',
+    tone: 'good',
+    title: 'Płatności wyłącznie na rachunek',
+    body: 'Przelew, BLIK na konto firmowe, płatność w systemie rezerwacji. Jeżeli całość zapłaty trafia na rachunek, a z ewidencji jednoznacznie wynika, kogo i jakiej transakcji dotyczy wpłata, kasa nie jest potrzebna niezależnie od obrotu.',
+    foot: 'Warunek dotyczący ewidencji bywa lekceważony, a to on najczęściej przesądza o utracie zwolnienia.',
+  },
+  {
+    icon: 'clock',
+    tone: 'warn',
+    title: 'Gotówka od klientów indywidualnych',
+    body: `Wtedy liczy się limit sprzedaży na rzecz osób prywatnych, czyli ${limitKasy} rocznie, w pierwszym roku działalności liczony proporcjonalnie do liczby dni. Po jego przekroczeniu na wdrożenie kasy masz ${KASA_TERMIN_MIESIACE} miesiące.`,
+    foot: 'Pilnujemy limitu w trakcie roku, żeby moment jego przekroczenia nie był zaskoczeniem.',
+  },
+  {
+    icon: 'briefcase',
+    tone: 'good',
+    title: 'Współpraca wyłącznie z klubami',
+    body: 'Trener fakturujący kluby i firmy nie prowadzi sprzedaży na rzecz osób prywatnych, więc obowiązek ewidencjonowania w ogóle go nie dotyczy. Kasa pojawia się dopiero wtedy, gdy zaczynasz przyjmować własnych klientów.',
+    foot: 'Ustalamy to przy starcie, zanim powstanie obowiązek, którego nie da się cofnąć.',
+  },
+];
+
+/** Sportowiec: dwa warianty źródła przychodu, między którymi trzeba wybrać. */
+const athleteSources = [
+  {
+    kind: 'wariant domyślny',
+    title: 'Działalność wykonywana osobiście',
+    body: `Jeżeli nie prowadzisz działalności gospodarczej, przychody z kontraktu są przychodami z działalności wykonywanej osobiście. Stosuje się do nich zryczałtowane koszty w wysokości ${pct(KUP_STANDARD)} i rozlicza według skali podatkowej, a klub jako płatnik pobiera zaliczkę.`,
+    points: [
+      'Rozliczenie roczne po stronie zawodnika, na podstawie informacji od klubu',
+      'Koszty faktycznie ponoszone na przygotowania nie pomniejszają przychodu',
+    ],
+  },
+  {
+    kind: 'wariant z firmą',
+    title: 'Pozarolnicza działalność gospodarcza',
+    body: 'Spór o to, czy sportowiec może być przedsiębiorcą, rozstrzygnęła uchwała siedmiu sędziów Naczelnego Sądu Administracyjnego z 22 czerwca 2015 roku. Przychody sportowców mogą być zaliczone do działalności gospodarczej, jeżeli spełnia ona ustawową definicję i nie zachodzą łącznie przesłanki, które tę definicję wykluczają.',
+    points: [
+      'Rozstrzyga to, kto ponosi odpowiedzialność wobec osób trzecich i ryzyko gospodarcze',
+      'Znaczenie ma też, czy działasz pod kierownictwem klubu, w wyznaczonym miejscu i czasie',
+    ],
+  },
+];
+
+const athleteHelp = [
+  'Analiza kontraktu pod kątem źródła przychodu i ryzyka podatkowego',
+  'Rozliczenie startów, nagród i umów sponsorskich',
+  'Rozliczenie przychodów z zawodów za granicą i uniknięcie podwójnego opodatkowania',
+  'Przygotowanie wniosku o interpretację indywidualną przed podpisaniem kontraktu',
+];
+
+const pipSteps = [
+  {
+    title: 'Kontrola i Twoje stanowisko',
+    description: 'Inspektor bada faktyczne warunki współpracy, a nie nazwę umowy. Zanim cokolwiek nakaże, obie strony mają prawo wypowiedzieć się co do charakteru łączącego je stosunku prawnego.',
+  },
+  {
+    title: 'Polecenie usunięcia naruszeń',
+    description: 'Jeżeli wyjaśnienia nie przekonają inspektora, wydaje polecenie. Można je wykonać na dwa sposoby: zawrzeć umowę o pracę albo przekształcić współpracę tak, żeby usunąć z niej cechy stosunku pracy.',
+  },
+  {
+    title: 'Decyzja albo pozew',
+    description: 'Dopiero gdy polecenie nie zostanie wykonane, okręgowy inspektor pracy może wydać decyzję o ustaleniu stosunku pracy albo skierować pozew do sądu. Wykonanie polecenia zamyka sprawę wcześniej.',
+  },
+  {
+    title: 'Odwołanie',
+    description: 'Od decyzji przysługuje odwołanie do rejonowego sądu pracy w terminie miesiąca od jej doręczenia. Sama decyzja wywołuje skutki od dnia wydania, a nie wstecz.',
+  },
+];
+
+const pipRisk = {
+  higher: [
+    'pracuje według grafiku ustalanego przez klub',
+    'nie ma wpływu na cennik swoich treningów',
+    'nie może przyjąć klienta poza systemem klubu',
+    'rozlicza się z godzin obecności, a nie z wykonanych usług',
+    'nie może się nikim zastąpić ani współpracować z innym obiektem',
+  ],
+  lower: [
+    'pozyskuje własnych klientów i sam ich umawia',
+    'przyjmuje od nich zapłatę i wystawia własne dokumenty',
+    'ustala ceny swoich treningów',
+    'korzysta z własnego sprzętu albo płaci za dostęp do obiektu',
+    'odpowiada za jakość swojej pracy i ponosi ryzyko',
+  ],
+};
+
+const pipHelp = [
+  'Przeglądamy umowy i faktyczny model współpracy z trenerami',
+  'Wskazujemy, które elementy podnoszą ryzyko przekwalifikowania',
+  'Ustawiamy prawidłowe fakturowanie wynajmu obiektu i rozliczeń prowizyjnych',
+  'Prowadzimy dokumentację kadrową dla osób na etacie i zleceniu',
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów lub księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'zap',
+    title: 'VAT, kasa fiskalna i KSeF',
+    description: 'Ustawiamy stawki dla poszczególnych pozycji cennika obiektu, rozliczamy raporty okresowe i obsługujemy KSeF po stronie faktur kosztowych oraz sprzedaży dla firm.',
+    points: [
+      `Podział sprzedaży objętej stawką ${vatObnizony} i ${vatPodstawowy} oraz proporcja odliczenia`,
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Rozliczanie raportów z kasy fiskalnej i pilnowanie limitu',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Kadry zespołu',
+    description: 'W klubie zespół rzadko pracuje w jednej formie. Prowadzimy dokumentację dla wszystkich, niezależnie od rodzaju umowy.',
+    points: [
+      'Umowy o pracę, zlecenia i o dzieło wraz ze zgłoszeniami do ZUS',
+      'Rozliczanie współpracy z trenerami na własnych działalnościach',
+      'Panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Koszty typowe dla branży',
+    description: 'Znamy strukturę kosztów trenera i obiektu, więc wiemy, które wydatki bywają kwestionowane przy kontroli.',
+    points: [
+      'Wynajem sal, obiektów i powierzchni treningowej',
+      'Sprzęt treningowy, odzież sportowa i wyposażenie',
+      'Certyfikacje, kursy instruktorskie i szkolenia podnoszące kwalifikacje',
+      'Ubezpieczenie odpowiedzialności cywilnej oraz badania i licencje',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.' },
+  { icon: 'zap', title: 'Dokumenty zdjęciem, nie segregatorem', description: 'Faktury i zestawienia przesyłasz przez portal klienta albo zdjęciem, które odczytujemy automatycznie. Nie musisz niczego drukować ani dowozić między treningami.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twoją ofertę, umowy z klubami i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy wyłącznie przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Analiza oferty i klasyfikacja usług', description: `Ustalamy, które usługi mieszczą się w edukacji, a które w sporcie i rekreacji, bo od tego zależy, czy płacisz ${stawkaEdukacja}, czy ${stawkaSport}.` },
+  { title: 'Wybór formy opodatkowania', description: 'Liczymy warianty i sprawdzamy, czy nie występuje problem byłego pracodawcy, gdy zaczynasz współpracę z klubem, w którym byłeś zatrudniony.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające faktycznemu zakresowi działalności, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start lub preferencyjne składki.' },
+  { title: 'Decyzja w sprawie VAT i kasy fiskalnej', description: 'Ustalamy, czy zaczynasz jako podatnik zwolniony i czy sposób przyjmowania płatności pozwala uniknąć kasy rejestrującej.' },
+  { title: 'Uprawnienia w KSeF, pełnomocnictwo UPL-1 i portal klienta', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury kosztowe trafiały do nas bez Twojego udziału. UPL-1 to osobny dokument, dzięki któremu podpisujemy za Ciebie deklaracje i JPK. Dostęp do portalu klienta masz od pierwszego miesiąca.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Przechodzimy przez Twoją ofertę usługa po usłudze, sposób przyjmowania płatności i formę współpracy z klubami. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i uzyskanie pełnomocnictw załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów i limitów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: `Jaka stawka ryczałtu obowiązuje trenera personalnego, ${stawkaEdukacja} czy ${stawkaSport}?`,
+    a: `Zależy od klasyfikacji faktycznie wykonywanych usług. Usługi w zakresie edukacji, czyli dział 85 klasyfikacji PKWiU, obejmujący między innymi usługi szkół sportowych oraz usługi instruktorów i trenerów, opodatkowane są stawką ${stawkaEdukacja}. Usługi związane ze sportem, rozrywką i rekreacją, czyli dział 93, stawką ${stawkaSport}. Rozstrzyga to, czy w usłudze dominuje element szkoleniowy, czy udostępnienie możliwości aktywności.`,
+  },
+  {
+    q: 'Czy kod PKD przesądza o stawce ryczałtu?',
+    a: `Nie. Kod PKD porządkuje wpis w rejestrze, a stawkę wyznacza klasyfikacja PKWiU faktycznie wykonywanych czynności. Wpisanie do CEIDG kodu obejmującego pozaszkolne formy edukacji sportowej nie daje samo w sobie prawa do stawki ${stawkaEdukacja}, choć rozbieżność między kodem a rzeczywistą działalnością bywa punktem wyjścia do pytań ze strony urzędu.`,
+  },
+  {
+    q: 'Czytałem, że trener personalny w ogóle nie może rozliczać się ryczałtem. Czy to prawda?',
+    a: 'Nie, to informacja nieaktualna. Do końca 2020 roku obowiązywał załącznik wyłączający określone usługi z ryczałtu i obejmował on między innymi pozaszkolne formy edukacji sportowej. Załącznik został uchylony, a artykuły opisujące stan sprzed zmiany nadal krążą w internecie.',
+  },
+  {
+    q: 'Czy mogę mieć w jednej firmie dwie stawki ryczałtu?',
+    a: `Tak i w tej branży jest to sytuacja typowa. Właściciel obiektu sprzedający karnety wstępu i prowadzący treningi personalne ma przychody objęte różnymi stawkami. Ryczałt liczy się wtedy osobno dla każdego rodzaju działalności, a warunkiem jest ewidencja pozwalająca rozdzielić przychody. Prowadzimy ją w ramach abonamentu. Jeśli sytuacja jest niejednoznaczna, przygotowujemy wniosek o <a href="/cennik#dodatkowe">interpretację indywidualną</a>.`,
+  },
+  {
+    q: 'Jaka stawka VAT obowiązuje na karnet, a jaka na trening personalny?',
+    a: `Karnet lub wejście na siłownię z samodzielnym korzystaniem ze sprzętu oraz wstęp na zajęcia grupowe objęte są stawką ${vatObnizony}, jako usługi związane z rekreacją wyłącznie w zakresie wstępu. Trening personalny prowadzony indywidualnie wykracza poza sam wstęp i objęty jest stawką ${vatPodstawowy}. Tak samo traktowane są plany dietetyczne, analiza składu ciała i konsultacje.`,
+  },
+  {
+    q: `Kupuję karnet do klubu, żeby prowadzić tam własnych klientów. Czy to ${vatObnizony}?`,
+    a: `Nie. Trener, który nie jest pracownikiem klubu i kupuje wejście w celu świadczenia własnych usług, nie nabywa wstępu w celu rekreacyjnym, więc obniżona stawka mu nie przysługuje. Potwierdzają to wiążące informacje stawkowe wydawane w takich sprawach.`,
+  },
+  {
+    q: 'Sprzedaję pakiet łączący karnet z treningami personalnymi. Jak go opodatkować?',
+    a: `To najczęstszy spór w tej branży. Pakiet łączący wstęp na obiekt z pulą treningów personalnych trzeba albo rozdzielić na dwie pozycje z właściwymi stawkami, albo opodatkować w całości stawką ${vatPodstawowy}. Przechodzimy przez cennik obiektu pozycja po pozycji, a przy nietypowych pakietach można zabezpieczyć klasyfikację wiążącą informacją stawkową.`,
+  },
+  {
+    q: 'Czy trener personalny musi mieć kasę fiskalną?',
+    a: `Nie od pierwszej sprzedaży, bo usługi trenerskie nie znalazły się na liście czynności bezwzględnie wyłączonych ze zwolnień. Nie skorzystasz jednak ze zwolnienia przewidzianego dla usług edukacyjnych, ponieważ ${kasaWyjatekSport} zostały z niego wyłączone. Zostają dwa zwolnienia: limit ${limitKasy} sprzedaży na rzecz osób prywatnych oraz przyjmowanie całości zapłaty na rachunek przy ewidencji pozwalającej zidentyfikować każdą transakcję. Limit policzysz w <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.`,
+  },
+  {
+    q: 'Przyjmuję tylko przelewy i BLIK. Czy kasa jest potrzebna?',
+    a: 'Zwykle nie, pod warunkiem że całość zapłaty trafia na rachunek, a z ewidencji i dowodów zapłaty jednoznacznie wynika, kogo i jakiej transakcji dotyczy wpłata. Warunek dotyczący ewidencji bywa lekceważony, a to on najczęściej przesądza o utracie zwolnienia. Ustawiamy to na początku współpracy.',
+  },
+  {
+    q: 'Czy sportowiec może rozliczać się na działalności gospodarczej?',
+    a: 'Tak, choć nie zawsze. Przepisy zaliczają przychody z uprawiania sportu do działalności wykonywanej osobiście, ale uchwała siedmiu sędziów Naczelnego Sądu Administracyjnego z 2015 roku potwierdziła, że mogą one być zaliczone do przychodów z działalności gospodarczej, jeżeli działalność spełnia ustawową definicję i nie zachodzą łącznie przesłanki ją wykluczające. Kluczowe jest to, kto ponosi odpowiedzialność i ryzyko oraz czy zawodnik działa pod kierownictwem klubu.',
+  },
+  {
+    q: 'Klub chce rozdzielić kontrakt na grę i na wizerunek. Czy to bezpieczne?',
+    a: 'Taka konstrukcja bywa akceptowana, ale bywa też kwestionowana, jeżeli podział kwot nie ma pokrycia w rzeczywistym zakresie świadczeń. Analizujemy umowę przed podpisaniem, a przy istotnych kwotach rekomendujemy wniosek o interpretację indywidualną oraz równoległą konsultację z prawnikiem sportowym.',
+  },
+  {
+    q: 'Prowadzę klub i współpracuję z trenerami na ich działalnościach. Czy to nadal legalne?',
+    a: `Tak, ten model jest legalny. Zmieniły się natomiast zasady weryfikacji. Od ${PIP_DECYZJE_OD} okręgowy inspektor pracy może ustalić istnienie stosunku pracy decyzją administracyjną, po uprzednim wydaniu polecenia usunięcia naruszeń. Badany jest faktyczny sposób współpracy, a nie nazwa umowy. Przeglądamy umowy i realny model współpracy, i mówimy wprost, gdzie widzimy ryzyko. Szczegóły opisujemy w artykule o <a href="/wiedza/nowe-uprawnienia-pip-2026">nowych uprawnieniach PIP</a>.`,
+  },
+  {
+    q: 'Sprzedaję plany treningowe i kursy online. Jak to rozliczyć?',
+    a: 'Sprzedaż produktów cyfrowych rządzi się innymi zasadami niż same zajęcia, zarówno w podatku dochodowym, jak i w VAT. Przy sprzedaży konsumentom z innych krajów Unii Europejskiej trzeba dodatkowo pilnować progu sprzedaży transgranicznej i procedury VAT OSS. Szczegóły opisujemy na podstronie <a href="/ksiegowosc-dla-branzy-edukacyjnej">dla branży edukacyjnej</a>, a zasady ustalamy przed rozpoczęciem sprzedaży, żeby nie trzeba było niczego korygować wstecz.',
+  },
+  {
+    q: 'Czy mogę korzystać ze zwolnienia z VAT?',
+    a: `Usługi trenerskie i sportowe nie należą do kategorii wykluczonych ze zwolnienia ze względu na wysokość sprzedaży, więc do momentu przekroczenia limitu ${limitVat} jest to możliwe. Obowiązek posiadania kasy fiskalnej jest od tego całkowicie niezależny i może wystąpić także u podatnika zwolnionego.`,
+  },
+  {
+    q: 'Zatrudniam trenera albo recepcję. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę, a umowa cywilnoprawna bez składek ZUS ${hrZlecenie} zł. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi. Zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla trenera?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${priceRows[1].price} zł netto. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto. Rozliczenia klubów działających jako stowarzyszenia oraz zawodników na kontraktach wyceniamy indywidualnie.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla trenerów i sportowców', href: '/ksiegowosc-dla-trenerow-i-sportowcow' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-trenerow-i-sportowcow#service`,
+  name: 'Księgowość dla trenerów personalnych i sportowców',
+  serviceType: 'Usługi księgowe dla branży sportowej i fitness',
+  description: 'Obsługa księgowa trenerów personalnych, instruktorów, klubów fitness, klubów sportowych i zawodników. Ryczałt, KPiR i pełna księgowość, ustalenie stawki ryczałtu, podział sprzedaży w VAT, kasa fiskalna i kontrakty sportowe.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-trenerow-i-sportowcow`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Trenerzy personalni, instruktorzy fitness, kluby i studia treningowe, kluby sportowe, akademie, zawodnicy',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla trenerów, klubów i zawodników',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}${r.vatLabel ? `, ${r.vatLabel}` : ''}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla trenerów personalnych i sportowców"
+  description={`Księgowość dla trenerów personalnych, instruktorów i klubów fitness. Ryczałt ${stawkaEdukacja} czy ${stawkaSport}, kasa fiskalna, kontrakty i wizerunek. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla trenerów personalnych i sportowców"
+    description="Rozliczamy trenerów personalnych i instruktorów prowadzących własną działalność, kluby i studia treningowe oraz zawodników występujących na kontraktach. Ustalamy właściwą stawkę ryczałtu, pilnujemy podziału sprzedaży w VAT i porządkujemy współpracę z klubami. Ty prowadzisz treningi, a my rozliczenia."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla trenerów i sportowców' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=sport" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Sport to kilka zawodów o zupełnie różnych rozliczeniach</h2>
+        <p>Trener personalny przyjmujący klientów w klubie, właściciel studia treningowego i zawodnik na kontrakcie mają ze sobą wspólne właściwie tylko to, że pracują w sporcie. Podatkowo dzieli ich niemal wszystko, łącznie z tym, z jakiego źródła w ogóle pochodzi ich przychód. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="sport-segments">
+        {segments.map((s) => (
+          <article class="sport-segment">
+            <div class="sport-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Stawka ryczałtu ───────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Ryczałt w sporcie</span>
+        <h2>{stawkaEdukacja} czy {stawkaSport}, czyli różnica prawie dwukrotna</h2>
+        <p>To najważniejsze pytanie w tej branży i jednocześnie najgorzej opisane w internecie. Odpowiedź nie zależy od nazwy zawodu ani od kodu PKD wpisanego w CEIDG. Decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności, a ustawa przewiduje dla sportu dwie różne stawki w dwóch różnych pozycjach.</p>
+      </div>
+
+      <div class="sport-rates">
+        {rates.map((r) => (
+          <article class={`sport-rate ${r.featured ? 'sport-rate--featured' : ''}`}>
+            <span class={`sport-rate__value ${r.featured ? 'sport-rate__value--featured' : ''}`}>{r.rate}</span>
+            <h3>{r.title}</h3>
+            <p>{r.body}</p>
+            <p class="sport-rate__note">{r.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="sport-callout">
+        <div class="sport-callout__icon"><Icon name="search" size={22}/></div>
+        <div>
+          <h3>Gdzie przebiega granica</h3>
+          <p>Rozstrzyga to, czy w usłudze dominuje element edukacyjny, czyli przekazywanie wiedzy i umiejętności, czy element rekreacyjny, czyli udostępnienie możliwości aktywności. Trening personalny prowadzony jako nauka techniki, prowadzenie przez plan i korygowanie wykonania mieści się zwykle w dziale 85. Udostępnienie obiektu, sprzętu albo organizacja aktywności bez komponentu szkoleniowego mieści się w dziale 93.</p>
+          <p>W praktyce oznacza to, że właściciel siłowni sprzedający karnety wstępu i jednocześnie prowadzący treningi personalne ma przychody objęte dwiema różnymi stawkami. Ryczałt liczy się wtedy osobno dla każdego rodzaju działalności, a warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody. Prowadzimy ją w ramach abonamentu.</p>
+        </div>
+      </div>
+
+      <div class="sport-myths">
+        {myths.map((m) => (
+          <article class="sport-myth">
+            <div class="sport-myth__head">
+              <Icon name={m.icon} size={20}/>
+              <h3>{m.title}</h3>
+            </div>
+            <p>{m.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="sport-note">
+        <Icon name="shield" size={16}/>
+        <span>Nie obiecujemy niższej stawki, bo nie od nas ona zależy. Przechodzimy przez faktyczny zakres Twoich usług, porównujemy go z treścią umów i opisami na fakturach, a potem mówimy wprost, jak oceniamy ryzyko. Jeżeli sytuacja jest niejednoznaczna, przygotowujemy wniosek o interpretację indywidualną, a stawkę za jego przygotowanie znajdziesz w <a href="/cennik#dodatkowe">katalogu usług dodatkowych</a>. Organy wydają w tych sprawach rozstrzygnięcia regularnie i są one dość konsekwentne.</span>
+      </p>
+
+      <div class="sport-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Forma opodatkowania ───────────────────────────────────────────── -->
+  <section class="section" id="forma-opodatkowania">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt, podatek liniowy czy skala podatkowa</h2>
+        <p>Po ustaleniu stawki ryczałtu zostaje pytanie, czy ryczałt w ogóle jest dla Ciebie najlepszy. W tej branży odpowiedź rozjeżdża się wyraźnie między trenerem pracującym w cudzym obiekcie a osobą utrzymującą własne studio.</p>
+      </div>
+
+      <div class="sport-forms">
+        {forms.map((f) => (
+          <article class="sport-form">
+            <div class="sport-form__head">
+              <div class="sport-form__icon"><Icon name={f.icon} size={20}/></div>
+              <span class="sport-form__rate">{f.rate}</span>
+            </div>
+            <h3>{f.name}</h3>
+            <dl>
+              <dt>Kiedy zwykle wygrywa</dt>
+              <dd>{f.when}</dd>
+              <dt>Na co uważać</dt>
+              <dd>{f.watch}</dd>
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <p class="sport-note">
+        <Icon name="calculator" size={16}/>
+        <span>Trener wynajmujący salę na godziny, kupujący sprzęt i inwestujący w certyfikacje ponosi realne koszty, a na ryczałcie nie odliczy z nich nic. Przy własnym obiekcie z czynszem, mediami i wyposażeniem różnica bywa duża. Przed podjęciem decyzji przygotowujemy porównanie na Twoich liczbach, z uwzględnieniem składki zdrowotnej, która na każdej z form liczy się inaczej. Warto też pamiętać o sprzedaży cyfrowej: plany treningowe, nagrania i e-booki bywają kwalifikowane inaczej niż same zajęcia, więc dodanie takiego produktu do oferty potrafi zmienić strukturę rozliczenia.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT w fitnessie</span>
+        <h2>Karnet po {vatObnizony}, trening personalny po {vatPodstawowy}</h2>
+        <p>Ta sekcja dotyczy przede wszystkim klubów i studiów, ale warto ją znać także jako trener, bo wpływa na to, ile zapłacisz za wejście na obiekt. Obniżona stawka obejmuje usługi związane z rekreacją wyłącznie w zakresie wstępu. Wszystko, co poza sam wstęp wykracza, wraca do stawki podstawowej.</p>
+      </div>
+
+      <div class="sport-vat">
+        <div class="sport-vat__head">
+          <span>Rodzaj usługi</span>
+          <span class="sport-vat__rate">Stawka</span>
+        </div>
+        {vatRows.map((r) => (
+          <div class="sport-vat__row">
+            <div class="sport-vat__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="sport-vat__rate">
+              <span class={`sport-pill sport-pill--${r.tone}`}>{r.rate}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="sport-doubts">
+        <article class="sport-doubt">
+          <div class="sport-doubt__head">
+            <Icon name="search" size={20}/>
+            <h3>Pakiet łączący karnet z treningami</h3>
+          </div>
+          <p>Sądy administracyjne potwierdzają, że trening personalny nie jest usługą nabywaną w ramach wstępu, tylko usługą dodatkową, więc obniżona stawka go nie obejmuje. Problem zaczyna się przy pakietach łączących karnet z pulą treningów: takie świadczenie trzeba rozdzielić albo opodatkować w całości stawką podstawową.</p>
+        </article>
+        <article class="sport-doubt">
+          <div class="sport-doubt__head">
+            <Icon name="check-circle" size={20}/>
+            <h3>Karnet dla trenera z zewnątrz</h3>
+          </div>
+          <p>Ostatnia pozycja w tabeli bywa zaskoczeniem. Trener, który nie jest pracownikiem klubu i kupuje wejście po to, żeby prowadzić tam własnych klientów, nie kupuje wstępu w celu rekreacyjnym, więc obniżona stawka mu nie przysługuje. Dotyczy to zarówno klubu wystawiającego taką fakturę, jak i trenera, który ją dostaje.</p>
+        </article>
+        <article class="sport-doubt">
+          <div class="sport-doubt__head">
+            <Icon name="heart" size={20}/>
+            <h3>Zajęcia z elementem zdrowotnym</h3>
+          </div>
+          <p>Zajęcia prowadzone przez fizjoterapeutę w ramach opieki zdrowotnej rozliczają się jeszcze inaczej, bo mogą być objęte zwolnieniem przedmiotowym. Granica między treningiem medycznym a rekreacją bywa cienka, więc opisujemy ją osobno.</p>
+          <a href="/ksiegowosc-dla-lekarzy" class="btn-arrow sport-doubt__link">
+            <span>Księgowość dla zawodów medycznych</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+      </div>
+
+      <p class="sport-note">
+        <Icon name="file" size={16}/>
+        <span>Jeżeli w Twojej ofercie są usługi z obu grup, kasa fiskalna i ewidencja muszą je rozdzielać, a odliczanie podatku naliczonego może wymagać proporcji i rocznej korekty. Przechodzimy przez cennik Twojego obiektu pozycja po pozycji i ustawiamy stawki, zanim pojawi się rozbieżność. Przy nietypowym pakiecie można zabezpieczyć klasyfikację wiążącą informacją stawkową, a stawkę za przygotowanie wniosku znajdziesz w <a href="/cennik#dodatkowe">katalogu usług dodatkowych</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obowiązki formalne</span>
+        <h2>Kasa fiskalna u trenera, czyli sprawa mniej oczywista, niż się wydaje</h2>
+        <p>W internecie znajdziesz na ten temat dwie sprzeczne odpowiedzi i obie są nieprecyzyjne. Usługi trenerskie nie znalazły się na liście czynności, przy których kasa jest wymagana od pierwszej sprzedaży, w przeciwieństwie na przykład do usług fryzjerskich czy kosmetycznych. Nie skorzystasz jednak ze zwolnienia przewidzianego dla edukacji, bo wyłączono z niego zajęcia sportowe.</p>
+      </div>
+
+      <div class="sport-cash">
+        <article class="sport-cash__main">
+          <div class="sport-cash__icon"><Icon name="printer" size={22}/></div>
+          <h3>Zwolnienie dla edukacji Cię nie obejmie</h3>
+          <p>Zwolnienie obejmujące usługi edukacyjne zostało wprost pozbawione zastosowania do trzech grup działalności:</p>
+          <ul>
+            {KASA_EDUKACJA_WYJATKI.map((w) => <li><Icon name="check" size={14}/>{w}</li>)}
+          </ul>
+          <p>Korepetytor z matematyki z tego zwolnienia skorzysta, trener personalny nie. Zostają Ci więc dwa zwolnienia o charakterze ogólnym, opisane obok, i to one przesądzają o tym, czy kasa jest potrzebna.</p>
+        </article>
+        <div class="sport-cash__side">
+          {cashCases.map((c) => (
+            <article class={`sport-cash__card sport-cash__card--${c.tone}`}>
+              <div class="sport-cash__badge"><Icon name={c.icon} size={16}/><span>{c.title}</span></div>
+              <p>{c.body}</p>
+              <p class="sport-cash__foot">{c.foot}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Sportowcy ─────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="sportowcy">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zawodnicy</span>
+        <h2>Sportowiec na kontrakcie: najpierw źródło przychodu, potem podatek</h2>
+        <p>To jedyna sytuacja w tej branży, w której nie zaczyna się od wyboru formy opodatkowania, tylko od rozstrzygnięcia, z jakiego źródła w ogóle pochodzi przychód. Ustawa o podatku dochodowym wymienia przychody z uprawiania sportu wśród przychodów z działalności wykonywanej osobiście, ale nie zamyka drogi do rozliczania ich w działalności gospodarczej.</p>
+      </div>
+
+      <div class="sport-sources">
+        {athleteSources.map((s) => (
+          <article class="sport-source">
+            <span class="sport-source__kind">{s.kind}</span>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      <div class="sport-callout">
+        <div class="sport-callout__icon"><Icon name="award" size={22}/></div>
+        <div>
+          <h3>Prawa do wizerunku</h3>
+          <p>Częstą praktyką jest rozdzielenie kontraktu na wynagrodzenie za uprawianie sportu oraz odrębne wynagrodzenie za korzystanie z wizerunku, rozliczane w działalności gospodarczej. Konstrukcja bywa akceptowana, ale bywa też kwestionowana, jeżeli podział kwot nie ma pokrycia w rzeczywistym zakresie świadczeń. Sądy zwracały uwagę między innymi na to, że wydatki, których zawodnik nie musi ponosić zgodnie z umową, nie pomniejszą przychodu z działalności.</p>
+          <p>Zawodnika działającego całkowicie pod kierownictwem klubu, bez własnego ryzyka, trudno uznać za przedsiębiorcę. Zawodnik indywidualny, sam organizujący starty, przygotowanie i sponsoring, jest w zupełnie innej sytuacji.</p>
+        </div>
+      </div>
+
+      <div class="sport-help">
+        <h3>W czym pomagamy</h3>
+        <ul>
+          {athleteHelp.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+        </ul>
+        <p class="sport-help__foot">Uczciwie mówiąc: to jest obszar, w którym rozstrzygnięcia zależą od treści konkretnych dokumentów, a nie od reguły, którą da się zapisać na stronie internetowej. Przy kontraktach o istotnej wartości rekomendujemy równoległą konsultację z prawnikiem sportowym, a przed podpisaniem umowy wniosek o interpretację indywidualną.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Współpraca B2B z klubem ───────────────────────────────────────── -->
+  <section class="section" id="wspolpraca-z-klubem">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">B2B w klubie</span>
+        <h2>Współpracujesz z klubem na własnej działalności? Zmieniły się zasady kontroli</h2>
+        <p>W fitnessie współpraca z trenerami na własnych działalnościach jest modelem podstawowym i całkowicie legalnym. Zmieniło się natomiast to, jak państwo taką współpracę weryfikuje. Od {PIP_DECYZJE_OD} obowiązują przepisy pozwalające Państwowej Inspekcji Pracy ustalić istnienie stosunku pracy w drodze decyzji administracyjnej, a nie dopiero wyrokiem sądu, jak było wcześniej.</p>
+      </div>
+
+      <ol class="sport-pip">
+        {pipSteps.map((s, i) => (
+          <li class="sport-pip__step">
+            <span class="sport-pip__num">{String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div class="sport-risk">
+        <article class="sport-risk__col sport-risk__col--warn">
+          <div class="sport-risk__head">
+            <Icon name="search" size={20}/>
+            <h3>Ryzyko rośnie, gdy trener</h3>
+          </div>
+          <ul>
+            {pipRisk.higher.map((p) => <li>{p}</li>)}
+          </ul>
+        </article>
+        <article class="sport-risk__col sport-risk__col--good">
+          <div class="sport-risk__head">
+            <Icon name="check-circle" size={20}/>
+            <h3>Ryzyko maleje, gdy trener</h3>
+          </div>
+          <ul>
+            {pipRisk.lower.map((p) => <li>{p}</li>)}
+          </ul>
+        </article>
+      </div>
+
+      <aside class="sport-warning">
+        <div class="sport-warning__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Masz {PIP_KARENCJA_MIESIACE} miesięcy na uporządkowanie sytuacji</h3>
+          <p>Ustawa przewiduje okres do {PIP_KARENCJA_DO}, w którym dobrowolne zawarcie umowy o pracę tam, gdzie relacja faktycznie ma cechy zatrudnienia, zwalnia z odpowiedzialności za wykroczenie przeciwko prawom pracownika. Rozwiązanie to nie obejmuje jednak zaległych składek ani podatków, które ZUS i administracja skarbowa mogą rozliczać niezależnie.</p>
+          <p>Jeżeli chcesz mieć pewność co do konkretnej współpracy, można wystąpić do Głównego Inspektora Pracy o interpretację indywidualną. Kosztuje {zl(PIP_INTERPRETACJA_OPLATA)}, jest wydawana w ciągu {PIP_INTERPRETACJA_DNI} dni i wiąże organy inspekcji, ale tylko wtedy, gdy opisany we wniosku stan faktyczny odpowiada rzeczywistości. Szczegóły procedury opisujemy w artykule o <a href="/wiedza/nowe-uprawnienia-pip-2026">nowych uprawnieniach PIP</a>.</p>
+        </div>
+      </aside>
+
+      <div class="sport-help">
+        <h3>Jak w tym pomagamy</h3>
+        <ul>
+          {pipHelp.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+        </ul>
+        <p class="sport-help__foot">Nie doradzamy, jak ominąć te przepisy, bo nie da się tego zrobić bezpiecznie. Doradzamy, jak ułożyć współpracę tak, żeby dokumenty odpowiadały rzeczywistości, a rzeczywistość nie miała cech ukrytego etatu. Jeżeli prowadzisz klub i część współpracy powinna być etatem, mówimy to wprost, póki jest czas to uporządkować. Ta sama zmiana dotyczy wynajmu stanowiska w <a href="/ksiegowosc-dla-branzy-beauty#zespol">branży beauty</a>, gdzie model współpracy wygląda niemal identycznie.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Całość prowadzimy zdalnie, więc <a href="/ksiegowosc-online">sprawdź, jak wygląda współpraca online</a>, jeśli nie chcesz wozić dokumentów między treningami.</p>
+      </div>
+      <div class="sport-scope">
+        {scope.map((s) => (
+          <article class="sport-scope__item">
+            <div class="sport-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="sport-actions">
+        <a href="/ksiegowosc" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Pełny zakres księgowości</span>
+        </a>
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="sport-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia prowadzone w tle, kiedy Ty jesteś na&nbsp;sali</h2>
+          <p class="lede">Dzień trenera jest poszatkowany treningami, a rozmowa z księgową rzadko się w nim mieści. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="sport-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Procesy prowadzone w pełni online', value: 100, suffix: '%' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow sport-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="sport-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="sport-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="sport-startup">
+        <div class="sport-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zaczynasz pracę na swoim? Ustawmy to dobrze od pierwszego dnia</h2>
+          <p class="lede">W tej branży wiele osób przechodzi z etatu w klubie na własną działalność albo dorabia do etatu treningami. Decyzje podejmowane na starcie wiążą na cały rok, a jedna z nich, czyli klasyfikacja usług, wpływa na podatek bezpośrednio.</p>
+        </div>
+
+        <ol class="sport-steps">
+          {startupSteps.map((s, i) => (
+            <li class="sport-step">
+              <span class="sport-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="sport-startup__cols">
+          <div class="sport-startup__col sport-startup__col--primary">
+            <span class="sport-startup__pill sport-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="sport-startup__col">
+            <span class="sport-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=sport" class="btn btn--accent btn--lg sport-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla trenera i klubu</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. W tej branży liczba dokumentów bywa niewielka nawet przy sporych obrotach, bo sprzedaż dla klientów indywidualnych podsumowuje raport okresowy albo zestawienie z systemu rezerwacji, a nie pojedyncze wizyty.</p>
+      </div>
+
+      <div class="sport-price">
+        <div class="sport-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="sport-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="sport-price__row">
+            <span class="sport-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów{r.vatLabel ? `, ${r.vatLabel}` : ''}</small>
+            </span>
+            <span class="sport-price__situation">{r.situation}</span>
+            <span class="sport-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="sport-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy. Obsługa kadrowa zespołu zaczyna się od {hrZlecenie} zł netto miesięcznie za osobę przy umowie cywilnoprawnej bez składek ZUS i od {hrMin} zł przy umowie o pracę. Rozliczenia klubów sportowych działających jako stowarzyszenia oraz zawodników na kontraktach wyceniamy indywidualnie, bo zakres różni się w każdym przypadku.</span>
+      </p>
+
+      <div class="sport-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=sport" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swoją działalność</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w sporcie"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej działalności"
+    description="Jeśli prowadzisz treningi, zarządzasz klubem albo występujesz na kontrakcie, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoją ofertę i umowy, sprawdzimy klasyfikację usług i powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=sport"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.sport-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.sport-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.sport-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.sport-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+.sport-callout {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.sport-callout__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.sport-callout h3 { font-size: 1.1875rem; margin-bottom: 0.5rem; }
+.sport-callout p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.sport-callout p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .sport-callout { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.sport-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa pięć kart po trzy w rzędzie, a dwie ostatnie
+     rozkładają się symetrycznie w drugim wierszu. */
+  .sport-segments { grid-template-columns: repeat(6, 1fr); }
+  .sport-segments > * { grid-column: span 2; }
+  .sport-segments > :nth-child(4) { grid-column: 2 / span 2; }
+  .sport-segments > :nth-child(5) { grid-column: 4 / span 2; }
+}
+.sport-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.sport-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.sport-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.sport-segment h3 { font-size: 1.125rem; }
+.sport-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.sport-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.sport-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.sport-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Ryczałt ──────────────────────────────────────────────────────────── */
+.sport-rates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .sport-rates { grid-template-columns: repeat(2, 1fr); } }
+.sport-rate {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.sport-rate--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.sport-rate__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--ink-800);
+}
+.sport-rate__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.sport-rate h3 { font-size: 1.25rem; }
+.sport-rate p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.sport-rate p.sport-rate__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── VAT ──────────────────────────────────────────────────────────────── */
+.sport-vat {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.sport-vat__head,
+.sport-vat__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.sport-vat__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.sport-vat__row { border-bottom: 1px solid var(--border-subtle); }
+.sport-vat__row:last-child { border-bottom: none; }
+.sport-vat__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.sport-vat__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.sport-vat__rate { text-align: right; }
+.sport-pill {
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.sport-pill--good { background: var(--accent-100); color: var(--accent-700); }
+.sport-pill--warn { background: #FEF3C7; color: #92400E; }
+
+.sport-doubts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 980px) { .sport-doubts { grid-template-columns: repeat(3, 1fr); } }
+.sport-doubt {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.sport-doubt__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.sport-doubt__head h3 { font-size: 1.0625rem; }
+.sport-doubt :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.sport-doubt p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.sport-doubt__link { margin-top: 1rem; align-self: flex-start; }
+
+/* ── Kasa fiskalna ────────────────────────────────────────────────────── */
+.sport-cash {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .sport-cash { grid-template-columns: 1.05fr 1fr; align-items: start; } }
+.sport-cash__main {
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  color: var(--text-on-dark);
+}
+.sport-cash__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+  margin-bottom: 1.125rem;
+}
+.sport-cash__main h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.75rem; }
+.sport-cash__main p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.sport-cash__main p + p { margin-top: 0.875rem; }
+.sport-cash__side { display: grid; gap: 1.25rem; }
+.sport-cash__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.sport-cash__badge {
+  display: inline-flex;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+}
+.sport-cash__card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Zespół i PIP ─────────────────────────────────────────────────────── */
+.sport-pip {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 1100px) { .sport-pip { grid-template-columns: repeat(4, 1fr); } }
+.sport-pip__step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.375rem;
+}
+.sport-pip__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.sport-pip__step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.sport-pip__step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.sport-risk {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 900px) { .sport-risk { grid-template-columns: repeat(2, 1fr); } }
+.sport-risk__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.sport-risk__col--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.sport-risk__col--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.sport-risk__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+.sport-risk__head h3 { font-size: 1.0625rem; }
+.sport-risk__col--warn :global(svg) { color: #B45309; flex-shrink: 0; }
+.sport-risk__col--good :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.sport-risk__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.sport-risk__col li {
+  position: relative;
+  padding-left: 1.125rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.sport-risk__col li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.55em;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.sport-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.sport-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.sport-warning h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.sport-warning p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.sport-warning p + p { margin-top: 0.75rem; }
+.sport-warning a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .sport-warning { flex-direction: column; gap: 1rem; }
+}
+
+.sport-help {
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.sport-help h3 { font-size: 1.1875rem; margin-bottom: 1rem; }
+.sport-help ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.5rem 1.25rem;
+}
+.sport-help li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.sport-help li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 5px; }
+.sport-help__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.sport-help__foot a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.sport-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .sport-scope { grid-template-columns: repeat(2, 1fr); } }
+.sport-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.sport-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.sport-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.sport-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.sport-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.sport-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.sport-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.sport-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.sport-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .sport-benefits { grid-template-columns: 1fr; } }
+.sport-benefits .lede { margin-top: 1rem; }
+.sport-benefits__stats { margin-top: 2rem; }
+.sport-benefits__link { margin-top: 1.75rem; }
+.sport-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.sport-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.sport-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.sport-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.sport-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.sport-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.sport-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.sport-startup__head { max-width: 70ch; }
+.sport-startup__head .lede { margin-top: 1rem; }
+.sport-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .sport-steps { grid-template-columns: repeat(3, 1fr); } }
+.sport-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.sport-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.sport-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.sport-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.sport-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .sport-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.sport-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.sport-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.sport-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.sport-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.sport-startup__col h3 { font-size: 1.1875rem; }
+.sport-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.sport-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.sport-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.sport-price__head,
+.sport-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.sport-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.sport-price__row { border-bottom: 1px solid var(--border-subtle); }
+.sport-price__row:last-child { border-bottom: none; }
+.sport-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.sport-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.sport-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.sport-price__amount { text-align: right; }
+.sport-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .sport-price__head { display: none; }
+  .sport-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .sport-price__situation { grid-column: 1 / -1; }
+}
+
+/* ── Mity o stawce ────────────────────────────────────────────────────── */
+.sport-myths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 980px) { .sport-myths { grid-template-columns: repeat(3, 1fr); } }
+.sport-myth {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.sport-myth__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.sport-myth__head h3 { font-size: 1.0625rem; }
+.sport-myth :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.sport-myth p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Formy opodatkowania ──────────────────────────────────────────────── */
+.sport-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .sport-forms { grid-template-columns: repeat(3, 1fr); } }
+.sport-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.sport-form:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.sport-form__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.sport-form__icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.sport-form__rate {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-700);
+  text-align: right;
+  line-height: 1.3;
+}
+.sport-form h3 { font-size: 1.1875rem; }
+.sport-form dl { margin-top: 0.25rem; }
+.sport-form dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.sport-form dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; margin-top: 0.25rem; }
+.sport-form dd + dt { margin-top: 0.875rem; padding-top: 0.875rem; border-top: 1px solid var(--border-subtle); }
+
+/* ── Kasa fiskalna: lista wyłączeń i karty przypadków ─────────────────── */
+.sport-cash__main ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.sport-cash__main li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-on-dark);
+  line-height: 1.5;
+}
+.sport-cash__main li :global(svg) { color: var(--accent-400); flex-shrink: 0; margin-top: 5px; }
+.sport-cash__card--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.sport-cash__card--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.sport-cash__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+}
+.sport-cash__card--good .sport-cash__badge { background: var(--accent-100); color: var(--accent-700); }
+.sport-cash__card--warn .sport-cash__badge { background: #FEF3C7; color: #92400E; }
+.sport-cash__foot {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+/* ── Sportowiec: źródła przychodu ─────────────────────────────────────── */
+.sport-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .sport-sources { grid-template-columns: repeat(2, 1fr); } }
+.sport-source {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.sport-source__kind {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--text-muted);
+}
+.sport-source h3 { font-size: 1.1875rem; }
+.sport-source > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.sport-source ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+.sport-source li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.sport-source li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+</style>

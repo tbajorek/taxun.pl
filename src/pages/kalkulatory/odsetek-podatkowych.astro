@@ -1,0 +1,215 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  ODSETKI_OPTIONS, ODSETKI_STANDARD, ODSETKI_OBNIZONE, ODSETKI_PODWYZSZONE,
+  ODSETKI_MIN_POBOR, ODSETKI_STAWKA_OD, DAYS_IN_YEAR, TAX_YEAR,
+  DATA_AKTUALIZACJI_ODSETKI,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl2, pct } from '../../lib/format';
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/odsetek-podatkowych#webpage',
+  name: `Kalkulator odsetek podatkowych ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator odsetek za zwłokę od zaległości podatkowych na ${TAX_YEAR} r. Stawka standardowa ${pct(ODSETKI_STANDARD)}, obniżona ${pct(ODSETKI_OBNIZONE)} i podwyższona ${pct(ODSETKI_PODWYZSZONE)}.`,
+  url: 'https://taxun.pl/kalkulatory/odsetek-podatkowych',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ile wynoszą odsetki za zwłokę od zaległości podatkowych w ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Standardowa stawka odsetek za zwłokę od zaległości podatkowych wynosi ${pct(ODSETKI_STANDARD)} w skali roku (od ${ODSETKI_STAWKA_OD} r.). Obniżona stawka to ${pct(ODSETKI_OBNIZONE)}, a podwyższona - ${pct(ODSETKI_PODWYZSZONE)}. Stawka zależy od stóp NBP i może się zmieniać w trakcie roku.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się odsetki podatkowe?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Odsetki = kwota zaległości × liczba dni zwłoki × stawka roczna ÷ ${DAYS_IN_YEAR}. Liczy się je od dnia następującego po terminie płatności do dnia zapłaty włącznie, a wynik zaokrągla do pełnych złotych.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Kiedy nie trzeba płacić odsetek podatkowych?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Odsetek nie wpłaca się, jeśli ich wysokość nie przekracza trzykrotności wartości opłaty pobieranej za list polecony, czyli ${zl2(ODSETKI_MIN_POBOR)}.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator odsetek podatkowych ${TAX_YEAR}`}
+  description="Policz odsetki za zwłokę od zaległości podatkowych. Wpisz kwotę, termin płatności i datę zapłaty - pokażemy odsetki i łączną kwotę. Liczy się w przeglądarce."
+  metaTitle={`Kalkulator odsetek podatkowych ${TAX_YEAR}`}
+  metaDescription={`Bezpłatny kalkulator odsetek za zwłokę od zaległości podatkowych ${TAX_YEAR}. Stawka podstawowa ${pct(ODSETKI_STANDARD)}, obniżona i podwyższona. Bez logowania.`}
+  breadcrumbLabel="Odsetki podatkowe"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI_ODSETKI}
+>
+  <form class="calc" id="ods-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="od-kwota">
+          Kwota zaległości
+          <small>niezapłacony podatek</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="od-kwota" min="0" step="100" value="10000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="od-stawka">
+          Stawka odsetek
+        </label>
+        <div class="calc-field__input">
+          <select id="od-stawka">
+            {ODSETKI_OPTIONS.map((o) => (
+              <option value={o.value} selected={o.value === ODSETKI_STANDARD}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="od-termin">
+          Termin płatności
+          <small>ustawowy termin</small>
+        </label>
+        <div class="calc-field__input">
+          <input type="date" id="od-termin" value="2026-03-20"/>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="od-zaplata">
+          Data zapłaty
+          <small>faktyczna wpłata</small>
+        </label>
+        <div class="calc-field__input">
+          <input type="date" id="od-zaplata" value="2026-06-05"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Odsetki za zwłokę</div>
+      <div class="calc-result__value">
+        <span id="od-odsetki">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Razem do zapłaty: <strong id="od-razem">-</strong>. <span id="od-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Liczba dni zwłoki</span>
+          <span class="calc-breakdown__value" id="od-dni">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Stawka roczna</span>
+          <span class="calc-breakdown__value" id="od-rate">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Odsetki przed zaokrągleniem</span>
+          <span class="calc-breakdown__value" id="od-raw">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy odsetki podatkowe</h2>
+    <p>Odsetki za zwłokę naliczasz samodzielnie od każdej zaległości podatkowej (PIT, CIT, VAT, ZUS liczy się analogicznie) i wpłacasz razem z zaległym podatkiem.</p>
+
+    <h3>Wzór</h3>
+    <p style="font-variant-numeric: tabular-nums;"><strong>{`Odsetki = kwota zaległości × liczba dni × stawka ÷ ${DAYS_IN_YEAR}`}</strong></p>
+    <ul>
+      <li>Liczbę dni liczy się od dnia <strong>następującego po terminie płatności</strong> do dnia zapłaty włącznie.</li>
+      <li>Wynik zaokrągla się do <strong>pełnych złotych</strong> (końcówki poniżej 50 gr pomija się, od 50 gr zaokrągla w górę).</li>
+      <li>Odsetek <strong>poniżej {zl2(ODSETKI_MIN_POBOR)} nie wpłaca się</strong>.</li>
+    </ul>
+
+    <h3>{`Stawki w ${TAX_YEAR} r.`}</h3>
+    <table>
+      <thead>
+        <tr><th>Rodzaj</th><th>Stawka roczna</th><th>Kiedy</th></tr>
+      </thead>
+      <tbody>
+        {ODSETKI_OPTIONS.map((o) => (
+          <tr><td>{o.name}</td><td>{pct(o.value)}</td><td>{o.when}</td></tr>
+        ))}
+      </tbody>
+    </table>
+    <p style="font-size: 0.875rem; color: var(--text-muted);">Uwaga: stawka odsetek zmienia się wraz ze stopami NBP. Dla długich okresów obejmujących różne stawki realne odsetki liczy się odcinkami - ten kalkulator stosuje jedną wybraną stawkę do całego okresu.</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> art. 53 - 56 Ordynacji podatkowej, obwieszczenia Ministra Finansów, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Masz zaległość i nie wiesz, jak ją uregulować? <a href="/kontakt" style="color: var(--accent-700)">Pomożemy uporządkować rozliczenia</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { ODSETKI_MIN_POBOR as MIN_POBOR, DAYS_IN_YEAR } from '../../lib/tax-constants';
+
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(v)} zł`;
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const kwota = Number(($('od-kwota') as HTMLInputElement).value) || 0;
+    const stawka = Number(($('od-stawka') as HTMLSelectElement).value);
+    const terminStr = ($('od-termin') as HTMLInputElement).value;
+    const zaplataStr = ($('od-zaplata') as HTMLInputElement).value;
+
+    const termin = terminStr ? new Date(terminStr) : null;
+    const zaplata = zaplataStr ? new Date(zaplataStr) : null;
+
+    let dni = 0;
+    if (termin && zaplata) {
+      dni = Math.round((zaplata.getTime() - termin.getTime()) / 86400000);
+      if (dni < 0) dni = 0;
+    }
+
+    const raw = (kwota * dni * stawka) / DAYS_IN_YEAR;
+    const rounded = Math.round(raw); // pełne złote
+    const doZaplaty = rounded < MIN_POBOR ? 0 : rounded;
+    const razem = kwota + doZaplaty;
+
+    $span('od-odsetki').textContent = fmt0.format(doZaplaty);
+    $span('od-razem').textContent = fmtMoney0(razem);
+    $span('od-dni').textContent = `${dni} dni`;
+    $span('od-rate').textContent = `${(stawka * 100).toFixed(2).replace('.', ',')}%`;
+    $span('od-raw').textContent = fmtMoney2(raw);
+
+    $span('od-note').textContent = (rounded < MIN_POBOR && raw > 0)
+      ? `Odsetki poniżej ${fmtMoney2(MIN_POBOR)} - nie wpłaca się ich.`
+      : (dni === 0 ? 'Brak zwłoki - sprawdź daty.' : '');
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#ods-calc input, #ods-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

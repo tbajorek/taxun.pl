@@ -1,0 +1,574 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import FAQ from '../components/FAQ.astro';
+import Icon from '../components/Icon.astro';
+import RecaptchaScript from '../components/RecaptchaScript.astro';
+import { site } from '../data/site';
+
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined;
+
+const channels = [
+  { icon: 'mail', title: 'E-mail', value: site.email, href: `mailto:${site.email}`, note: 'Standardowo odpowiedź do 4 h roboczych' },
+  { icon: 'phone', title: 'Telefon', value: site.phoneDisplay, href: `tel:${site.phoneHref}`, note: 'Pon-pt 8:00-18:00' },
+  { icon: 'pin', title: 'Lokalizacja', value: `${site.address.city}`, note: 'Obsługa online w całej Polsce' },
+  { icon: 'clock', title: 'Godziny pracy', value: 'Pon - pt: 8:00 - 18:00', note: 'Spotkania wideo w umówionym terminie' },
+];
+
+const faq = [
+  { q: 'Chcę poznać cenę obsługi. Gdzie zacząć?', a: 'Najszybciej przez <a href="/wycena">formularz wyceny</a>. Zadaje kilka pytań o formie prawnej, sposobie rozliczenia i liczbie dokumentów, dzięki czemu w odpowiedzi dostajesz orientacyjną kwotę i zakres obsługi, a nie prośbę o rozmowę. Ostateczną stawkę potwierdzamy przed podpisaniem umowy. Wypełnienie zajmuje około dwóch minut.' },
+  { q: 'Jak szybko otrzymam odpowiedź?', a: 'Standardowo odpowiadamy w ciągu 4 godzin roboczych. W szczególnych przypadkach (np. kontrola US/ZUS), zgłoszenia naszych klientów oznaczone jako pilne możemy obsługiwać także poza standardowymi godzinami.' },
+  { q: 'Czy konsultacja jest płatna?', a: 'Pierwsza 30-minutowa konsultacja online jest całkowicie bezpłatna. Po rozmowie otrzymasz pisemne podsumowanie i wycenę współpracy.' },
+  { q: 'Czy musimy spotkać się osobiście?', a: 'Nie. Obsługę prowadzimy w pełni zdalnie - przez portal klienta, e-mail i telefon. Spotkania wideo umawiamy dla bardziej złożonych tematów, takich jak wybór formy opodatkowania czy podsumowanie roku. Cały model współpracy opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.' },
+  { q: 'Co przygotować na pierwszą rozmowę?', a: 'Wystarczą nam podstawowe informacje: forma działalności, rodzaj świadczonych usług, miesięczny wolumen dokumentów, liczba pracowników i obecne biuro księgowe (jeśli dotyczy). Jeśli wypełnisz <a href="/wycena">formularz wyceny</a>, mamy to wszystko jeszcze przed rozmową.' },
+];
+---
+<BaseLayout
+  title="Kontakt - biuro rachunkowe online Taxun, Kraków"
+  description="Telefon, e-mail i formularz do biura rachunkowego Taxun w Krakowie. Standardowo odpowiedź w 4 godziny robocze, bezpłatna konsultacja 30 minut."
+  schema={{
+    '@type': 'ContactPage',
+    name: 'Kontakt - Taxun',
+    description: 'Strona kontaktowa biura rachunkowego Taxun. Telefon, e-mail, formularz, mapa.',
+    mainEntity: { '@id': 'https://taxun.pl/#organization' },
+  }}
+  breadcrumbs={[{ label: 'Kontakt' }]}
+>
+  <RecaptchaScript slot="head" />
+  <PageHero
+    eyebrow="Kontakt"
+    title="Napisz do nas"
+    description="Krótkie pytanie, prośba o dokumenty albo temat, który trudno zmieścić w formularzu - wszystko trafia do nas tą samą drogą. Jeśli chcesz poznać cenę obsługi, szybciej będzie przez formularz wyceny."
+    breadcrumbs={[{ label: 'Kontakt' }]}
+    align="center"
+  />
+
+  <section class="section">
+    <div class="container">
+      <div class="channels">
+        {channels.map((c) => (
+          <a class="channel" href={c.href ?? '#'} target={c.href?.startsWith('http') ? '_blank' : undefined} rel="noopener">
+            <div class="channel__icon"><Icon name={c.icon} size={20}/></div>
+            <h2>{c.title}</h2>
+            <p class="channel__value">{c.value}</p>
+            {c.note && <span class="channel__note">{c.note}</span>}
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="formularz">
+    <div class="container">
+      <div class="contact-grid">
+        <form class="contact-form" id="contact-form" novalidate>
+          <header class="contact-form__head">
+            <span class="eyebrow">Formularz kontaktowy</span>
+            <h2>Zadaj pytanie</h2>
+            <p>Standardowo odpowiadamy mailem w ciągu 4 godzin roboczych. Bez automatycznych szablonów.</p>
+          </header>
+
+          <aside class="quote-hint">
+            <span class="quote-hint__icon" aria-hidden="true"><Icon name="calculator" size={18}/></span>
+            <div>
+              <p class="quote-hint__title">Chcesz poznać cenę obsługi?</p>
+              <p class="quote-hint__body">Formularz wyceny zapyta o formę rozliczenia, wolumen dokumentów i zatrudnienie - dzięki temu w odpowiedzi dostaniesz orientacyjną kwotę zamiast prośby o rozmowę.</p>
+              <a href="/wycena" class="btn-arrow">
+                <span>Przejdź do wyceny</span>
+                <svg class="arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </aside>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Imię *</span>
+              <input type="text" name="firstName" autocomplete="given-name" required />
+            </label>
+            <label class="field">
+              <span>Nazwisko *</span>
+              <input type="text" name="lastName" autocomplete="family-name" required />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Adres e-mail *</span>
+              <input type="email" name="email" autocomplete="email" required />
+            </label>
+            <label class="field">
+              <span>Telefon</span>
+              <input type="tel" name="phone" autocomplete="tel" inputmode="tel" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Nazwa firmy lub NIP</span>
+            <input type="text" name="company" autocomplete="organization" placeholder="np. Taxun sp. z o.o. lub 1234567890" />
+          </label>
+
+          <label class="field">
+            <span>Wiadomość *</span>
+            <textarea name="message" rows="5" required maxlength="4000" placeholder="Napisz, w czym możemy pomóc. Jeśli pytanie dotyczy konkretnej firmy, dopisz formę działalności - odpowiemy konkretniej."></textarea>
+          </label>
+
+          <div class="contact-form__honeypot" aria-hidden="true">
+            <label for="contact-website">Nie wypełniaj tego pola</label>
+            <input id="contact-website" type="text" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <label class="check">
+            <input type="checkbox" name="privacy" required />
+            <span>Zapoznałem/am się z <a href="/polityka-prywatnosci">polityką prywatności</a> i akceptuję przetwarzanie moich danych w celu obsługi zapytania. *</span>
+          </label>
+
+          <label class="check">
+            <input type="checkbox" name="marketing" />
+            <span>Chcę otrzymywać bezpłatny newsletter z aktualizacjami i poradami księgowymi (bez spamu, ~1 e-mail / miesiąc).</span>
+          </label>
+
+          <div class="sla">
+            <span class="sla__icon" aria-hidden="true"><Icon name="clock" size={18}/></span>
+            <div class="sla__body">
+              <p class="sla__headline">Standardowo odpowiadamy w&nbsp;ciągu <strong>4 godzin roboczych</strong></p>
+              <p class="sla__detail">Pon - pt 8:00 - 18:00. Wiadomości spoza godzin roboczych odbieramy następnego dnia rano.</p>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--accent btn--lg btn--block">
+            <span>Wyślij wiadomość</span>
+            <Icon name="arrow-right" size={18} />
+          </button>
+
+          {recaptchaSiteKey && (
+            <p class="contact-form__recaptcha">
+              Ta strona jest chroniona przez reCAPTCHA. Obowiązują <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Polityka prywatności</a> i <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Warunki</a> Google.
+            </p>
+          )}
+
+          <p class="contact-form__legal">
+            * Pola wymagane. Administratorem danych jest {site.brandOwner} (właściciel marki Taxun). Szczegóły w <a href="/polityka-prywatnosci">polityce prywatności</a>.
+          </p>
+
+          <div class="contact-form__notice" hidden role="status"></div>
+        </form>
+
+        <aside class="contact-side">
+          <div class="contact-side__card">
+            <h3>Zadzwoń lub napisz</h3>
+            <p>Odbieramy połączenia w godzinach pracy biura</p>
+            <a href={`tel:${site.phoneHref}`} class="btn btn--white btn--block">
+              <Icon name="phone" size={16}/>
+              <span>{site.phoneDisplay}</span>
+            </a>
+            <a href={`mailto:${site.email}`} class="btn btn--ghost-light btn--block">
+              <Icon name="mail" size={16}/>
+              <span>{site.email}</span>
+            </a>
+          </div>
+
+          <div class="contact-side__map">
+            <div class="contact-side__map-bg" aria-hidden="true"></div>
+            <iframe
+              src="https://www.google.com/maps?q=Krak%C3%B3w&output=embed"
+              title="Kraków - miasto, z którego pracuje Taxun"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
+            ></iframe>
+            <div class="contact-side__map-overlay">
+              <h4>Taxun <small>- marka firmy {site.brandOwner}</small></h4>
+              <p>Jesteśmy biurem rachunkowym z Krakowa i obsługujemy firmy z całej Polski.</p>
+              <a href="/ksiegowosc-online" class="btn-arrow">
+                <span>Zobacz, jak wygląda współpraca online</span>
+                <svg class="arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęstsze pytania przed pierwszym kontaktem"
+    items={faq}
+  />
+</BaseLayout>
+
+<style>
+/* Keep the form clear of the sticky header when linked to directly. */
+#formularz { scroll-margin-top: calc(var(--nav-height) + 1rem); }
+
+.channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.channel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.channel:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-200);
+  box-shadow: var(--shadow-md);
+}
+.channel__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.channel h2 { font-size: 1rem; font-weight: 600; color: var(--text-strong); }
+.channel__value { font-family: var(--font-display); font-weight: 600; color: var(--text-strong); font-size: 1rem; }
+.channel__note { font-size: 0.8125rem; color: var(--text-subtle); }
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: start;
+}
+@media (max-width: 960px) { .contact-grid { grid-template-columns: 1fr; } }
+
+.contact-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 1rem;
+}
+.contact-form__head { margin-bottom: 0.5rem; }
+
+/* Skrót do kreatora wyceny - większość zapytań o cenę powinna trafić tam,
+   bo wraca z konkretną kwotą zamiast prośby o rozmowę. */
+.quote-hint {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  padding: 1rem 1.125rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent-50) 0%, var(--white) 100%);
+}
+.quote-hint__icon {
+  flex: 0 0 auto;
+  width: 34px; height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--white);
+  color: var(--accent-700);
+  box-shadow: 0 0 0 1px var(--accent-200), var(--shadow-xs);
+}
+.quote-hint__title { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); }
+.quote-hint__body { margin: 0.25rem 0 0.5rem; font-size: 0.8125rem; line-height: 1.55; color: var(--text-muted); }
+
+.contact-form__honeypot {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
+.contact-form__head p { margin-top: 0.5rem; color: var(--text-muted); }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 0.375rem; }
+.field span { font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+.field input, .field textarea, .field select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline: none;
+  background: var(--white);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+.field textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+
+.check {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.check input { margin-top: 3px; accent-color: var(--accent-600); }
+.check a { color: var(--accent-700); text-decoration: underline; }
+
+.contact-form__recaptcha {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+.contact-form__recaptcha a {
+  color: var(--accent-700);
+  text-decoration: underline;
+}
+
+.contact-form__legal { font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.5rem; }
+
+/* Response-time promise. The old markup let flexbox split the sentence into
+   separate columns; the copy now lives in a single text block next to the icon. */
+.sla {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1rem 1.125rem;
+  margin: 0.25rem 0;
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent-50) 0%, var(--white) 100%);
+}
+.sla__icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--white);
+  color: var(--accent-700);
+  box-shadow: 0 0 0 1px var(--accent-200), var(--shadow-xs);
+}
+.sla__body { min-width: 0; }
+.sla__headline {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--text-strong);
+}
+.sla__headline strong {
+  font-weight: 700;
+  color: var(--accent-700);
+  white-space: nowrap;
+}
+.sla__detail {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+@media (max-width: 400px) {
+  .sla { padding: 0.875rem 1rem; gap: 0.75rem; }
+  .sla__icon { width: 30px; height: 30px; }
+}
+
+.contact-form__notice {
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  background: var(--accent-50);
+  color: var(--accent-700);
+  border: 1px solid var(--accent-200);
+}
+.contact-form__notice.is-error {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border-color: #FECACA;
+}
+
+.contact-side { display: flex; flex-direction: column; gap: 1.5rem; }
+.contact-side__card {
+  background: var(--ink-900);
+  color: var(--white);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.contact-side__card h3 { color: var(--white); }
+.contact-side__card p { color: rgba(255,255,255,0.78); }
+.contact-side__card .btn { margin-top: 0.25rem; }
+
+.contact-side__map {
+  position: relative;
+  height: 360px;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  isolation: isolate;
+}
+.contact-side__map-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(16,185,129,0.18), transparent 50%),
+    linear-gradient(135deg, #DDE5EF 0%, #C9D4E2 100%);
+}
+.contact-side__map-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(15,23,42,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,23,42,0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.7;
+}
+.contact-side__map iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  z-index: 1;
+}
+.contact-side__map-overlay { z-index: 2; }
+.contact-side__map-overlay {
+  position: absolute;
+  inset: auto 16px 16px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 1.125rem;
+  box-shadow: var(--shadow-md);
+}
+.contact-side__map-overlay h4 { font-size: 1rem; }
+.contact-side__map-overlay h4 small { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-subtle); margin-top: 2px; }
+.contact-side__map-overlay p { font-size: 0.875rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem; line-height: 1.5; }
+</style>
+
+<script is:inline>
+  // ── Stare linki prowadzą teraz do kreatora wyceny ──────────────────────
+  // Zanim powstała strona /wycena, pakiet z cennika i temat zapytania trafiały
+  // tutaj jako ?plan= i ?temat=. Takie adresy krążą w mailach i linkach, więc
+  // przepuszczamy je dalej zamiast gubić kontekst zgłoszenia. Skrypt zostaje
+  // wstawiony w treści strony, żeby przekierowanie zadziałało jak najwcześniej.
+  (() => {
+    const params = new URLSearchParams(location.search);
+    const plan = params.get('plan');
+    const topic = (params.get('temat') || '').trim().toLowerCase();
+    const legacyTopics = {
+      wycena: '',
+      wspolpraca: '?tryb=przeniesienie',
+      ksiegowosc: '?tryb=przeniesienie',
+      'zalozenie-firmy': '?tryb=zalozenie',
+      zalozenie: '?tryb=zalozenie',
+      'kadry-place': '?tryb=przeniesienie&uslugi=kadry',
+    };
+
+    if (plan && /^(ryczalt|kpir|fk)-(\d+|custom)$/.test(plan)) {
+      const vat = params.get('vat');
+      location.replace(`/wycena?plan=${encodeURIComponent(plan)}${vat === 'on' || vat === 'off' ? `&vat=${vat}` : ''}`);
+      return;
+    }
+    if (topic in legacyTopics) {
+      location.replace(`/wycena${legacyTopics[topic]}`);
+      return;
+    }
+    if (location.hash === '#wycena') location.replace('/wycena');
+  })();
+</script>
+
+<script>
+  import { createSubmitter } from '../lib/form-client';
+  import { contactEmail } from '../data/site';
+
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
+
+  if (form) {
+    const notice = form.querySelector<HTMLElement>('.contact-form__notice');
+    const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    // Ta sama ścieżka wysyłki co w kreatorze wyceny - różni się tylko adresem
+    // API, nazwą akcji reCAPTCHA i zestawem pól.
+    const submit = createSubmitter({
+      endpoint: '/api/contact',
+      action: 'contact',
+      siteKey: import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined,
+      form,
+      fallbackEmail: contactEmail,
+    });
+
+    const showNotice = (message: string, error = false) => {
+      if (!notice) return;
+      notice.textContent = message;
+      notice.hidden = false;
+      notice.classList.toggle('is-error', error);
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const value = (name: string) => String(data.get(name) ?? '').trim();
+
+      const firstName = value('firstName');
+      const email = value('email');
+      const message = value('message');
+      const privacy = data.get('privacy') === 'on';
+
+      if (!firstName || !email || !message) {
+        showNotice('Uzupełnij wymagane pola formularza.', true);
+        return;
+      }
+      if (!emailPattern.test(email)) {
+        showNotice('Podany adres e-mail wygląda na nieprawidłowy.', true);
+        return;
+      }
+      if (!privacy) {
+        showNotice('Aby wysłać wiadomość, zaakceptuj politykę prywatności.', true);
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+      }
+
+      try {
+        const result = await submit({
+          firstName,
+          lastName: value('lastName'),
+          email,
+          phone: value('phone'),
+          company: value('company'),
+          message,
+          privacy,
+          marketing: data.get('marketing') === 'on',
+        });
+
+        if (result.ok) {
+          showNotice('Dziękujemy! Otrzymaliśmy Twoją wiadomość. Odpowiemy w ciągu 4 godzin roboczych.');
+          form.reset();
+        } else {
+          showNotice(result.message, true);
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '';
+        }
+      }
+    });
+  }
+</script>

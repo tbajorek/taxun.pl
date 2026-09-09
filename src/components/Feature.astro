@@ -1,0 +1,39 @@
+---
+import Icon from './Icon.astro';
+interface Props { icon: string; title: string; description: string }
+const { icon, title, description } = Astro.props;
+---
+<div class="feature">
+  <div class="feature__icon"><Icon name={icon} size={22} /></div>
+  <div class="feature__body">
+    <h3>{title}</h3>
+    <p>{description}</p>
+  </div>
+</div>
+<style>
+.feature {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.feature__icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+}
+.feature h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.feature p {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+</style>

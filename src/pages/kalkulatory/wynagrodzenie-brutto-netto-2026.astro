@@ -1,0 +1,298 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  KUP_PRACOWNIK_STANDARD, KUP_PRACOWNIK_DOJAZD, KUP_TWORCZE,
+  PIT_FREE_AMOUNT, PPK_EMPLOYEE_BASIC, PPK_EMPLOYEE_MAX, PPK_EMPLOYER, PPK_EMPLOYER_MAX,
+  PPK_WPLATA_POWITALNA, PPK_DOPLATA_ROCZNA,
+  EMP_EMERYTALNA, EMP_RENTOWA, EMP_CHOROBOWA, EMP_ZUS_RATE, HEALTH_RATE,
+  EMPLOYER_EMERYTALNA, EMPLOYER_RENTOWA, EMPLOYER_WYPADKOWA, EMPLOYER_FP_FGSP, EMPLOYER_ZUS_RATE,
+  PIT_KWOTA_WOLNA_MIESIECZNA, ULGA_MLODYCH_LIMIT, ULGA_MLODYCH_AGE, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct } from '../../lib/format';
+
+const pct0 = (v: number) => `${Math.round(v * 100)}%`;
+
+const skladkiPracownika = [
+  { nazwa: 'Emerytalna', stawka: pct(EMP_EMERYTALNA) },
+  { nazwa: 'Rentowa', stawka: pct(EMP_RENTOWA) },
+  { nazwa: 'Chorobowa', stawka: pct(EMP_CHOROBOWA) },
+];
+const skladkiPracodawcy = [
+  { nazwa: 'Emerytalna', stawka: pct(EMPLOYER_EMERYTALNA) },
+  { nazwa: 'Rentowa', stawka: pct(EMPLOYER_RENTOWA) },
+  { nazwa: 'Wypadkowa', stawka: `~ ${pct(EMPLOYER_WYPADKOWA)} (zależnie od ryzyka)` },
+  { nazwa: 'Fundusz Pracy + FGŚP', stawka: `~ ${pct(EMPLOYER_FP_FGSP)}` },
+];
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/wynagrodzenie-brutto-netto-2026#webpage',
+  name: `Kalkulator wynagrodzeń brutto-netto ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator wynagrodzeń brutto-netto dla umowy o pracę na ${TAX_YEAR} r. Obsługa PPK, kosztów uzyskania przychodu, ulgi na start.`,
+  url: 'https://taxun.pl/kalkulatory/wynagrodzenie-brutto-netto-2026',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Jakie składki potrąca się z wynagrodzenia brutto?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Z wynagrodzenia brutto potrąca się składki ZUS pracownika (emerytalna ${pct(EMP_EMERYTALNA)}, rentowa ${pct(EMP_RENTOWA)}, chorobowa ${pct(EMP_CHOROBOWA)} - razem ${pct(EMP_ZUS_RATE)}), składkę zdrowotną ${pct(HEALTH_RATE)} od podstawy po odjęciu ZUS oraz zaliczkę na podatek dochodowy (PIT).`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Ile kosztuje pracodawcę pracownik na umowie o pracę?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Całkowity koszt pracodawcy to wynagrodzenie brutto powiększone o składki ZUS pracodawcy - emerytalną, rentową, wypadkową oraz Fundusz Pracy i FGŚP, łącznie około ${pct(EMPLOYER_ZUS_RATE)} wynagrodzenia brutto.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy ulga dla młodych zwalnia z podatku?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Tak. Pracownicy do ukończenia ${ULGA_MLODYCH_AGE}. roku życia korzystają ze zwolnienia z PIT (ulga dla młodych) do limitu ${zl(ULGA_MLODYCH_LIMIT)} przychodu rocznie. Składki ZUS i zdrowotna są nadal potrącane.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator wynagrodzeń brutto-netto ${TAX_YEAR}`}
+  description="Wpisz wynagrodzenie brutto pracownika - pokażemy kwotę na rękę, składki ZUS, podatek i pełne obciążenie pracodawcy. Dla umowy o pracę."
+  metaTitle="Kalkulator wynagrodzeń brutto-netto 2026"
+  metaDescription="Bezpłatny kalkulator wynagrodzeń brutto-netto dla umowy o pracę 2026. PPK, kwota wolna, ulga dla młodych i pełny koszt pracodawcy."
+  breadcrumbLabel="Brutto-netto 2026"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="bn-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="bn-brutto">
+          Wynagrodzenie brutto
+          <small>miesięcznie, w PLN</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="bn-brutto" min="0" step="100" value="8000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / mies.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="bn-kup">
+          Koszty uzyskania przychodu
+        </label>
+        <div class="calc-field__input">
+          <select id="bn-kup">
+            <option value={KUP_PRACOWNIK_STANDARD} selected>Standardowe - {KUP_PRACOWNIK_STANDARD} zł / mies.</option>
+            <option value={KUP_PRACOWNIK_DOJAZD}>Podwyższone (dojazd) - {KUP_PRACOWNIK_DOJAZD} zł / mies.</option>
+            <option value="50pct">Twórcze ({pct0(KUP_TWORCZE)}) - {pct0(KUP_TWORCZE)} wynagrodzenia</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="bn-pit">
+          Wariant PIT
+        </label>
+        <div class="calc-field__input">
+          <select id="bn-pit">
+            <option value="standard" selected>Standard - kwota wolna {PIT_FREE_AMOUNT.toLocaleString('pl-PL')} zł</option>
+            <option value="under26">Ulga dla młodych (do 26 r.ż.)</option>
+            <option value="other-income">Drugi etat - bez kwoty wolnej</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="bn-ppk">
+          PPK (Pracownicze Plany Kapitałowe)
+        </label>
+        <div class="calc-field__input">
+          <select id="bn-ppk">
+            <option value="off" selected>Wyłączone (rezygnacja)</option>
+            <option value={PPK_EMPLOYEE_BASIC}>Wpłata podstawowa {pct0(PPK_EMPLOYEE_BASIC)}</option>
+            <option value={PPK_EMPLOYEE_MAX}>Wpłata maksymalna {pct0(PPK_EMPLOYEE_MAX)}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Na rękę pracownika</div>
+      <div class="calc-result__value">
+        <span id="bn-netto">-</span> <small>zł / mies.</small>
+      </div>
+      <div class="calc-result__sub">
+        Całkowity koszt pracodawcy: <strong id="bn-total">-</strong> miesięcznie.
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Emerytalna (pracownik ${pct(EMP_EMERYTALNA)})`}</span>
+          <span class="calc-breakdown__value" id="bn-emer">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Rentowa (pracownik ${pct(EMP_RENTOWA)})`}</span>
+          <span class="calc-breakdown__value" id="bn-rent">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Chorobowa (pracownik ${pct(EMP_CHOROBOWA)})`}</span>
+          <span class="calc-breakdown__value" id="bn-chor">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Składka zdrowotna (${pct(HEALTH_RATE)})`}</span>
+          <span class="calc-breakdown__value" id="bn-zd">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Zaliczka na PIT</span>
+          <span class="calc-breakdown__value" id="bn-pit-val">-</span>
+        </div>
+        <div class="calc-breakdown__row" id="bn-ppk-row" hidden>
+          <span class="calc-breakdown__label">Składka PPK pracownika</span>
+          <span class="calc-breakdown__value" id="bn-ppk-val">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Suma narzutów pracodawcy</span>
+          <span class="calc-breakdown__value" id="bn-emp">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak rozkłada się Twoje wynagrodzenie</h2>
+    <p>Z każdej kwoty brutto pobierane są <strong>składki ZUS pracownika</strong> ({pct(EMP_ZUS_RATE)}), <strong>składka zdrowotna</strong> ({pct(HEALTH_RATE)} od podstawy po odjęciu ZUS) i <strong>zaliczka na PIT</strong>. Po stronie pracodawcy dochodzi dodatkowy narzut składek (typowo ~{pct(EMPLOYER_ZUS_RATE)} brutto).</p>
+
+    <h3>Składki ZUS pracownika (od brutto)</h3>
+    <table>
+      <thead>
+        <tr><th>Składka</th><th>Stawka</th></tr>
+      </thead>
+      <tbody>
+        {skladkiPracownika.map((s) => (
+          <tr><td>{s.nazwa}</td><td>{s.stawka}</td></tr>
+        ))}
+        <tr><td><strong>Razem</strong></td><td><strong>{pct(EMP_ZUS_RATE)}</strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Składki ZUS pracodawcy (od brutto, dodatkowo)</h3>
+    <table>
+      <thead>
+        <tr><th>Składka</th><th>Stawka</th></tr>
+      </thead>
+      <tbody>
+        {skladkiPracodawcy.map((s) => (
+          <tr><td>{s.nazwa}</td><td>{s.stawka}</td></tr>
+        ))}
+        <tr><td><strong>Razem narzut</strong></td><td><strong>{`~ ${pct(EMPLOYER_ZUS_RATE)}`}</strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Co warto wiedzieć</h3>
+    <ul>
+      <li><strong>{`Kwota wolna ${zl(PIT_FREE_AMOUNT)}`}</strong>{` obniża zaliczkę PIT o ${zl(PIT_KWOTA_WOLNA_MIESIECZNA)} miesięcznie - pod warunkiem złożenia PIT-2 u pracodawcy.`}</li>
+      <li><strong>{`Ulga dla młodych (do ${ULGA_MLODYCH_AGE} r.ż.)`}</strong>{` zwalnia z PIT do limitu ${zl(ULGA_MLODYCH_LIMIT)} rocznie.`}</li>
+      <li><strong>PPK</strong>{` - pracownik wpłaca ${pct(PPK_EMPLOYEE_BASIC)} (lub do ${pct(PPK_EMPLOYEE_MAX)} dobrowolnie), pracodawca dokłada ${pct(PPK_EMPLOYER)} (do ${pct(PPK_EMPLOYER_MAX)}). Państwo daje ${zl(PPK_WPLATA_POWITALNA)} powitalnej + ${zl(PPK_DOPLATA_ROCZNA)} rocznie.`}</li>
+      <li><strong>{`Koszty twórcze ${pct(KUP_TWORCZE)}`}</strong> - dla pracowników, którzy w umowie mają wyodrębnione wynagrodzenie za utwór (artyści, programiści-twórcy). Obniżają podstawę PIT o połowę.</li>
+    </ul>
+
+    <h3>Najczęstsze pytania</h3>
+    <ul>
+      <li><strong>Dlaczego mam mniej niż w internetowych kalkulatorach?</strong> - Większość kalkulatorów nie uwzględnia kwoty wolnej, bo zakłada, że jej nie używasz. My zakładamy standard (PIT-2 złożony).</li>
+      <li><strong>Czy kalkulator obejmuje umowy zlecenia?</strong> - Nie. Umowy cywilnoprawne mają odmienną logikę składkową (zbieg tytułów, brak chorobowej itp.).</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> <a href="https://www.zus.pl/" rel="noopener" target="_blank">zus.pl</a>, <a href="https://www.podatki.gov.pl/pit/" rel="noopener" target="_blank">podatki.gov.pl/pit</a>, ustawa o PIT.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Dla obsługi kadrowo-płacowej z dokumentacją zgodną z Kodeksem pracy - <a href="/kadry-place" style="color: var(--accent-700)">zobacz naszą ofertę kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import {
+    EMP_EMERYTALNA, EMP_RENTOWA, EMP_CHOROBOWA, EMPLOYER_ZUS_RATE,
+    HEALTH_RATE, PIT_RATE_1, PIT_KWOTA_WOLNA_MIESIECZNA, KUP_TWORCZE, PPK_EMPLOYER,
+  } from '../../lib/tax-constants';
+
+  const fmt = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney = (v: number) => `${fmt.format(v)} zł`;
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('bn-brutto') as HTMLInputElement).value) || 0;
+    const kupRaw = ($('bn-kup') as HTMLSelectElement).value;
+    const pitMode = ($('bn-pit') as HTMLSelectElement).value;
+    const ppkRaw = ($('bn-ppk') as HTMLSelectElement).value;
+
+    const emer = brutto * EMP_EMERYTALNA;
+    const rent = brutto * EMP_RENTOWA;
+    const chor = brutto * EMP_CHOROBOWA;
+    const zusPracownik = emer + rent + chor;
+
+    const podstawaZdrowotnej = brutto - zusPracownik;
+    const zdrowotna = podstawaZdrowotnej * HEALTH_RATE;
+
+    const kup = kupRaw === '50pct' ? (brutto - zusPracownik) * KUP_TWORCZE : Number(kupRaw);
+
+    let podstawaPit = brutto - zusPracownik - kup;
+    if (podstawaPit < 0) podstawaPit = 0;
+    podstawaPit = Math.round(podstawaPit);
+
+    let pit = 0;
+    if (pitMode === 'under26') {
+      pit = 0;
+    } else {
+      pit = podstawaPit * PIT_RATE_1;
+      if (pitMode === 'standard') pit = Math.max(0, pit - PIT_KWOTA_WOLNA_MIESIECZNA);
+    }
+
+    const ppkRate = ppkRaw === 'off' ? 0 : Number(ppkRaw);
+    const ppkPracownik = brutto * ppkRate;
+    const ppkPracodawca = ppkRate > 0 ? brutto * PPK_EMPLOYER : 0;
+
+    const netto = brutto - zusPracownik - zdrowotna - pit - ppkPracownik;
+    const narzutPracodawcy = brutto * EMPLOYER_ZUS_RATE;
+    const total = brutto + narzutPracodawcy + ppkPracodawca;
+
+    $span('bn-netto').textContent = fmt0.format(Math.round(netto));
+    $span('bn-total').textContent = fmtMoney0(total);
+    $span('bn-emer').textContent = fmtMoney(emer);
+    $span('bn-rent').textContent = fmtMoney(rent);
+    $span('bn-chor').textContent = fmtMoney(chor);
+    $span('bn-zd').textContent = fmtMoney(zdrowotna);
+    $span('bn-pit-val').textContent = fmtMoney(pit);
+    $span('bn-emp').textContent = fmtMoney(narzutPracodawcy + ppkPracodawca);
+
+    const ppkRow = document.getElementById('bn-ppk-row')!;
+    if (ppkRate > 0) {
+      ppkRow.hidden = false;
+      $span('bn-ppk-val').textContent = fmtMoney(ppkPracownik);
+    } else {
+      ppkRow.hidden = true;
+    }
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#bn-calc input, #bn-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+  calculate();
+</script>

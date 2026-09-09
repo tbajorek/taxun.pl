@@ -1,0 +1,426 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  INCOME_TAX_OPTIONS, PIT_RATE_LINIOWY, CAR_LIMIT, CAR_VAT_OPTIONS, CAR_EKSPLOATACJA_LIMIT,
+  AMORT_NISKOCENNE, CO2_THRESHOLD, VAT_RATE, VAT_MIXED_DEDUCT, VAT_FULL_DEDUCT, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct, num } from '../../lib/format';
+
+// Limity w kolejności od najniższego - tabela i FAQ czytają z tej samej listy
+const limityAut = [
+  { opis: `Spalinowe / hybrydowe (CO₂ ≥ ${CO2_THRESHOLD} g/km)`, limit: CAR_LIMIT.spalinowy },
+  { opis: `Niskoemisyjne PHEV (CO₂ < ${CO2_THRESHOLD} g/km)`, limit: CAR_LIMIT.niskoemisyjny },
+  { opis: 'Elektryczne i wodorowe (CO₂ = 0)', limit: CAR_LIMIT.elektryczny },
+];
+const limityZdanie = `${zl(CAR_LIMIT.spalinowy)}, ${zl(CAR_LIMIT.niskoemisyjny)} lub ${zl(CAR_LIMIT.elektryczny)}`;
+const wariantyVat = CAR_VAT_OPTIONS.map((o) => pct(o.deduct)).join('/');
+// Przykład dla nievatowca: to samo auto liczone od kwoty brutto
+const przykladNetto = 160000;
+const przykladBrutto = przykladNetto * (1 + VAT_RATE);
+const przykladProporcjaVat = CAR_LIMIT.spalinowy / (przykladNetto * (1 + VAT_RATE * (1 - VAT_MIXED_DEDUCT)));
+const przykladProporcjaBezVat = CAR_LIMIT.spalinowy / przykladBrutto;
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/auta-w-leasingu#webpage',
+  name: `Kalkulator auta w leasingu ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator kosztów leasingu samochodu osobowego na ${TAX_YEAR} r. Wpłata wstępna, część kapitałowa i odsetkowa rat, wykup, limit ${limityZdanie} i odliczenie VAT.`,
+  url: 'https://taxun.pl/kalkulatory/auta-w-leasingu',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Jaki jest limit kosztów leasingu samochodu osobowego w ${TAX_YEAR} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Od ${TAX_YEAR} r. limit zaliczenia do kosztów wynosi ${zl(CAR_LIMIT.spalinowy)} dla aut spalinowych (emisja CO₂ ≥ ${CO2_THRESHOLD} g/km), ${zl(CAR_LIMIT.niskoemisyjny)} dla niskoemisyjnych (np. hybrydy plug-in poniżej ${CO2_THRESHOLD} g/km) oraz ${zl(CAR_LIMIT.elektryczny)} dla samochodów elektrycznych i wodorowych. Powyżej limitu raty leasingowe nie stanowią kosztu podatkowego.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Ile VAT można odliczyć od leasingu samochodu?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Przy użytkowaniu mieszanym (firmowo i prywatnie) odliczysz ${pct(VAT_MIXED_DEDUCT)} VAT od rat i wydatków eksploatacyjnych. Pełne ${pct(VAT_FULL_DEDUCT)} VAT przysługuje tylko, gdy auto jest wykorzystywane wyłącznie do działalności, zgłoszone na VAT-26 i prowadzona jest ewidencja przebiegu.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy leasing auta opłaca się na ryczałcie?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Na ryczałcie ewidencjonowanym raty leasingowe nie pomniejszają podatku, bo podatek liczy się od przychodu, a nie od dochodu. Korzyść ogranicza się wtedy do odliczenia VAT (jeśli jesteś czynnym podatnikiem VAT).',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy limit kosztów dotyczy całej raty leasingowej?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Nie. Zgodnie z art. 23 ust. 5c ustawy o PIT limit stosuje się wyłącznie do tej części opłaty, która stanowi spłatę wartości samochodu, czyli do części kapitałowej raty i do wpłaty wstępnej. Część odsetkowa raty jest kosztem w całości, niezależnie od wartości auta.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak rozliczyć wykup samochodu z leasingu?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Wykup do firmy jest odrębnym zakupem. Przy wartości do ${zl(AMORT_NISKOCENNE)} można go zaliczyć do kosztów jednorazowo, powyżej tej kwoty wprowadza się auto do środków trwałych i amortyzuje w ramach limitu ${limityZdanie}. Wykup prywatny nie daje kosztu ani odliczenia VAT, a sprzedaż takiego auta przed upływem 6 lat jest przychodem z działalności.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy leasing samochodu opłaca się, gdy nie jestem VAT-owcem?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Przedsiębiorca zwolniony z VAT nie odlicza podatku od rat, ale cała kwota VAT wchodzi wtedy do kosztów uzyskania przychodu. Uwaga: VAT powiększa też wartość samochodu przyjmowaną do limitu ${limityZdanie}, więc auto szybciej ten limit przekracza.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator auta w leasingu ${TAX_YEAR}`}
+  description="Policz realny koszt leasingu samochodu osobowego: wpłata wstępna, część kapitałowa i odsetkowa rat, wykup, limit kosztowy i odliczenie VAT. Liczy się w przeglądarce."
+  metaTitle={`Kalkulator auta w leasingu ${TAX_YEAR} - limit kosztów`}
+  metaDescription={`Bezpłatny kalkulator leasingu samochodu osobowego ${TAX_YEAR}. Wpłata wstępna, raty, wykup, limit kosztów i odliczenie VAT. Bez logowania.`}
+  breadcrumbLabel="Auto w leasingu"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="leasing-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="ls-cena">
+          Cena pojazdu netto
+          <small>wartość bez VAT</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ls-cena" min="0" step="1000" value="160000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-naped">
+          Rodzaj napędu
+          <small>decyduje o limicie</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="ls-naped">
+            <option value="spalinowy" selected>Spalinowy / hybryda (limit {zl(CAR_LIMIT.spalinowy)})</option>
+            <option value="niskoemisyjny">Niskoemisyjny PHEV (limit {zl(CAR_LIMIT.niskoemisyjny)})</option>
+            <option value="elektryczny">Elektryczny / wodorowy (limit {zl(CAR_LIMIT.elektryczny)})</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-wstepna">
+          Wpłata wstępna netto
+          <small>opłata inicjalna, bez VAT</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ls-wstepna" min="0" step="1000" value="16000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-rata">
+          Rata leasingowa netto
+          <small>miesięcznie, bez VAT</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ls-rata" min="0" step="50" value="4400" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / mies.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-okres">
+          Liczba rat
+          <small>okres umowy</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ls-okres" min="1" step="1" value="36" inputmode="numeric"/>
+          <span class="calc-field__suffix">mies.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-wykup">
+          Kwota wykupu netto
+          <small>opłata końcowa, bez VAT</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ls-wykup" min="0" step="500" value="1600" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-wykup-cel">
+          Wykup
+          <small>do firmy czy prywatnie</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="ls-wykup-cel">
+            <option value="firma" selected>Na firmę - koszt i odliczenie VAT</option>
+            <option value="prywatny">Prywatnie - bez kosztu i bez VAT</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-vat">
+          Rozliczenie VAT
+          <small>status i sposób użytkowania</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="ls-vat">
+            {CAR_VAT_OPTIONS.map((o) => (
+              <option value={o.value} selected={o.value === 'mieszany'}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ls-podatek">
+          Forma opodatkowania
+          <small>stawka oszczędności</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="ls-podatek">
+            {INCOME_TAX_OPTIONS.map((o) => (
+              <option value={o.value} selected={o.value === PIT_RATE_LINIOWY}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Realny koszt leasingu</div>
+      <div class="calc-result__value">
+        <span id="ls-real">-</span> <small>zł / cały okres</small>
+      </div>
+      <div class="calc-result__sub">
+        Łączna korzyść (VAT + podatek): <strong id="ls-korzysc">-</strong>. <span id="ls-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Suma opłat brutto (wstępna + raty + wykup)</span>
+          <span class="calc-breakdown__value" id="ls-brutto">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">VAT do odliczenia</span>
+          <span class="calc-breakdown__value" id="ls-vatodl">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Limit kosztowy auta</span>
+          <span class="calc-breakdown__value" id="ls-limit">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Proporcja dla części kapitałowej</span>
+          <span class="calc-breakdown__value" id="ls-prop">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Kapitał (wstępna + raty) w kosztach</span>
+          <span class="calc-breakdown__value" id="ls-kapital">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Odsetki w kosztach - bez limitu</span>
+          <span class="calc-breakdown__value" id="ls-odsetki">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wykup w kosztach</span>
+          <span class="calc-breakdown__value" id="ls-wykup-kup">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Koszt podatkowy (KUP) razem</span>
+          <span class="calc-breakdown__value" id="ls-kup">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Oszczędność na podatku dochodowym</span>
+          <span class="calc-breakdown__value" id="ls-podosz">-</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="calc-hint" id="ls-hint" hidden></p>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy koszt leasingu samochodu osobowego</h2>
+    <p>Samochód osobowy w leasingu rozliczasz na trzech poziomach: <strong>VAT</strong> ({`odliczenie ${wariantyVat}`}), <strong>podatek dochodowy</strong> (opłaty w kosztach, część z nich w ramach limitu) i <strong>realny wydatek z konta</strong>. Kalkulator pokazuje wszystkie trzy - razem z wpłatą wstępną i wykupem, bo to one często decydują o wyniku.</p>
+
+    <h3>{`Limit kosztowy w ${TAX_YEAR} r.`}</h3>
+    <table>
+      <thead>
+        <tr><th>Rodzaj auta</th><th>Limit w kosztach</th></tr>
+      </thead>
+      <tbody>
+        {limityAut.map((l) => (
+          <tr><td set:html={l.opis.replace('<', '&lt;')}/><td>{zl(l.limit)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+    <p>Jeśli wartość auta przekracza limit, opłaty zaliczasz w koszty <strong>proporcjonalnie</strong> - w części odpowiadającej stosunkowi limitu do wartości pojazdu. Uwaga na jedną rzecz: obniżony limit {zl(CAR_LIMIT.spalinowy)} objął od stycznia {TAX_YEAR} r. również umowy leasingu <strong>zawarte wcześniej</strong>. Przepis przejściowy chroni tylko auta wprowadzone do ewidencji środków trwałych przed 1 stycznia {TAX_YEAR} r., a leasingu operacyjnego to nie dotyczy.</p>
+
+    <h3>Kapitał i odsetki - to nie to samo</h3>
+    <p>Limit nie obejmuje całej raty. Zgodnie z art. 23 ust. 5c ustawy o PIT stosuje się go wyłącznie do <strong>tej części opłaty, która stanowi spłatę wartości samochodu</strong>, czyli do części kapitałowej. <strong>Część odsetkowa jest kosztem w całości</strong>, nawet gdy auto kosztowało dwa razy tyle, ile wynosi limit. Przy drogim samochodzie robi to sporą różnicę i dlatego warto trzymać harmonogram z podziałem opłat pod ręką.</p>
+    <p>Kalkulator dzieli opłaty tak samo, jak dzieli je umowa: kapitałem jest wartość auta rozłożona na wpłatę wstępną, raty i wykup, a wszystko, co zapłacisz ponad tę wartość, to odsetki. Jeśli masz harmonogram od leasingodawcy, porównaj z nim wynik - w konkretnej umowie proporcje mogą wyglądać nieco inaczej.</p>
+
+    <h3>Wpłata wstępna</h3>
+    <p>Opłata inicjalna jest opłatą wynikającą z umowy leasingu, więc <strong>wchodzi do kosztów na tych samych zasadach co część kapitałowa rat</strong> - w proporcji do limitu. Przy KPiR prowadzonej metodą uproszczoną księgujesz ją jednorazowo w dacie poniesienia, bez rozliczania w czasie. To najczęstszy powód, dla którego pierwszy rok leasingu wygląda kosztowo zupełnie inaczej niż kolejne.</p>
+
+    <h3>Wykup</h3>
+    <p>Wykup to już osobna transakcja - kupujesz auto, które do tej pory było własnością leasingodawcy. Możliwe scenariusze:</p>
+    <ul>
+      <li><strong>Wykup na firmę do {zl(AMORT_NISKOCENNE)}</strong> - możesz zaliczyć go do kosztów jednorazowo.</li>
+      <li><strong>Wykup na firmę powyżej {zl(AMORT_NISKOCENNE)}</strong> - auto trafia do środków trwałych i rozliczasz je przez amortyzację, w ramach limitu liczonego od ceny wykupu (a nie od pierwotnej ceny auta).</li>
+      <li><strong>Wykup prywatny</strong> - żadnego kosztu, żadnego odliczenia VAT. Za to sprzedaż takiego auta <strong>przed upływem 6 lat</strong> od wykupu jest przychodem z działalności i trzeba ją opodatkować.</li>
+    </ul>
+
+    <h3>VAT - również gdy nie jesteś VAT-owcem</h3>
+    <ul>
+      <li><strong>{pct(VAT_FULL_DEDUCT)} VAT</strong> - auto wyłącznie do działalności, zgłoszone na druku VAT-26, z prowadzoną ewidencją przebiegu (kilometrówką VAT).</li>
+      <li><strong>{pct(VAT_MIXED_DEDUCT)} VAT</strong> - użytek mieszany, czyli standard przy jednoosobowej działalności.</li>
+      <li><strong>{`${pct(0)} VAT`}</strong> - przedsiębiorca zwolniony z VAT. Nie odliczasz nic, ale cała kwota podatku wchodzi wtedy do kosztów uzyskania przychodu.</li>
+    </ul>
+    <p>Nievatowiec ma tu jednak haczyk: nieodliczony VAT <strong>powiększa wartość samochodu przyjmowaną do limitu</strong>. Auto za {zl(przykladNetto)} netto to dla niego {zl(przykladBrutto)} brutto, więc przy limicie {zl(CAR_LIMIT.spalinowy)} w koszty wchodzi nie {num(przykladProporcjaVat * 100, 0, 0)}%, a około {num(przykladProporcjaBezVat * 100, 0, 0)}% części kapitałowej. Im droższe auto, tym mocniej to boli - i tym częściej warto policzyć, czy rejestracja do VAT nie wyjdzie taniej.</p>
+
+    <h3>Eksploatacja</h3>
+    <p>Paliwo, serwis, opony i myjnia to osobna kategoria. Przy użytku mieszanym zaliczysz do kosztów <strong>{pct(CAR_EKSPLOATACJA_LIMIT)} wydatku</strong> (art. 23 ust. 1 pkt 46a ustawy o PIT), przy aucie wyłącznie firmowym - całość. Ten limit nie ma nic wspólnego z limitem wartości auta i kalkulator go nie liczy.</p>
+
+    <h3>Co kalkulator upraszcza</h3>
+    <ul>
+      <li>Podział na kapitał i odsetki jest szacunkiem z ceny auta i sumy opłat - realny harmonogram bywa inny, zwłaszcza przy zmiennej stopie.</li>
+      <li>Nie liczymy eksploatacji ani składek AC i GAP - te ostatnie mają własny limit, liczony osobno od wartości pojazdu.</li>
+      <li>Zakładamy jedną stawkę podatku przez cały okres umowy i pomijamy zmianę formy opodatkowania w trakcie leasingu.</li>
+      <li>Na ryczałcie opłaty nie obniżają podatku - zostaje korzyść z VAT, o ile jesteś czynnym podatnikiem.</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> art. 23 ust. 1 pkt 46a i 47a oraz ust. 5a - 5d ustawy o PIT, art. 22d ustawy o PIT, art. 86a ustawy o VAT, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Wynik jest szacunkowy. Pełne rozliczenie leasingu, wykupu i eksploatacji policzymy w <a href="/kontakt" style="color: var(--accent-700)">bezpłatnej konsultacji</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { CAR_LIMIT, VAT_RATE, CAR_VAT_OPTIONS, AMORT_NISKOCENNE } from '../../lib/tax-constants';
+
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+  const fmtPct = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+  const num = (id: string) => Number(($(id) as HTMLInputElement).value) || 0;
+
+  function vatDeductRate(value: string): number {
+    return CAR_VAT_OPTIONS.find((o) => o.value === value)?.deduct ?? 0.5;
+  }
+
+  function calculate() {
+    const cena = num('ls-cena');
+    const naped = ($('ls-naped') as HTMLSelectElement).value as keyof typeof CAR_LIMIT;
+    const wstepna = num('ls-wstepna');
+    const rata = num('ls-rata');
+    const okres = Math.max(1, num('ls-okres'));
+    const wykup = num('ls-wykup');
+    const wykupDoFirmy = ($('ls-wykup-cel') as HTMLSelectElement).value === 'firma';
+    const odliczenieVat = vatDeductRate(($('ls-vat') as HTMLSelectElement).value);
+    const stawka = Number(($('ls-podatek') as HTMLSelectElement).value);
+
+    const limit = CAR_LIMIT[naped];
+    // Nieodliczony VAT wchodzi zarówno do wartości auta, jak i do kosztu (art. 23 ust. 5a i 5d PIT)
+    const mnoznikKosztu = 1 + VAT_RATE * (1 - odliczenieVat);
+
+    const wartoscDlaLimitu = cena * mnoznikKosztu;
+    const proporcja = Math.min(1, limit / Math.max(1, wartoscDlaLimitu));
+
+    const sumaRatNetto = rata * okres;
+
+    // Podział opłat na kapitał i odsetki: kapitałem jest wartość auta, resztę stanowią
+    // odsetki. Wpłata wstępna i wykup to w całości spłata wartości, więc kapitał ukryty
+    // w ratach to tyle, ile z ceny auta zostaje po ich odjęciu.
+    const kapitalDoSplatyWRatach = Math.max(0, cena - wstepna - wykup);
+    const kapitalWRatach = Math.min(kapitalDoSplatyWRatach, sumaRatNetto);
+    const odsetki = Math.max(0, sumaRatNetto - kapitalWRatach);
+
+    // Część kapitałowa - objęta proporcją limitu
+    const kupWstepna = wstepna * mnoznikKosztu * proporcja;
+    const kupKapitalRat = kapitalWRatach * mnoznikKosztu * proporcja;
+    const kupKapital = kupWstepna + kupKapitalRat;
+    // Część odsetkowa - koszt w całości, limit jej nie dotyczy (art. 23 ust. 5c PIT)
+    const kupOdsetki = odsetki * mnoznikKosztu;
+
+    // Wykup to odrębny zakup: własna wartość początkowa i własna proporcja limitu
+    const wartoscWykupu = wykup * mnoznikKosztu;
+    const proporcjaWykupu = Math.min(1, limit / Math.max(1, wartoscWykupu));
+    const kupWykup = wykupDoFirmy ? wartoscWykupu * proporcjaWykupu : 0;
+
+    const kup = kupKapital + kupOdsetki + kupWykup;
+    const oszczednoscPodatek = kup * stawka;
+
+    // VAT: przy wykupie prywatnym faktura idzie na osobę fizyczną, więc nic nie odliczasz
+    const vatOplat = (wstepna + sumaRatNetto) * VAT_RATE * odliczenieVat;
+    const vatWykupu = wykupDoFirmy ? wykup * VAT_RATE * odliczenieVat : 0;
+    const vatOdliczony = vatOplat + vatWykupu;
+
+    const sumaBrutto = (wstepna + sumaRatNetto + wykup) * (1 + VAT_RATE);
+    const realnyKoszt = sumaBrutto - vatOdliczony - oszczednoscPodatek;
+    const korzysc = vatOdliczony + oszczednoscPodatek;
+
+    $span('ls-real').textContent = fmt0.format(Math.round(realnyKoszt));
+    $span('ls-korzysc').textContent = fmtMoney0(korzysc);
+    $span('ls-brutto').textContent = fmtMoney0(sumaBrutto);
+    $span('ls-vatodl').textContent = fmtMoney0(vatOdliczony);
+    $span('ls-limit').textContent = fmtMoney0(limit);
+    $span('ls-prop').textContent = fmtPct(proporcja);
+    $span('ls-kapital').textContent = fmtMoney0(kupKapital);
+    $span('ls-odsetki').textContent = fmtMoney0(kupOdsetki);
+    $span('ls-wykup-kup').textContent = wykupDoFirmy ? fmtMoney0(kupWykup) : 'wykup prywatny - 0 zł';
+    $span('ls-kup').textContent = fmtMoney0(kup);
+    $span('ls-podosz').textContent = fmtMoney0(oszczednoscPodatek);
+
+    $span('ls-note').textContent = stawka === 0
+      ? (odliczenieVat === 0
+        ? 'Ryczałt bez VAT - żadna z opłat nie daje tu korzyści podatkowej.'
+        : 'Na ryczałcie opłaty nie obniżają podatku - zostaje sam odliczony VAT.')
+      : (proporcja < 1 ? `Auto przekracza limit - kapitał wchodzi w koszty w ${fmtPct(proporcja)}.` : '');
+
+    // Uwagi pojawiają się tylko wtedy, gdy naprawdę dotyczą wpisanych danych
+    const uwagi: string[] = [];
+    if (odliczenieVat === 0) {
+      uwagi.push(`Bez odliczenia VAT cała kwota podatku wchodzi do kosztów, ale powiększa też wartość auta liczoną do limitu - tutaj do ${fmtMoney0(wartoscDlaLimitu)}.`);
+    }
+    if (odsetki === 0 && sumaRatNetto > 0) {
+      uwagi.push('Suma wpłaty wstępnej, rat i wykupu nie przekracza ceny auta, więc kalkulator nie widzi tu części odsetkowej. Sprawdź kwoty w harmonogramie.');
+    }
+    if (wykupDoFirmy && wykup > 0 && wykup * mnoznikKosztu > AMORT_NISKOCENNE) {
+      uwagi.push(`Wykup powyżej ${fmtMoney0(AMORT_NISKOCENNE)} to środek trwały - w kosztach rozliczysz go przez amortyzację, a nie jednorazowo.`);
+    }
+    if (!wykupDoFirmy && wykup > 0) {
+      uwagi.push('Przy wykupie prywatnym pamiętaj o 6 latach: sprzedaż auta przed upływem 6 lat od wykupu jest przychodem z działalności.');
+    }
+    const hint = $span('ls-hint');
+    hint.textContent = uwagi.join(' ');
+    hint.hidden = uwagi.length === 0;
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#leasing-calc input, #leasing-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

@@ -1,0 +1,1435 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { foreignTax, hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  KASA_LIMIT_ROCZNY,
+  KUP_TWORCZE,
+  KUP_TWORCZE_LIMIT,
+  DZIELO_RUD_DNI,
+  PIT_RATE_LINIOWY,
+  PKD_NOWA_OD,
+  RYCZALT_DORADZTWO,
+  RYCZALT_LIMIT,
+  RYCZALT_LIMIT_EUR,
+  RYCZALT_PROJEKTOWANIE,
+  RYCZALT_USLUGI,
+} from '../lib/tax-constants';
+import { num, pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaReklama = pct(RYCZALT_DORADZTWO);
+const stawkaProjektowanie = pct(RYCZALT_PROJEKTOWANIE);
+const stawkaUslugi = pct(RYCZALT_USLUGI);
+const stawkaLiniowa = pct(PIT_RATE_LINIOWY);
+const kosztyAutorskie = pct(KUP_TWORCZE);
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * W marketingu spotykamy zarówno freelancerów zwolnionych z VAT, jak i agencje
+ * rozliczające koszty, stąd wybór kolumny jako parametr.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Freelancer bez VAT, kilka faktur sprzedaży miesięcznie'),
+  priceRow('ryczalt', 10, 'withVat', 'Freelancer rozliczający VAT w kraju'),
+  priceRow('ryczalt', 30, 'withVat', 'Specjalista z większą liczbą faktur i subskrypcji'),
+  priceRow('kpir', 10, 'withVat', 'Agencja rozliczająca koszty, budżety mediowe i podwykonawców'),
+  priceRow('fk', 10, 'noVat', 'Agencja prowadzona w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt dla freelancera od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'briefcase',
+    title: 'Agencja marketingowa i reklamowa',
+    description: 'Agencja rozlicza własne przychody, budżety mediowe klientów oraz faktury od podwykonawców. Do tego dochodzą zakupy w Meta, Google i innych platformach, które generują osobne obowiązki podatkowe.',
+    points: [
+      'Rozliczanie budżetów reklamowych przenoszonych na klienta',
+      'Podatek u źródła i roczna informacja IFT-2R',
+      'Współpraca z freelancerami na umowach B2B i cywilnoprawnych',
+    ],
+  },
+  {
+    icon: 'trending-up',
+    title: 'Freelancer marketingowy',
+    description: 'Specjalista SEO, social media manager, specjalista od kampanii płatnych czy analityk pracujący na własny rachunek. Najwięcej do wygrania jest tu na etapie ustalenia właściwej stawki ryczałtu.',
+    points: [
+      `Analiza zakresu usług pod kątem stawki ${stawkaReklama} lub ${stawkaUslugi}`,
+      'Rozdzielenie przychodów opodatkowanych różnymi stawkami',
+      'Import usług przy zakupie zagranicznych narzędzi i subskrypcji',
+    ],
+  },
+  {
+    icon: 'sparkle',
+    title: 'Projektant graficzny, UX i UI',
+    description: `Ta grupa ma własną stawkę ryczałtu, o której mało kto wie. Usługi w zakresie specjalistycznego projektowania są opodatkowane inaczej niż typowa działalność usługowa, o czym piszemy niżej.`,
+    points: [
+      'Weryfikacja grupowania PKWiU dla projektowania graficznego i interfejsów',
+      'Rozliczanie licencji na czcionki, zdjęcia i oprogramowanie',
+      'Faktury dla klientów zagranicznych i rejestracja do VAT-UE',
+    ],
+  },
+  {
+    icon: 'star',
+    title: 'Fotograf, kamerzysta i montażysta',
+    description: 'W tej grupie stawki potrafią się różnić w obrębie jednej firmy. Usługi fotograficzne mają jedną stawkę, a produkcja i postprodukcja materiałów wideo bywa kwalifikowana inaczej.',
+    points: [
+      'Rozdzielenie przychodów z fotografii, produkcji i montażu',
+      'Amortyzacja sprzętu, obiektywów i licencji na oprogramowanie',
+      'Sprzedaż dla klientów indywidualnych i obowiązek kasy fiskalnej',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'Twórca internetowy',
+    description: 'Influencer, youtuber, podcaster, streamer i twórca treści UGC. Przychody pochodzą z kilku źródeł jednocześnie, a część z nich w ogóle nie ma formy przelewu od polskiej firmy.',
+    points: [
+      'Rozliczanie współprac z markami, także barterowych',
+      'Przychody z platform reklamowych i programów afiliacyjnych',
+      'Faktury dla podmiotów zagranicznych i informacje podsumowujące VAT-UE',
+    ],
+  },
+];
+
+/**
+ * Tabela stawek ryczałtu. Stawki pochodzą ze stałych podatkowych, więc zmiana
+ * przepisów wymaga poprawki wyłącznie w src/lib/tax-constants.ts.
+ */
+const rates = [
+  { service: 'Usługi reklamowe, badanie rynku i opinii publicznej', code: 'PKWiU dział 73', rate: stawkaReklama, featured: false },
+  { service: 'Usługi fotograficzne', code: 'PKWiU 74.2', rate: stawkaReklama, featured: false },
+  { service: 'Doradztwo związane z zarządzaniem', code: 'PKWiU dział 70', rate: stawkaReklama, featured: false },
+  { service: 'Usługi w zakresie specjalistycznego projektowania', code: 'PKWiU 74.1', rate: stawkaProjektowanie, featured: true },
+  { service: 'Produkcja filmów, postprodukcja, montaż i animacja', code: 'PKWiU 59.11, 59.12', rate: stawkaUslugi, featured: false },
+  { service: 'Public relations i komunikacja', code: 'PKWiU 70.21', rate: stawkaUslugi, featured: false },
+  { service: 'Pozostała działalność usługowa, nieujęta w innych pozycjach', code: 'brak odrębnej pozycji', rate: stawkaUslugi, featured: false },
+];
+
+const taxForms = [
+  {
+    badge: 'freelancer bez zespołu',
+    featured: true,
+    title: `Ryczałt ${stawkaReklama}, ${stawkaProjektowanie} lub ${stawkaUslugi}`,
+    body: 'Podatek liczy się od przychodu, bez pomniejszania go o koszty. Sprawdza się u specjalisty, który pracuje sam, a jego wydatki firmowe ograniczają się do sprzętu, subskrypcji i księgowości.',
+    note: 'Koszty nie obniżają podatku, trzeba rozdzielić przychody między stawki, a wspólne rozliczenie z małżonkiem i ulga na dzieci przepadają.',
+  },
+  {
+    badge: 'agencja z kosztami',
+    title: `Podatek liniowy ${stawkaLiniowa}`,
+    body: 'Podatek liczy się od dochodu, więc każdy koszt realnie obniża podstawę. To zwykle właściwa ścieżka dla agencji, która kupuje budżety mediowe, płaci podwykonawcom i inwestuje w sprzęt.',
+    note: 'Nie ma tu kwoty wolnej, a składkę zdrowotną liczy się od dochodu. Przy niskich kosztach ryczałt zwykle wypada lepiej.',
+  },
+  {
+    badge: 'przy niższych dochodach',
+    title: 'Skala podatkowa',
+    body: 'Skala bywa rozsądnym wyborem na początku działalności, przy niższych dochodach albo wtedy, gdy zależy Ci na wspólnym rozliczeniu z małżonkiem lub na uldze na dzieci.',
+    note: 'Przy wyższych dochodach warto policzyć łączny efekt drugiego progu i składki zdrowotnej, zanim podejmiesz decyzję.',
+  },
+];
+
+const foreignDuties = [
+  {
+    icon: 'globe',
+    title: 'Podatek u źródła i informacja IFT-2R',
+    paragraphs: [
+      'Wynagrodzenie wypłacane zagranicznemu podmiotowi za usługi reklamowe co do zasady podlega zryczałtowanemu podatkowi u źródła. Umowy o unikaniu podwójnego opodatkowania zwykle pozwalają uniknąć jego poboru, ale warunkiem jest posiadanie certyfikatu rezydencji podatkowej usługodawcy.',
+      'Nawet jeśli podatku nie pobierasz, obowiązek informacyjny zostaje. Roczną informację IFT-2R składa się w terminie trzech miesięcy od zakończenia roku podatkowego, osobno dla każdego zagranicznego kontrahenta. Agencja kupująca reklamy na kilku platformach składa więc kilka formularzy.',
+    ],
+    points: [
+      'Weryfikujemy, których płatności obowiązek dotyczy, w cenie abonamentu',
+      'Pilnujemy kompletności certyfikatów rezydencji',
+      `Przygotowujemy i składamy informacje IFT-2R w terminie, za ${foreignTax.ift2rFirst} zł netto za pierwszego kontrahenta i ${foreignTax.ift2rNext} zł za każdego kolejnego`,
+    ],
+  },
+  {
+    icon: 'file',
+    title: 'Import usług i deklaracja VAT-9M',
+    paragraphs: [
+      'Ta pułapka dotyczy przede wszystkim osób zwolnionych z VAT. Zakup usługi od zagranicznego podmiotu, na przykład subskrypcji narzędzia graficznego, hostingu, licencji na zdjęcia czy reklam w mediach społecznościowych, oznacza import usług. Podatnik zwolniony z VAT musi wtedy zarejestrować się do VAT-UE, naliczyć krajową stawkę podatku, zapłacić go i złożyć deklarację VAT-9M do 25. dnia następnego miesiąca.',
+      'W praktyce wygląda to tak, że freelancer bez VAT wykupuje subskrypcję za kilkadziesiąt złotych i nie ma pojęcia, że właśnie powstał u niego obowiązek rejestracyjny i deklaracyjny. Czynny podatnik VAT rozlicza import usług neutralnie, więc problem go nie dotyczy.',
+    ],
+    points: [
+      'Sprawdzamy, czy i od kiedy obowiązek Cię dotyczy, w cenie abonamentu',
+      'Przeprowadzamy rejestrację do VAT-UE, również w cenie abonamentu',
+      `Rozliczamy import usług: u czynnego podatnika VAT bez dopłat, u zwolnionego za ${foreignTax.vat9m} zł netto za miesiąc z takim zakupem`,
+    ],
+  },
+];
+
+const collabs = [
+  {
+    icon: 'share',
+    title: 'Barter nie jest neutralny podatkowo',
+    description: 'To najczęstsze nieporozumienie w tej branży. Otrzymanie produktu lub usługi w zamian za publikację jest w świetle prawa podatkowego odpłatnym świadczeniem usług. Obie strony osiągają przychód i obie wystawiają fakturę na wartość świadczenia. Brak przepływu pieniędzy niczego nie zmienia.',
+    note: 'Podstawą opodatkowania jest wartość rynkowa, a jej zaniżenie w umowie bywa kwestionowane. Warto barter opisać na piśmie i wskazać wartość obu świadczeń. Pomagamy przygotować się do takiej współpracy, zanim paczka trafi do Ciebie.',
+  },
+  {
+    icon: 'globe',
+    title: 'Przychody z platform reklamowych',
+    description: 'Udostępnianie powierzchni reklamowej i uczestnictwo w programach partnerskich to dla polskiego przedsiębiorcy świadczenie usługi na rzecz podmiotu zagranicznego. Jeśli platforma ma siedzibę w innym kraju Unii Europejskiej, miejscem opodatkowania jest ten kraj, a Ty wystawiasz fakturę z odwrotnym obciążeniem i składasz informację podsumowującą VAT-UE.',
+    note: `Obowiązek ten dotyczy również podatników zwolnionych z VAT. W podatku dochodowym kwalifikacja bywa sporna: część interpretacji traktuje te przychody jako sprzedaż miejsca reklamowego ze stawką ${stawkaUslugi}, część jako usługi reklamowe ze stawką ${stawkaReklama}.`,
+  },
+  {
+    icon: 'link',
+    title: 'Programy afiliacyjne i wsparcie od odbiorców',
+    description: 'Prowizje z programów partnerskich rozliczamy jak przychód z działalności, z uwzględnieniem kraju siedziby partnera. Wpłaty otrzymywane przez platformy wspierania twórców wymagają osobnej analizy, ponieważ ich kwalifikacja zależy od tego, czy wiąże się z nimi jakiekolwiek świadczenie wzajemne.',
+    note: 'Przy kilku źródłach przychodu porządkujemy je na starcie, żeby ewidencja od pierwszego miesiąca odpowiadała temu, co faktycznie wpływa na konto.',
+  },
+];
+
+const team = [
+  {
+    icon: 'users',
+    title: 'Umowy o dzieło i zlecenia',
+    description: `Prowadzimy dokumentację i rozliczenia dla współpracowników na umowach cywilnoprawnych. Pamiętaj, że zawarcie umowy o dzieło z osobą, z którą nie łączy Cię stosunek pracy, trzeba zgłosić do Zakładu Ubezpieczeń Społecznych w terminie ${DZIELO_RUD_DNI} dni od jej zawarcia. Obowiązek dotyczy również umów, od których nie odprowadza się składek.`,
+  },
+  {
+    icon: 'award',
+    title: `Honorarium autorskie i koszty ${kosztyAutorskie}`,
+    description: `Jeżeli Twój zespół tworzy utwory i przenosi do nich prawa, część wynagrodzenia można rozliczyć jako honorarium autorskie z kosztami uzyskania przychodu w wysokości ${kosztyAutorskie}. Roczny limit tych kosztów wynosi ${zl(KUP_TWORCZE_LIMIT)} na osobę.`,
+  },
+  {
+    icon: 'file',
+    title: 'Sam zapis w umowie nie wystarczy',
+    description: 'Potrzebne jest wyodrębnienie honorarium, wskazanie, jakiego utworu dotyczy, oraz ewidencja utworów przyjętych od twórcy. Pomagamy ułożyć ten proces tak, aby przeszedł ewentualną kontrolę, a nie tylko dobrze wyglądał w umowie.',
+  },
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów lub księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'VAT, transakcje zagraniczne i KSeF',
+    description: 'Ustalamy miejsce opodatkowania usługi, obsługujemy rejestrację do VAT-UE i przygotowujemy informacje podsumowujące. Faktury wysyłamy i odbieramy w KSeF.',
+    points: [
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Import usług, deklaracje VAT-9M i informacje podsumowujące VAT-UE',
+      'Faktury walutowe przeliczane po kursie NBP',
+    ],
+  },
+  {
+    icon: 'tag',
+    title: 'Koszty typowe dla branży',
+    description: 'Znamy strukturę kosztów agencji i freelancera. Wiemy, które wydatki bywają kwestionowane, i sygnalizujemy to zawczasu, a nie dopiero przy rocznym rozliczeniu.',
+    points: [
+      'Sprzęt, oprogramowanie, licencje na zdjęcia, czcionki i muzykę',
+      'Podróże na sesje, plany zdjęciowe i wydarzenia branżowe',
+      'Rozgraniczenie kosztów reklamy od kosztów reprezentacji, których nie zalicza się do kosztów podatkowych',
+    ],
+  },
+  {
+    icon: 'shield',
+    title: 'ZUS, ulgi i kontakt z urzędami',
+    description: 'Naliczamy składki właściciela działalności i pilnujemy progów przychodowych wpływających na składkę zdrowotną. W kontaktach z urzędem skarbowym i ZUS wspieramy Cię dokumentacją: kompletujemy zestawienia z ksiąg i przygotowujemy wyjaśnienia dotyczące ujęcia zdarzeń.',
+    points: [
+      'Obsługa ZUS właściciela JDG w cenie abonamentu',
+      'Ulga na start i preferencyjne składki dla rozpoczynających działalność',
+      'Wnioski o interpretację indywidualną w sprawie stawki ryczałtu',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.' },
+  { icon: 'zap', title: 'Dokumenty bez wizyt w biurze', description: 'Faktury i potwierdzenia płatności przesyłasz przez portal klienta albo zdjęciem, które odczytujemy automatycznie. Nie musisz niczego drukować ani dowozić.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twoje umowy i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Analiza zakresu usług i wybór formy opodatkowania', description: 'Sprawdzamy, które stawki ryczałtu wchodzą w grę i czy w Twoim przypadku nie pojawia się problem byłego pracodawcy.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające faktycznemu zakresowi działalności, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start albo preferencyjne składki.' },
+  { title: 'VAT-R i VAT-UE', description: 'Rejestrujemy do VAT, jeśli jest to potrzebne, oraz do VAT-UE, jeśli będziesz kupować zagraniczne narzędzia albo fakturować kontrahentów unijnych.' },
+  { title: 'Uprawnienia w KSeF i pełnomocnictwo UPL-1', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury wychodziły i przychodziły bez Twojego udziału. Natomiast dzięki UPL-1 podpisujemy za Ciebie deklaracje i JPK.' },
+  { title: 'Onboarding w portalu klienta', description: 'Od pierwszego miesiąca masz dostęp do dokumentów, deklaracji i bieżącego stanu rozliczeń.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Rozmawiamy o zakresie Twoich usług, strukturze przychodów i o tym, skąd pochodzą Twoi klienci. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje w marketingu?',
+    a: `Zależy od rodzaju usług. Usługi reklamowe oraz badanie rynku mieszczą się w stawce ${stawkaReklama}. Usługi w zakresie specjalistycznego projektowania, czyli między innymi projektowanie graficzne i projektowanie interfejsów, mają stawkę ${stawkaProjektowanie}. Produkcja i postprodukcja materiałów wideo oraz public relations są zwykle kwalifikowane do stawki ${stawkaUslugi}. O stawce decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności, a nie kod PKD. Znaczenie obu klasyfikacji tłumaczymy w <a href="/slownik">słowniku księgowym</a>.`,
+  },
+  {
+    q: `Jestem grafikiem i rozliczam się stawką ${stawkaUslugi}. Czy to błąd?`,
+    a: `Warto to sprawdzić. Ustawodawca przewidział dla usług w zakresie specjalistycznego projektowania odrębną stawkę ${stawkaProjektowanie}, a Krajowa Informacja Skarbowa wielokrotnie uznawała stosowanie do nich stawki ${stawkaUslugi} za nieprawidłowe. Ocena zależy od tego, jak faktycznie wygląda Twoja praca. Przeglądamy to na bezpłatnej konsultacji i mówimy wprost, jak oceniamy ryzyko.`,
+  },
+  {
+    q: 'Czy mogę mieć w jednej firmie kilka stawek ryczałtu?',
+    a: 'Tak i w tej branży jest to sytuacja typowa. Ryczałt liczy się wtedy osobno dla każdego rodzaju działalności, a warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody. Prowadzimy taką ewidencję w ramach abonamentu, bez dopłat.',
+  },
+  {
+    q: 'Kupuję reklamy w Meta i Google. O czym muszę pamiętać?',
+    a: `O dwóch rzeczach jednocześnie. Po pierwsze, o podatku u źródła i rocznej informacji IFT-2R, którą składa się w terminie trzech miesięcy od zakończenia roku podatkowego, osobno dla każdego zagranicznego kontrahenta. Po drugie, o rozliczeniu importu usług. Oba obowiązki bierzemy na siebie. Weryfikacja, których płatności to dotyczy, jest w cenie abonamentu, a za przygotowanie i złożenie IFT-2R doliczamy ${foreignTax.ift2rFirst} zł netto za pierwszego kontrahenta i ${foreignTax.ift2rNext} zł za każdego kolejnego. Reklamy w dwóch serwisach to więc ${foreignTax.ift2rFirst + foreignTax.ift2rNext} zł rocznie.`,
+  },
+  {
+    q: 'Jestem zwolniony z VAT. Czy zakup zagranicznej subskrypcji mnie dotyczy?',
+    a: `Tak i jest to najczęściej pomijany obowiązek w tej branży. Zakup usługi od zagranicznego podmiotu oznacza import usług. Podatnik zwolniony z VAT musi zarejestrować się do VAT-UE, naliczyć krajową stawkę podatku, zapłacić go i złożyć deklarację VAT-9M do 25. dnia następnego miesiąca. Czynny podatnik VAT rozlicza import usług neutralnie. Rejestrację do VAT-UE przeprowadzamy w cenie abonamentu, a deklarację VAT-9M rozliczamy za ${foreignTax.vat9m} zł netto, wyłącznie za miesiące, w których taki zakup faktycznie wystąpił.`,
+  },
+  {
+    q: 'Jak rozliczyć współpracę barterową z marką?',
+    a: 'Barter jest w świetle prawa podatkowego odpłatnym świadczeniem usług, więc obie strony osiągają przychód i obie wystawiają fakturę na wartość świadczenia. Podstawą opodatkowania jest wartość rynkowa. Brak przepływu pieniędzy niczego tu nie zmienia. Warto barter opisać na piśmie i wskazać wartość obu świadczeń.',
+  },
+  {
+    q: 'Jak rozliczacie przychody z platform reklamowych i afiliacji?',
+    a: 'Jako świadczenie usług na rzecz podmiotu zagranicznego. Jeśli platforma ma siedzibę w innym kraju Unii Europejskiej, wystawiasz fakturę z odwrotnym obciążeniem i składasz informację podsumowującą VAT-UE, także jako podatnik zwolniony z VAT. W podatku dochodowym kwalifikacja tych przychodów bywa sporna, więc omawiamy z Tobą oba stanowiska, a przy większej skali rekomendujemy wniosek o interpretację indywidualną.',
+  },
+  {
+    q: 'Czy mogę skorzystać z ulgi IP Box, skoro tworzę treści?',
+    a: 'Nie. IP Box dotyczy zamkniętego katalogu kwalifikowanych praw własności intelektualnej, wśród których jest między innymi autorskie prawo do programu komputerowego. Prawa do grafiki, tekstu, zdjęcia czy nagrania wideo do tego katalogu nie należą. Mówimy o tym wprost, żeby nie budzić nadziei, których przepisy nie potwierdzają. Warunki ulgi opisujemy na podstronie dla <a href="/ksiegowosc-dla-programistow">branży IT</a>.',
+  },
+  {
+    q: `Czy w działalności gospodarczej mogę stosować koszty autorskie ${kosztyAutorskie}?`,
+    a: `Nie. Autorskie koszty uzyskania przychodu w wysokości ${kosztyAutorskie} dotyczą umów o pracę, zlecenia i o dzieło, a nie przychodów z działalności gospodarczej. Mogą natomiast dotyczyć osób, które zatrudniasz lub z którymi zawierasz umowy cywilnoprawne. Roczny limit tych kosztów wynosi ${zl(KUP_TWORCZE_LIMIT)} na osobę.`,
+  },
+  {
+    q: 'Zatrudniam freelancerów na umowy o dzieło. O czym muszę pamiętać?',
+    a: `Między innymi o zgłoszeniu umowy do Zakładu Ubezpieczeń Społecznych w terminie ${DZIELO_RUD_DNI} dni od jej zawarcia. Obowiązek dotyczy umów zawieranych z osobami, z którymi nie łączy Cię stosunek pracy, także tych, od których nie odprowadza się składek. Zgłoszenia składamy za Ciebie w ramach <a href="/kadry-place">obsługi kadrowej</a>.`,
+  },
+  {
+    q: 'Czy potrzebuję kasy fiskalnej?',
+    a: `Jeżeli świadczysz usługi wyłącznie dla firm, nie. Obowiązek dotyczy sprzedaży na rzecz osób fizycznych nieprowadzących działalności gospodarczej. Jeśli fotografujesz śluby albo prowadzisz szkolenia dla klientów indywidualnych, sprawdzamy, czy mieścisz się jeszcze w limicie ${zl(KASA_LIMIT_ROCZNY)} rocznie, który zwalnia z tego obowiązku. Pomaga w tym nasz <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulator limitu kasy fiskalnej</a>.`,
+  },
+  {
+    q: 'Do jakiego przychodu mogę rozliczać się ryczałtem?',
+    a: `Ryczałt przysługuje przedsiębiorcom, których przychody w roku poprzednim nie przekroczyły równowartości ${num(RYCZALT_LIMIT_EUR)} euro, czyli ${zl(RYCZALT_LIMIT)} na 2026 rok. Pilnujemy tego progu za Ciebie i sygnalizujemy zawczasu, gdyby zbliżał się moment przejścia na KPiR.`,
+  },
+  {
+    q: 'Czy obsługa zagranicznych zakupów podnosi cenę abonamentu?',
+    a: `Nie zmienia stawki abonamentu. Weryfikacja obowiązków, rejestracja do VAT-UE, informacje podsumowujące i rozliczenie importu usług u czynnego podatnika VAT są w cenie pakietu. Osobno rozliczamy tylko dwie rzeczy, które są realną dodatkową pracą: deklarację VAT-9M u podatnika zwolnionego z VAT za ${foreignTax.vat9m} zł netto za miesiąc, w którym import usług wystąpił, oraz roczną informację IFT-2R za ${foreignTax.ift2rFirst} zł za pierwszego kontrahenta i ${foreignTax.ift2rNext} zł za każdego kolejnego. Pełny katalog opłat znajdziesz w <a href="/cennik#dodatkowe">cenniku usług dodatkowych</a>.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla agencji lub freelancera?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${tables.find((t) => t.id === 'ryczalt')?.buckets[0].withVat} zł netto. KPiR, po którą zwykle sięgają agencje rozliczające koszty, zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto. Cały <a href="/cennik">cennik</a> jest publiczny.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const path = '/ksiegowosc-dla-marketingu-i-branz-kreatywnych';
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla marketingu i branż kreatywnych', href: path },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}${path}#service`,
+  name: 'Księgowość dla branży marketingu, reklamy i zawodów kreatywnych',
+  serviceType: 'Usługi księgowe dla agencji marketingowych i branż kreatywnych',
+  description: 'Obsługa księgowa agencji marketingowych i reklamowych, freelancerów, projektantów, fotografów i twórców internetowych. Ryczałt, KPiR i pełna księgowość, VAT, import usług, podatek u źródła i rozliczanie barteru.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}${path}`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Agencje marketingowe i reklamowe, specjaliści marketingu, projektanci graficzni, fotografowie, twórcy internetowi',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla marketingu i branż kreatywnych',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: [r.form, r.vatLabel, `${r.docs} dokumentów / mies.`].filter(Boolean).join(', '),
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla marketingu i branż kreatywnych"
+  description={`Księgowość dla agencji marketingowych, freelancerów i twórców. Stawki ryczałtu ${stawkaReklama}, ${stawkaProjektowanie} i ${stawkaUslugi}, barter i import usług. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla branży marketingu, reklamy i zawodów kreatywnych"
+    description="Prowadzimy rozliczenia agencji marketingowych, freelancerów i twórców internetowych. Pomagamy dobrać stawkę ryczałtu do faktycznego zakresu usług, pilnujemy obowiązków związanych z zakupem reklam i narzędzi za granicą oraz rozliczamy współprace barterowe. Ty zajmujesz się kampaniami, a my formalnościami."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla marketingu i branż kreatywnych' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=marketing" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Księgowość dopasowana do tego, co naprawdę robisz</h2>
+        <p>Marketing i branże kreatywne to nie jeden zawód, tylko kilkanaście. Fotograf, projektant interfejsów i specjalista od kampanii płatnych mają zupełnie inne obowiązki podatkowe, choć wszyscy trafiają pod to samo hasło. Poniżej opisujemy pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="mkt-segments">
+        {segments.map((s) => (
+          <article class="mkt-segment">
+            <div class="mkt-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Stawki ryczałtu ───────────────────────────────────────────────── -->
+  <section class="section section--alt" id="stawka-ryczaltu">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Ryczałt w branży kreatywnej</span>
+        <h2>Trzy stawki ryczałtu, które mylą całą branżę</h2>
+        <p>To pytanie wraca w każdej rozmowie z osobą z marketingu. Odpowiedź nie zależy od nazwy stanowiska ani od kodu PKD wpisanego w CEIDG. Decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności. Poniżej pokazujemy, jak te stawki rozkładają się w praktyce.</p>
+      </div>
+
+      <div class="mkt-rates">
+        <div class="mkt-rates__head">
+          <span>Rodzaj usług</span>
+          <span>Klasyfikacja</span>
+          <span class="mkt-rates__value">Typowa stawka</span>
+        </div>
+        {rates.map((r) => (
+          <div class={`mkt-rates__row ${r.featured ? 'mkt-rates__row--featured' : ''}`}>
+            <span class="mkt-rates__service">{r.service}</span>
+            <span class="mkt-rates__code">{r.code}</span>
+            <span class="mkt-rates__value"><strong>{r.rate}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <div class="mkt-warning">
+        <div class="mkt-warning__icon"><Icon name="search" size={22}/></div>
+        <div>
+          <h3>Stawka, o której prawie nikt nie pisze</h3>
+          <p>Zwróć uwagę na stawkę {stawkaProjektowanie}. Ustawodawca przewidział ją wprost dla usług w zakresie specjalistycznego projektowania. Mieści się w nich projektowanie graficzne oraz projektowanie interfejsów użytkownika. W 2025 roku Krajowa Informacja Skarbowa wielokrotnie uznawała za nieprawidłowe stanowiska projektantów, którzy stosowali do tych usług stawkę {stawkaUslugi}.</p>
+          <p>Jeśli projektujesz grafikę, identyfikacje wizualne albo interfejsy i rozliczasz się stawką {stawkaUslugi}, warto to sprawdzić, zanim zrobi to za Ciebie urząd. Zaległość liczona za kilka lat wstecz bywa dotkliwa.</p>
+        </div>
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Kilka stawek w jednej firmie to w tej branży sytuacja typowa. Agencja prowadząca kampanie i jednocześnie projektująca materiały graficzne ma przychody objęte różnymi stawkami. Ryczałt liczy się wtedy osobno dla każdego rodzaju działalności, a warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody. Prowadzimy taką ewidencję w ramach abonamentu, bez dopłat.</span>
+      </p>
+
+      <aside class="mkt-approach">
+        <div class="mkt-approach__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Jak do tego podchodzimy</h3>
+          <p>Nie obiecujemy niższej stawki, bo nie od nas ona zależy. Przechodzimy przez faktyczny zakres Twoich usług, porównujemy go z treścią umów i mówimy wprost, jak oceniamy ryzyko.</p>
+          <p>Jeśli sytuacja jest niejednoznaczna, przygotowujemy wniosek o interpretację indywidualną. To jedyny sposób, żeby uzyskać ochronę prawną, zamiast opierać się na cudzych domysłach z forum.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Forma opodatkowania ───────────────────────────────────────────── -->
+  <section class="section" id="forma-opodatkowania">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt, podatek liniowy czy skala podatkowa</h2>
+        <p>W tej branży odpowiedź częściej wypada na korzyść rozliczenia kosztowego niż w innych zawodach. Agencja kupuje budżety mediowe, płaci podwykonawcom, wykupuje subskrypcje narzędzi i inwestuje w sprzęt. Freelancer bez zespołu ma zwykle strukturę odwrotną.</p>
+      </div>
+
+      <div class="mkt-forms">
+        {taxForms.map((f) => (
+          <article class={`mkt-form ${f.featured ? 'mkt-form--featured' : ''}`}>
+            <span class={`mkt-form__badge ${f.featured ? 'mkt-form__badge--featured' : ''}`}>{f.badge}</span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+            <p class="mkt-form__note">{f.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="chart" size={16}/>
+        <span>Jest tu jedna kwestia, o której przy ryczałcie łatwo zapomnieć. Jeśli przenosisz na klienta budżet reklamowy i wykazujesz go jako swój przychód, ryczałt liczysz również od tej kwoty, mimo że w całości przekazujesz ją dalej. Przy większych budżetach potrafi to całkowicie odwrócić opłacalność ryczałtu. Sposób ułożenia umowy z klientem ma tu bezpośredni wpływ na podatek, dlatego omawiamy to przed wyborem formy opodatkowania.</span>
+      </p>
+
+      <p class="mkt-lede-center">Prawo do ryczałtu przysługuje przedsiębiorcom, których przychody w roku poprzednim nie przekroczyły równowartości {num(RYCZALT_LIMIT_EUR)} euro, czyli {zl(RYCZALT_LIMIT)} na 2026 rok. Przed podjęciem decyzji przygotowujemy porównanie na Twoich liczbach, z uwzględnieniem składki zdrowotnej i możliwych odliczeń.</p>
+
+      <div class="mkt-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakupy zagraniczne ────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakupy-zagraniczne">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obowiązki, o których łatwo zapomnieć</span>
+        <h2>Kupujesz reklamy i narzędzia za granicą? To rodzi dwa osobne obowiązki</h2>
+        <p>Jest to najczęściej pomijany obszar w całej branży. Zakup reklam w Meta czy Google oraz subskrypcje narzędzi graficznych i marketingowych wyglądają jak zwykły koszt, a w rzeczywistości uruchamiają dwa niezależne mechanizmy podatkowe. Oba mają swoje terminy i oba bywają sprawdzane przez urzędy.</p>
+      </div>
+
+      <div class="mkt-duties">
+        {foreignDuties.map((d) => (
+          <article class="mkt-duty">
+            <div class="mkt-duty__icon"><Icon name={d.icon} size={22}/></div>
+            <h3>{d.title}</h3>
+            {d.paragraphs.map((p) => <p>{p}</p>)}
+            <ul>
+              {d.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      <div class="mkt-fees">
+        <div class="mkt-fees__head">
+          <h3>Co z tego jest w cenie, a za co dopłacasz</h3>
+          <p>Piszemy to wprost, bo w tej branży dopłaty potrafią zaskoczyć dopiero na pierwszej fakturze. Zasada jest prosta: płacisz za pracę, która faktycznie powstaje, a nie za samo posiadanie zagranicznego kontrahenta.</p>
+        </div>
+        <ul class="mkt-fees__list">
+          <li class="mkt-fees__item mkt-fees__item--free">
+            <span class="mkt-fees__price">w cenie</span>
+            <span class="mkt-fees__name">Weryfikacja obowiązków, rejestracja do VAT-UE i informacje podsumowujące</span>
+          </li>
+          <li class="mkt-fees__item mkt-fees__item--free">
+            <span class="mkt-fees__price">w cenie</span>
+            <span class="mkt-fees__name">Rozliczenie importu usług, jeśli jesteś czynnym podatnikiem VAT</span>
+          </li>
+          <li class="mkt-fees__item">
+            <span class="mkt-fees__price">{foreignTax.vat9m} zł</span>
+            <span class="mkt-fees__name">Deklaracja VAT-9M u podatnika zwolnionego z VAT, wyłącznie za miesiąc, w którym import usług faktycznie wystąpił</span>
+          </li>
+          <li class="mkt-fees__item">
+            <span class="mkt-fees__price">{foreignTax.ift2rFirst} zł</span>
+            <span class="mkt-fees__name">Roczna informacja IFT-2R za pierwszego zagranicznego kontrahenta, wraz ze skompletowaniem certyfikatu rezydencji</span>
+          </li>
+          <li class="mkt-fees__item">
+            <span class="mkt-fees__price">{foreignTax.ift2rNext} zł</span>
+            <span class="mkt-fees__name">Każda kolejna informacja IFT-2R za ten sam rok, bo powstaje już na zebranych danych</span>
+          </li>
+        </ul>
+        <p class="mkt-fees__foot">Ceny netto. Agencja kupująca reklamy w dwóch serwisach zapłaci za komplet rocznych informacji {foreignTax.ift2rFirst + foreignTax.ift2rNext} zł, czyli mniej niż jednorazową stawkę spotykaną w części biur. Freelancer bez VAT, który raz w roku kupi zagraniczną subskrypcję, dopłaci {foreignTax.vat9m} zł tylko za ten jeden miesiąc.</p>
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="clock" size={16}/>
+        <span>Jeśli prowadzisz działalność od kilku lat i nigdy nie słyszałeś o żadnym z tych obowiązków, warto sprawdzić przeszłe rozliczenia. Przy zawarciu umowy robimy taki przegląd bezpłatnie i mówimy, czy jest się czym przejmować. Zaległości w tym obszarze da się uporządkować, a im wcześniej się to zrobi, tym mniejsze są konsekwencje.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Barter i platformy ────────────────────────────────────────────── -->
+  <section class="section" id="barter-i-platformy">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Współprace i platformy</span>
+        <h2>Barter, współprace z markami i przychody z platform</h2>
+        <p>Twórcy internetowi rzadko mają jedno źródło przychodu i jeszcze rzadziej wszystkie mają formę zwykłego przelewu od polskiej firmy. Poniżej opisujemy trzy sytuacje, które generują najwięcej pytań.</p>
+      </div>
+
+      <div class="mkt-cards">
+        {collabs.map((c) => (
+          <article class="mkt-card">
+            <div class="mkt-card__icon"><Icon name={c.icon} size={22}/></div>
+            <h3>{c.title}</h3>
+            <p>{c.description}</p>
+            <p class="mkt-card__note">{c.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="search" size={16}/>
+        <span>Nie będziemy udawać, że stawka ryczałtu dla przychodów z platform reklamowych jest przesądzona, bo interpretacje bywają rozbieżne. Omawiamy z Tobą oba stanowiska wraz z ryzykami, a przy większej skali przychodów rekomendujemy wniosek o interpretację indywidualną, który daje ochronę prawną. Jeśli obok współprac sprzedajesz własny kurs albo szkolenie, sposób jego dostarczenia zmienia rozliczenie w VAT: kurs nagrany bywa traktowany inaczej niż zajęcia prowadzone na żywo. Opisujemy to na podstronie dla <a href="/ksiegowosc-dla-branzy-edukacyjnej">branży edukacyjnej</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zespół i prawa autorskie ──────────────────────────────────────── -->
+  <section class="section section--alt" id="zespol">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zespół i prawa autorskie</span>
+        <h2>Rozliczanie zespołu, freelancerów i honorariów autorskich</h2>
+        <p>Agencja rzadko pracuje sama. Wokół niej krąży zespół etatowy, grupa freelancerów na własnej działalności i osoby zatrudniane do pojedynczych projektów. Każda z tych form ma inne konsekwencje.</p>
+      </div>
+
+      <div class="mkt-cards">
+        {team.map((t) => (
+          <article class="mkt-card">
+            <div class="mkt-card__icon"><Icon name={t.icon} size={22}/></div>
+            <h3>{t.title}</h3>
+            <p>{t.description}</p>
+          </article>
+        ))}
+      </div>
+
+      <aside class="mkt-approach mkt-approach--warn">
+        <div class="mkt-approach__icon"><Icon name="clock" size={22}/></div>
+        <div>
+          <h3>Uwaga na ulgę IP Box</h3>
+          <p>Zdarza się, że osoby z branży kreatywnej pytają o preferencyjną stawkę dla twórców. Musimy powiedzieć wprost: IP Box dotyczy zamkniętego katalogu kwalifikowanych praw własności intelektualnej, wśród których jest między innymi autorskie prawo do programu komputerowego. Nie obejmuje praw do grafiki, tekstu, zdjęcia ani nagrania wideo.</p>
+          <p>Wolimy powiedzieć to na pierwszej rozmowie, niż budzić nadzieje, których przepisy nie potwierdzają. Warunki ulgi opisujemy szczegółowo na podstronie dla <a href="/ksiegowosc-dla-programistow">branży IT</a>.</p>
+        </div>
+      </aside>
+
+      <div class="mkt-actions">
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Pełna oferta kadr i płac</span>
+        </a>
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="tag" size={16}/>
+        <span>Obsługa kadrowa jest rozliczana za osobę, więc koszt rośnie razem z zespołem, a nie skokowo. Umowa zlecenie lub o dzieło bez ZUS to {hrPricing.find((h) => h.id === 'zlecenie')?.price} zł netto miesięcznie za osobę, umowa o pracę {hrPricing.find((h) => h.id === 'uop')?.price} zł. Minimalny abonament kadrowy wynosi {hrMin} zł niezależnie od liczby zatrudnionych.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Obieg dokumentów jest w pełni elektroniczny, tak jak reszta Twojej pracy - zobacz, jak prowadzimy <a href="/ksiegowosc-online">księgowość online</a>.</p>
+      </div>
+      <div class="mkt-scope">
+        {scope.map((s) => (
+          <article class="mkt-scope__item">
+            <div class="mkt-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="mkt-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia, które nie zabierają czasu przeznaczonego na&nbsp;pracę twórczą</h2>
+          <p class="lede">Osoby z tej branży rzadko mają ochotę i czas na rozmowę z księgową w środku dnia pracy. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="mkt-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow mkt-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="mkt-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="mkt-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section" id="zakladanie-firmy">
+    <div class="container">
+      <div class="mkt-startup">
+        <div class="mkt-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zakładasz działalność? Ustawmy to dobrze od pierwszego dnia</h2>
+          <p class="lede">Rejestracja działalności zajmuje kilkanaście minut, ale decyzje podejmowane przy tej okazji wiążą Cię na cały rok. W tej branży dochodzi jeszcze jedno: pierwszy zakup zagranicznej subskrypcji potrafi uruchomić obowiązki, o których nikt nie uprzedził.</p>
+        </div>
+
+        <ol class="mkt-steps">
+          {startupSteps.map((s, i) => (
+            <li class="mkt-step">
+              <span class="mkt-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="mkt-startup__cols">
+          <div class="mkt-startup__col mkt-startup__col--primary">
+            <span class="mkt-startup__pill mkt-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem: {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="mkt-startup__col">
+            <span class="mkt-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem: {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=marketing" class="btn btn--accent btn--lg mkt-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla agencji i freelancera</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. Poniżej podajemy stawki dla sytuacji najczęściej spotykanych w tej branży.</p>
+      </div>
+
+      <div class="mkt-price">
+        <div class="mkt-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="mkt-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="mkt-price__row">
+            <span class="mkt-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.vatLabel ? `${r.vatLabel}, ` : ''}{r.docs} dokumentów</small>
+            </span>
+            <span class="mkt-price__situation">{r.situation}</span>
+            <span class="mkt-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="mkt-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</span>
+      </p>
+
+      <div class="mkt-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/slownik" class="btn btn--ghost btn--lg">
+          <Icon name="search" size={18}/>
+          <span>Słownik księgowy</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w branży marketingowej"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej działalności"
+    description="Jeśli prowadzisz agencję, pracujesz jako freelancer albo dopiero planujesz założyć działalność w branży kreatywnej, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez zakres Twoich usług, sprawdzimy stawki ryczałtu i powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=marketing"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.mkt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.mkt-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.mkt-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.mkt-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+.mkt-lede-center {
+  margin-top: 1.75rem;
+  text-align: center;
+  max-width: 72ch;
+  margin-inline: auto;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.mkt-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn pozwala ułożyć pięć kart bez pustego miejsca: trzy karty po
+     dwie kolumny w pierwszym rzędzie, dwie po trzy kolumny w drugim. */
+  .mkt-segments { grid-template-columns: repeat(6, 1fr); }
+  .mkt-segments > * { grid-column: span 2; }
+  .mkt-segments > :nth-child(4),
+  .mkt-segments > :nth-child(5) { grid-column: span 3; }
+}
+.mkt-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.mkt-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.mkt-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-segment h3 { font-size: 1.125rem; }
+.mkt-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.mkt-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.mkt-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.mkt-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Tabela stawek ryczałtu ───────────────────────────────────────────── */
+.mkt-rates {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.mkt-rates__head,
+.mkt-rates__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.mkt-rates__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.mkt-rates__row { border-bottom: 1px solid var(--border-subtle); }
+.mkt-rates__row:last-child { border-bottom: none; }
+.mkt-rates__row--featured { background: var(--accent-50); }
+.mkt-rates__service { font-size: 0.9375rem; color: var(--text-strong); font-weight: 600; line-height: 1.45; }
+.mkt-rates__code { font-size: 0.875rem; color: var(--text-subtle); }
+.mkt-rates__value { text-align: right; }
+.mkt-rates__value strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .mkt-rates__head { display: none; }
+  .mkt-rates__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  /* Nazwa usługi zajmuje cały wiersz, a klasyfikacja i stawka stoją obok
+     siebie - dzięki temu stawka nie odjeżdża pod spód, w oderwaniu od nazwy. */
+  .mkt-rates__service { grid-column: 1 / -1; }
+  .mkt-rates__code { grid-column: 1; }
+  .mkt-rates__value { align-self: center; }
+}
+
+/* ── Wyróżniony blok ostrzegawczy ─────────────────────────────────────── */
+.mkt-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--accent-200);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+}
+.mkt-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-warning h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.mkt-warning p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.mkt-warning p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .mkt-warning { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Panel wyjaśniający (ciemny) ──────────────────────────────────────── */
+.mkt-approach {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.mkt-approach__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.mkt-approach--warn .mkt-approach__icon { background: rgba(245,158,11,0.16); color: var(--warning); }
+.mkt-approach h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.mkt-approach p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.mkt-approach p + p { margin-top: 0.75rem; }
+.mkt-approach a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .mkt-approach { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Formy opodatkowania ──────────────────────────────────────────────── */
+.mkt-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .mkt-forms { grid-template-columns: repeat(3, 1fr); } }
+.mkt-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.mkt-form--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.mkt-form__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.mkt-form__badge--featured { background: var(--accent-500); color: var(--ink-950); }
+.mkt-form h3 { font-size: 1.1875rem; }
+.mkt-form p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.mkt-form p.mkt-form__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Obowiązki przy zakupach zagranicznych ────────────────────────────── */
+.mkt-duties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .mkt-duties { grid-template-columns: 1fr 1fr; } }
+.mkt-duty {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.mkt-duty__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-duty h3 { font-size: 1.25rem; }
+.mkt-duty p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.mkt-duty ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.mkt-duty li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.mkt-duty li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Co w cenie, a za co dopłata ──────────────────────────────────────── */
+.mkt-fees {
+  margin-top: 1.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  box-shadow: var(--shadow-sm);
+}
+.mkt-fees__head { max-width: 70ch; }
+.mkt-fees__head h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.mkt-fees__head p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.mkt-fees__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.mkt-fees__item {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.875rem 1.125rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.mkt-fees__item--free {
+  background: var(--accent-50);
+  border-color: var(--accent-200);
+}
+.mkt-fees__price {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mkt-fees__item--free .mkt-fees__price {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mkt-fees__name { font-size: 0.9375rem; color: var(--text); line-height: 1.5; }
+.mkt-fees__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.65;
+}
+@media (max-width: 640px) {
+  .mkt-fees__item {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+/* ── Karty (barter, zespół) ───────────────────────────────────────────── */
+.mkt-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .mkt-cards { grid-template-columns: repeat(3, 1fr); } }
+.mkt-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.mkt-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.mkt-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-card h3 { font-size: 1.125rem; }
+.mkt-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.mkt-card p.mkt-card__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.mkt-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .mkt-scope { grid-template-columns: repeat(2, 1fr); } }
+.mkt-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.mkt-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.mkt-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.mkt-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.mkt-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.mkt-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.mkt-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.mkt-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .mkt-benefits { grid-template-columns: 1fr; } }
+.mkt-benefits .lede { margin-top: 1rem; }
+.mkt-benefits__stats { margin-top: 2rem; }
+.mkt-benefits__link { margin-top: 1.75rem; }
+.mkt-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.mkt-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.mkt-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.mkt-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.mkt-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.mkt-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.mkt-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.mkt-startup__head { max-width: 70ch; }
+.mkt-startup__head .lede { margin-top: 1rem; }
+
+.mkt-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .mkt-steps { grid-template-columns: repeat(3, 1fr); } }
+.mkt-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.mkt-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.mkt-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.mkt-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.mkt-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .mkt-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.mkt-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.mkt-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.mkt-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.mkt-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.mkt-startup__col h3 { font-size: 1.1875rem; }
+.mkt-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.mkt-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.mkt-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.mkt-price__head,
+.mkt-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.mkt-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.mkt-price__row { border-bottom: 1px solid var(--border-subtle); }
+.mkt-price__row:last-child { border-bottom: none; }
+.mkt-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.mkt-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.mkt-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.mkt-price__amount { text-align: right; }
+.mkt-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .mkt-price__head { display: none; }
+  .mkt-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .mkt-price__situation { grid-column: 1 / -1; }
+}
+</style>

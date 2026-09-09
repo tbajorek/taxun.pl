@@ -1,0 +1,232 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  MATERNITY_WEEKS, MATERNITY_WEEKS_MAX, PARENTAL_WEEKS, PARENTAL_RESERVED_WEEKS,
+  MATERNITY_RATE_AVG, MATERNITY_RATE_FULL, PARENTAL_RATE, MATERNITY_WNIOSEK_DNI,
+  ZASILEK_ZUS_POMNIEJSZENIE, ZASILEK_MIESIECY_PODSTAWY, TAX_YEAR, DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { pct } from '../../lib/format';
+
+const wymiarUrlopow = [
+  { dzieci: 'Jedno', mac: `${MATERNITY_WEEKS['1']} tyg.`, rodz: `${PARENTAL_WEEKS['1']} tyg.` },
+  { dzieci: 'Bliźnięta', mac: `${MATERNITY_WEEKS['2']} tyg.`, rodz: `${PARENTAL_WEEKS['2']} tyg.` },
+  { dzieci: 'Troje i więcej', mac: `${MATERNITY_WEEKS['3']} - ${MATERNITY_WEEKS_MAX} tyg.`, rodz: `${PARENTAL_WEEKS['3']} tyg.` },
+];
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/zasilku-macierzynskiego#webpage',
+  name: `Kalkulator zasiłku macierzyńskiego ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator zasiłku macierzyńskiego na ${TAX_YEAR} r. Liczy miesięczne świadczenie i łączną kwotę za urlop macierzyński i rodzicielski w wariancie ${pct(MATERNITY_RATE_AVG)} oraz ${pct(MATERNITY_RATE_FULL)}/${pct(PARENTAL_RATE)}.`,
+  url: 'https://taxun.pl/kalkulatory/zasilku-macierzynskiego',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ile wynosi zasiłek macierzyński w ${TAX_YEAR} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Jeśli złożysz wniosek o cały okres (macierzyński i rodzicielski) w ciągu ${MATERNITY_WNIOSEK_DNI} dni po porodzie, zasiłek wynosi ${pct(MATERNITY_RATE_AVG)} podstawy przez cały okres, a za dodatkowe ${PARENTAL_RESERVED_WEEKS} tygodni części nieprzenoszalnej - ${pct(PARENTAL_RATE)}. Bez takiego wniosku jest to ${pct(MATERNITY_RATE_FULL)} za urlop macierzyński i ${pct(PARENTAL_RATE)} za urlop rodzicielski.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się podstawę zasiłku macierzyńskiego?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Podstawą jest przeciętne miesięczne wynagrodzenie z ${ZASILEK_MIESIECY_PODSTAWY} miesięcy przed urodzeniem dziecka, pomniejszone o składki ZUS pracownika (${pct(ZASILEK_ZUS_POMNIEJSZENIE)}). Dla przedsiębiorców podstawą jest zadeklarowana podstawa wymiaru składki chorobowej.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak długo trwa urlop macierzyński i rodzicielski?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Przy jednym dziecku urlop macierzyński trwa ${MATERNITY_WEEKS['1']} tygodni, a rodzicielski ${PARENTAL_WEEKS['1']} tygodni, z czego ${PARENTAL_RESERVED_WEEKS} tygodni jest nieprzenoszalne dla drugiego rodzica. Przy ciąży mnogiej okresy są dłuższe.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator zasiłku macierzyńskiego ${TAX_YEAR}`}
+  description={`Policz miesięczny zasiłek macierzyński i łączną kwotę świadczenia za urlop macierzyński i rodzicielski. Warianty ${pct(MATERNITY_RATE_AVG)} oraz ${pct(MATERNITY_RATE_FULL)}/${pct(PARENTAL_RATE)}. Liczy się w przeglądarce.`}
+  metaTitle={`Kalkulator zasiłku macierzyńskiego ${TAX_YEAR}`}
+  metaDescription={`Bezpłatny kalkulator zasiłku macierzyńskiego ${TAX_YEAR}. Podstawa, miesięczne świadczenie i łączna kwota za urlop macierzyński i rodzicielski.`}
+  breadcrumbLabel="Zasiłek macierzyński"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="mac-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="mc-brutto">
+          Przeciętne wynagrodzenie brutto
+          <small>{`średnia z ${ZASILEK_MIESIECY_PODSTAWY} mies., w PLN`}</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="mc-brutto" min="0" step="100" value="7000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / mies.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="mc-dzieci">
+          Liczba dzieci z porodu
+        </label>
+        <div class="calc-field__input">
+          <select id="mc-dzieci">
+            <option value="1" selected>Jedno dziecko ({MATERNITY_WEEKS['1']} + {PARENTAL_WEEKS['1']} tyg.)</option>
+            <option value="2">Bliźnięta ({MATERNITY_WEEKS['2']} + {PARENTAL_WEEKS['2']} tyg.)</option>
+            <option value="3">Troje i więcej ({MATERNITY_WEEKS['3']} + {PARENTAL_WEEKS['3']} tyg.)</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="mc-wariant">
+          Wariant wniosku
+        </label>
+        <div class="calc-field__input">
+          <select id="mc-wariant">
+            <option value="usredniony" selected>{`Wniosek w ${MATERNITY_WNIOSEK_DNI} dni - ${pct(MATERNITY_RATE_AVG)} przez cały okres`}</option>
+            <option value="klasyczny">{`Bez łącznego wniosku - ${pct(MATERNITY_RATE_FULL)} i ${pct(PARENTAL_RATE)}`}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Miesięczny zasiłek (okres macierzyński)</div>
+      <div class="calc-result__value">
+        <span id="mc-month">-</span> <small>zł / mies.</small>
+      </div>
+      <div class="calc-result__sub">
+        Łączne świadczenie za cały urlop: <strong id="mc-total">-</strong>. <span id="mc-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Podstawa wymiaru zasiłku</span>
+          <span class="calc-breakdown__value" id="mc-podstawa">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Urlop macierzyński</span>
+          <span class="calc-breakdown__value" id="mc-mac">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Urlop rodzicielski</span>
+          <span class="calc-breakdown__value" id="mc-rodz">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Świadczenie miesięczne - rodzicielski</span>
+          <span class="calc-breakdown__value" id="mc-month-rodz">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy zasiłek macierzyński</h2>
+    <p>{`Zasiłek macierzyński przysługuje za okres urlopu macierzyńskiego i rodzicielskiego. Jego wysokość zależy od `}<strong>podstawy wymiaru</strong>{` oraz od tego, czy złożysz wniosek o cały okres w ciągu ${MATERNITY_WNIOSEK_DNI} dni po porodzie.`}</p>
+
+    <h3>Dwa warianty wysokości</h3>
+    <ul>
+      <li><strong>{`Wniosek w ${MATERNITY_WNIOSEK_DNI} dni (uśredniony)`}</strong>{` - ${pct(MATERNITY_RATE_AVG)} podstawy przez cały urlop macierzyński i rodzicielski. Za dodatkowe ${PARENTAL_RESERVED_WEEKS} tygodni (część nieprzenoszalna dla drugiego rodzica) zasiłek wynosi ${pct(PARENTAL_RATE)}.`}</li>
+      <li><strong>Bez łącznego wniosku</strong>{` - ${pct(MATERNITY_RATE_FULL)} podstawy za urlop macierzyński i ${pct(PARENTAL_RATE)} za urlop rodzicielski.`}</li>
+    </ul>
+
+    <h3>Wymiar urlopów</h3>
+    <table>
+      <thead>
+        <tr><th>Liczba dzieci</th><th>Macierzyński</th><th>Rodzicielski</th></tr>
+      </thead>
+      <tbody>
+        {wymiarUrlopow.map((w) => (
+          <tr><td>{w.dzieci}</td><td>{w.mac}</td><td>{w.rodz}</td></tr>
+        ))}
+      </tbody>
+    </table>
+    <p>{`${PARENTAL_RESERVED_WEEKS} tygodni urlopu rodzicielskiego jest nieprzenoszalne - przepada, jeśli nie wykorzysta go drugi rodzic.`}</p>
+
+    <h3>Podstawa wymiaru</h3>
+    <p>{`Dla pracownika to przeciętne miesięczne wynagrodzenie z ${ZASILEK_MIESIECY_PODSTAWY} miesięcy przed porodem, pomniejszone o składki ZUS (${pct(ZASILEK_ZUS_POMNIEJSZENIE)}). Dla przedsiębiorcy - zadeklarowana podstawa składki chorobowej (po odjęciu ${pct(ZASILEK_ZUS_POMNIEJSZENIE)}).`}</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> Kodeks pracy (urlopy), ustawa zasiłkowa, <a href="https://www.zus.pl/" rel="noopener" target="_blank">zus.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Kalkulator jest szacunkowy. Świadczenia kadrowo-płacowe dla Twoich pracowników prowadzimy w ramach <a href="/kadry-place" style="color: var(--accent-700)">obsługi kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import {
+    ZASILEK_ZUS_POMNIEJSZENIE, ZASILEK_DZIELNIK,
+    MATERNITY_WEEKS, PARENTAL_WEEKS, PARENTAL_RESERVED_WEEKS,
+    MATERNITY_RATE_AVG, MATERNITY_RATE_FULL, PARENTAL_RATE,
+  } from '../../lib/tax-constants';
+
+  const RESERVED_WEEKS = PARENTAL_RESERVED_WEEKS; // część nieprzenoszalna urlopu rodzicielskiego (70%)
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('mc-brutto') as HTMLInputElement).value) || 0;
+    const dzieci = ($('mc-dzieci') as HTMLSelectElement).value;
+    const wariant = ($('mc-wariant') as HTMLSelectElement).value;
+    const mac = MATERNITY_WEEKS[dzieci];
+    const rodz = PARENTAL_WEEKS[dzieci];
+
+    const podstawa = brutto * (1 - ZASILEK_ZUS_POMNIEJSZENIE);
+    const podstawaDzienna = podstawa / ZASILEK_DZIELNIK;
+    const weeklyAt = (rate: number) => podstawaDzienna * 7 * rate;
+
+    let total = 0;
+    let monthlyMain = 0; // okres macierzyński
+    let monthlyRodz = 0;
+
+    if (wariant === 'usredniony') {
+      // 81,5% przez macierzyński + (rodzicielski - 9), 70% za 9 tyg. nieprzenoszalne
+      const weeks815 = mac + (rodz - RESERVED_WEEKS);
+      total = weeklyAt(MATERNITY_RATE_AVG) * weeks815 + weeklyAt(PARENTAL_RATE) * RESERVED_WEEKS;
+      monthlyMain = podstawa * MATERNITY_RATE_AVG;
+      monthlyRodz = podstawa * MATERNITY_RATE_AVG;
+    } else {
+      // 100% macierzyński, 70% rodzicielski
+      total = weeklyAt(MATERNITY_RATE_FULL) * mac + weeklyAt(PARENTAL_RATE) * rodz;
+      monthlyMain = podstawa * MATERNITY_RATE_FULL;
+      monthlyRodz = podstawa * PARENTAL_RATE;
+    }
+
+    $span('mc-month').textContent = fmt2.format(monthlyMain);
+    $span('mc-total').textContent = fmtMoney0(total);
+    $span('mc-podstawa').textContent = fmtMoney2(podstawa);
+    $span('mc-mac').textContent = `${mac} tyg.`;
+    $span('mc-rodz').textContent = `${rodz} tyg. (w tym ${RESERVED_WEEKS} nieprzenoszalne)`;
+    $span('mc-month-rodz').textContent = fmtMoney2(monthlyRodz);
+
+    $span('mc-note').textContent = wariant === 'usredniony'
+      ? `Część nieprzenoszalna (${PARENTAL_RESERVED_WEEKS} tyg.) płatna ${(PARENTAL_RATE * 100).toString().replace('.', ',')}%.`
+      : '';
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#mac-calc input, #mac-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+  calculate();
+</script>

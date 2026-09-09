@@ -1,0 +1,110 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import '../styles/prose.css';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+
+interface TocItem { id: string; label: string }
+interface Props {
+  title: string;
+  description: string;
+  effective: string;
+  toc: TocItem[];
+  breadcrumbLabel: string;
+}
+const { title, description, effective, toc, breadcrumbLabel } = Astro.props;
+
+// Ścieżka szła dotąd tylko do PageHero, więc widoczne okruszki nie miały
+// odpowiednika w danych strukturalnych. Jedna zmienna zasila oba miejsca.
+const breadcrumbs = [{ label: breadcrumbLabel }];
+---
+<BaseLayout title={title} description={description} breadcrumbs={breadcrumbs}>
+  <PageHero
+    eyebrow="Dokumenty"
+    title={title}
+    description={`Obowiązuje od ${effective}. Wersja dokumentu aktualizowana wraz ze zmianami w przepisach.`}
+    breadcrumbs={breadcrumbs}
+  />
+
+  <section class="section legal">
+    <div class="container">
+      <div class="legal__layout">
+        <aside class="legal__toc" aria-label="Spis treści">
+          <div class="legal__toc-inner">
+            <h2>Spis treści</h2>
+            <ol>
+              {toc.map((t) => <li><a href={`#${t.id}`}>{t.label}</a></li>)}
+            </ol>
+            <button class="btn btn--outline btn--sm" id="legal-print">
+              <Icon name="printer" size={14}/>
+              <span>Drukuj dokument</span>
+            </button>
+          </div>
+        </aside>
+        <article class="legal__content prose">
+          <slot />
+        </article>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+.legal { padding: clamp(3rem, 6vw, 5rem) 0; }
+.legal__layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 980px) { .legal__layout { grid-template-columns: 1fr; } }
+
+.legal__toc { position: sticky; top: 100px; }
+@media (max-width: 980px) { .legal__toc { position: static; } }
+.legal__toc-inner {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+.legal__toc h2 { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-700); margin-bottom: 0.875rem; }
+.legal__toc ol { list-style: none; counter-reset: leg; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.legal__toc li { counter-increment: leg; display: flex; align-items: baseline; gap: 0.5rem; line-height: 1.45; }
+.legal__toc li::before {
+  content: '§' counter(leg) '.';
+  flex: 0 0 2rem;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-subtle);
+}
+.legal__toc a { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; color: var(--text-muted); }
+.legal__toc a:hover { color: var(--accent-700); }
+.legal__toc button { width: 100%; }
+
+/* Container-level overrides - typography handled by global .prose rules */
+.legal__content {
+  max-width: 75ch;
+  font-size: 1rem;
+}
+/* First h2 needs no top border/spacing since it's the first element */
+:global(.legal__content h2:first-child) {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+@media print {
+  .site-header, .site-footer, .legal__toc, .to-top, .page-hero__actions { display: none !important; }
+  .page-hero { background: white; color: black; padding: 1rem 0; }
+  .page-hero h1 { color: black; }
+  .legal__layout { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+  const btn = document.getElementById('legal-print');
+  btn?.addEventListener('click', () => window.print());
+</script>

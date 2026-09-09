@@ -1,0 +1,218 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import { CAR_LIMIT, CAR_LIMIT_LEGACY, CO2_THRESHOLD, CO2_TYPICAL, TAX_YEAR, VAT_MIXED_DEDUCT, VAT_FULL_DEDUCT,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct, num } from '../../lib/format';
+
+const limityTabela = [
+  { opis: 'Elektryczne i wodorowe (0 g/km)', limit: CAR_LIMIT.elektryczny },
+  { opis: `Spalinowe / hybrydowe poniżej ${CO2_THRESHOLD} g/km CO₂`, limit: CAR_LIMIT.niskoemisyjny },
+  { opis: `Spalinowe ≥ ${CO2_THRESHOLD} g/km CO₂`, limit: CAR_LIMIT.spalinowy },
+  { opis: `Wprowadzone do ewidencji przed ${TAX_YEAR} r.`, limit: CAR_LIMIT_LEGACY },
+];
+const limityZdanie = `${zl(CAR_LIMIT.spalinowy)}, ${zl(CAR_LIMIT.niskoemisyjny)} lub ${zl(CAR_LIMIT.elektryczny)}`;
+// Przykład proporcji: auto dwa razy droższe niż najniższy limit
+const przykladWartosc = 200000;
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/emisji-co2#webpage',
+  name: `Kalkulator emisji CO₂ - limit kosztów auta ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator emisji CO₂ na ${TAX_YEAR} r. Sprawdź, jaki limit kosztów (${limityZdanie}) obejmie Twój samochód osobowy i jaka część wartości będzie kosztem.`,
+  url: 'https://taxun.pl/kalkulatory/emisji-co2',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Jak emisja CO₂ wpływa na limit kosztów samochodu od ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Od ${TAX_YEAR} r. limit kosztów zależy od emisji CO₂: ${zl(CAR_LIMIT.elektryczny)} dla aut elektrycznych i wodorowych, ${zl(CAR_LIMIT.niskoemisyjny)} dla spalinowych o emisji poniżej ${CO2_THRESHOLD} g/km, oraz ${zl(CAR_LIMIT.spalinowy)} dla spalinowych o emisji ${CO2_THRESHOLD} g/km i wyższej. Większość aut benzynowych i diesli (${CO2_TYPICAL.min} - ${CO2_TYPICAL.max} g/km) trafia do limitu ${zl(CAR_LIMIT.spalinowy)}.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Co z autami wprowadzonymi do firmy przed ${TAX_YEAR} rokiem?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Dla samochodów wprowadzonych do ewidencji środków trwałych przed 1 stycznia ${TAX_YEAR} r. zachowany jest dotychczasowy limit ${zl(CAR_LIMIT_LEGACY)}, niezależnie od emisji CO₂. Przepis przejściowy nie obejmuje jednak leasingu, najmu ani dzierżawy - tam nowe limity obowiązują także dla umów zawartych wcześniej.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się część wartości auta zaliczaną do kosztów?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Jeśli wartość auta przekracza limit, do kosztów (amortyzacja, raty leasingu) zaliczasz je proporcjonalnie - w stosunku limitu do wartości pojazdu. Pozostała część nie stanowi kosztu podatkowego.',
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator emisji CO₂ - limit kosztów auta ${TAX_YEAR}`}
+  description={`Sprawdź, jaki limit kosztów obejmie Twój samochód w firmie: ${limityZdanie}. Na podstawie napędu i emisji CO₂. Liczy się w przeglądarce.`}
+  metaTitle={`Kalkulator emisji CO₂ ${TAX_YEAR} - limit kosztów auta`}
+  metaDescription={`Bezpłatny kalkulator emisji CO₂ ${TAX_YEAR}. Sprawdź limit kosztów samochodu osobowego według emisji i rodzaju napędu. Bez logowania.`}
+  breadcrumbLabel="Emisja CO₂"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="co2-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="co-wartosc">
+          Wartość początkowa auta
+          <small>netto dla vatowca, brutto dla zwolnionego</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="co-wartosc" min="0" step="1000" value="200000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="co-naped">
+          Rodzaj napędu
+        </label>
+        <div class="calc-field__input">
+          <select id="co-naped">
+            <option value="spalinowy" selected>Spalinowy / hybryda</option>
+            <option value="elektryczny">Elektryczny / wodorowy</option>
+            <option value="przed2026">{`Wprowadzony do ewidencji przed ${TAX_YEAR}`}</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field" id="co-emisja-field">
+        <label for="co-emisja">
+          Emisja CO₂
+          <small>wg dowodu rejestracyjnego</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="co-emisja" min="0" step="1" value="120" inputmode="numeric"/>
+          <span class="calc-field__suffix">g/km</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Limit kosztów dla tego auta</div>
+      <div class="calc-result__value">
+        <span id="co-limit">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Do kosztów zaliczysz <strong id="co-proc">-</strong> wartości auta. <span id="co-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wartość auta</span>
+          <span class="calc-breakdown__value" id="co-wartosc-val">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Kwota zaliczana do kosztów</span>
+          <span class="calc-breakdown__value" id="co-kup">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Kwota poza kosztami</span>
+          <span class="calc-breakdown__value" id="co-poza">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>{`Emisja CO₂ a limit kosztów auta od ${TAX_YEAR}`}</h2>
+    <p>Od 1 stycznia {TAX_YEAR} r. limit zaliczenia samochodu osobowego do kosztów (amortyzacja, leasing, najem) zależy od <strong>napędu i emisji CO₂</strong>.</p>
+
+    <h3>{`Limity ${TAX_YEAR}`}</h3>
+    <table>
+      <thead>
+        <tr><th>Auto</th><th>Limit</th></tr>
+      </thead>
+      <tbody>
+        {limityTabela.map((l) => (
+          <tr><td>{l.opis}</td><td>{zl(l.limit)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+    <p>Większość aut benzynowych i diesli emituje {CO2_TYPICAL.min} - {CO2_TYPICAL.max} g CO₂/km, więc trafia do najniższego limitu {zl(CAR_LIMIT.spalinowy)}.</p>
+    <p>Zachowany limit {zl(CAR_LIMIT_LEGACY)} dotyczy aut <strong>wprowadzonych do ewidencji środków trwałych</strong> przed 1 stycznia {TAX_YEAR} r. Przy leasingu, najmie i dzierżawie takiej ochrony nie ma - nowe limity objęły także umowy zawarte wcześniej.</p>
+
+    <h3>Jak działa limit</h3>
+    <p>Jeśli auto jest droższe niż limit, do kosztów zaliczasz je <strong>proporcjonalnie</strong>: limit ÷ wartość auta. Przykładowo auto za {zl(przykladWartosc)} z limitem {zl(CAR_LIMIT.spalinowy)} pozwala zaliczyć w koszty tylko {num((CAR_LIMIT.spalinowy / przykladWartosc) * 100, 0, 0)}% odpisów amortyzacyjnych i rat leasingowych.</p>
+    <p style="font-size: 0.875rem; color: var(--text-muted);">Limit dotyczy podatku dochodowego. Odliczenie VAT ({pct(VAT_MIXED_DEDUCT)}/{pct(VAT_FULL_DEDUCT)}) działa niezależnie - sprawdź <a href="/kalkulatory/auta-w-leasingu">kalkulator auta w leasingu</a>.</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> {`art. 23 ustawy o PIT (w brzmieniu od ${TAX_YEAR} r.)`}, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Planujesz zakup auta do firmy? <a href="/kontakt" style="color: var(--accent-700)">Policzymy optymalny wariant w konsultacji</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { CAR_LIMIT, CAR_LIMIT_LEGACY, CO2_THRESHOLD, TAX_YEAR } from '../../lib/tax-constants';
+
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+  const fmtPct = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const wartosc = Number(($('co-wartosc') as HTMLInputElement).value) || 0;
+    const naped = ($('co-naped') as HTMLSelectElement).value;
+    const emisja = Number(($('co-emisja') as HTMLInputElement).value) || 0;
+
+    const emisjaField = document.getElementById('co-emisja-field')!;
+    emisjaField.hidden = naped !== 'spalinowy';
+
+    let limit = CAR_LIMIT.spalinowy;
+    let note = '';
+    if (naped === 'elektryczny') {
+      limit = CAR_LIMIT.elektryczny;
+      note = 'Auto bezemisyjne - najwyższy limit.';
+    } else if (naped === 'przed2026') {
+      limit = CAR_LIMIT_LEGACY;
+      note = `Wprowadzone do ewidencji przed ${TAX_YEAR} - zachowany limit ${fmt0.format(limit)} zł.`;
+    } else {
+      // spalinowy - zależy od emisji
+      if (emisja < CO2_THRESHOLD) {
+        limit = CAR_LIMIT.niskoemisyjny;
+        note = `Niska emisja (< ${CO2_THRESHOLD} g/km) - limit ${fmt0.format(limit)} zł.`;
+      } else {
+        limit = CAR_LIMIT.spalinowy;
+        note = `Emisja ≥ ${CO2_THRESHOLD} g/km - limit ${fmt0.format(limit)} zł.`;
+      }
+    }
+
+    const proporcja = wartosc > 0 ? Math.min(1, limit / wartosc) : 1;
+    const kup = Math.min(wartosc, limit);
+    const poza = Math.max(0, wartosc - limit);
+
+    $span('co-limit').textContent = fmt0.format(limit);
+    $span('co-proc').textContent = fmtPct(proporcja);
+    $span('co-wartosc-val').textContent = fmtMoney0(wartosc);
+    $span('co-kup').textContent = fmtMoney0(kup);
+    $span('co-poza').textContent = fmtMoney0(poza);
+    $span('co-note').textContent = note;
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#co2-calc input, #co2-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

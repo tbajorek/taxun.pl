@@ -1,0 +1,69 @@
+---
+import type { Cover } from '../lib/covers';
+
+interface Props {
+  cover: Cover;
+  /**
+   * Szerokość, jaką zdjęcie zajmie w layoucie - przeglądarka wybiera po niej
+   * wariant z srcset, zanim policzy CSS. Zła wartość to albo rozmyte zdjęcie,
+   * albo pobrany plik kilka razy większy niż potrzebny.
+   */
+  sizes: string;
+  /**
+   * Zdjęcie widoczne bez przewijania (hero artykułu, pierwsza karta listy).
+   * Ładuje się od razu i z wysokim priorytetem, bo zwykle jest elementem LCP.
+   * Pozostałe zdjęcia czekają, aż użytkownik do nich dojedzie.
+   */
+  priority?: boolean;
+  class?: string;
+}
+
+const { cover, sizes, priority = false, class: className } = Astro.props;
+---
+<picture class={className}>
+  {cover.sources.map((source) => (
+    <source type={source.type} srcset={source.srcset} sizes={sizes} />
+  ))}
+  <!--
+    `src` to awaryjny JPEG z manifestu, nie oryginał: oryginały nie są
+    commitowane. Pobierają go wyłącznie przeglądarki, które nie znają ani
+    AVIF, ani WebP - przy trafieniu w którykolwiek `<source>` nie rusza.
+  -->
+  <img
+    src={cover.src}
+    alt={cover.alt}
+    width={cover.width}
+    height={cover.height}
+    loading={priority ? 'eager' : 'lazy'}
+    decoding="async"
+    fetchpriority={priority ? 'high' : 'auto'}
+  />
+</picture>
+
+<style>
+/*
+ * Kadrowanie sterują zmienne ustawiane przez rodzica na kontenerze zdjęcia.
+ * Zmienne CSS dziedziczą się przez granicę komponentu, w przeciwieństwie do
+ * stylów o zasięgu komponentu - dzięki temu każde miejsce (karta na liście,
+ * hero artykułu) układa zdjęcie po swojemu, a sam komponent zostaje jeden.
+ *
+ * --cover-position: `absolute`, gdy zdjęcie ma wypełnić gotowy kadr rodzica.
+ * --cover-height:   wysokość obrazu; `100%` przy wypełnianiu kadru.
+ * --cover-ratio:    proporcja kadru, gdy to zdjęcie wyznacza wysokość.
+ * --cover-scale:    powiększenie (efekt najechania na kartę).
+ */
+picture {
+  display: block;
+  position: var(--cover-position, static);
+  inset: 0;
+}
+img {
+  display: block;
+  width: 100%;
+  height: var(--cover-height, auto);
+  aspect-ratio: var(--cover-ratio, auto);
+  object-fit: cover;
+  transform: scale(var(--cover-scale, 1));
+  transition: transform var(--transition-base);
+}
+</style>

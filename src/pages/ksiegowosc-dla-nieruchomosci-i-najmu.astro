@@ -1,0 +1,1599 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { foreignTax, hrMin, hrPricing, personalReturns, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  AGROTURYSTYKA_POKOJE_LIMIT,
+  AMORTYZACJA_MIESZKAN_KONIEC,
+  DAC7_OD,
+  DAC7_RAPORT_DO,
+  KASA_NAJEM_WARUNKI,
+  NAJEM_KROTKOTERMINOWY_UE_OD,
+  PKD_NOWA_OD,
+  PODATEK_NIERUCHOMOSCI_MAX,
+  PODATEK_NIERUCHOMOSCI_UCHWALA,
+  RYCZALT_NAJEM,
+  RYCZALT_NAJEM_PROG,
+  RYCZALT_NAJEM_PROG_MALZONKOWIE,
+  RYCZALT_NAJEM_WYZSZY,
+  RYCZALT_WOLNY_ZAWOD,
+  TAX_YEAR,
+  VAT_RATE,
+  VAT_RATE_OBNIZONA,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { pct, zl, zlAuto } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaNajem = pct(RYCZALT_NAJEM);
+const stawkaNajemWyzsza = pct(RYCZALT_NAJEM_WYZSZY);
+const progNajem = zl(RYCZALT_NAJEM_PROG);
+const progMalzonkowie = zl(RYCZALT_NAJEM_PROG_MALZONKOWIE);
+const vatObnizony = pct(VAT_RATE_OBNIZONA);
+const vatPodstawowy = pct(VAT_RATE);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+/** Dopłata za miesiąc, w którym u podatnika zwolnionego z VAT wystąpił import usług. */
+const modulVatUe = foreignTax.vat9m;
+const pitNajem = personalReturns.rent;
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts, żeby tabela na tej
+ * podstronie nie mogła rozjechać się z cennikiem po zmianie stawek.
+ *
+ * U wynajmującego o kolumnie decyduje status w VAT i liczba dokumentów, a nie
+ * liczba rezerwacji: sprzedaż z każdej platformy podsumowuje jedno zestawienie
+ * okresowe, a czynsz z umowy długoterminowej to jedna pozycja miesięcznie.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Wynajem długoterminowy, właściciel korzystający ze zwolnienia z VAT'),
+  priceRow('ryczalt', 10, 'withVat', 'Apartament na doby u czynnego podatnika VAT, jeden kanał rezerwacji'),
+  priceRow('ryczalt', 30, 'withVat', 'Kilka lokali albo obiekt sezonowy, więcej faktur kosztowych'),
+  priceRow('kpir', 10, 'withVat', 'Obiekt rozliczający koszty: media, sprzątanie, wyposażenie, remonty'),
+  priceRow('fk', 10, 'withVat', 'Zarządca najmu albo obiekt prowadzony w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'home', label: `Ryczałt dla wynajmującego od ${ryczalt} zł netto` },
+  { icon: 'globe', label: 'Rozliczamy prowizje Booking i Airbnb' },
+  { icon: 'file', label: 'Sprzedaż z zestawień okresowych, nie z rezerwacji' },
+];
+
+const segments = [
+  {
+    icon: 'home',
+    title: 'Wynajem długoterminowy',
+    description: 'Jedno mieszkanie albo kilka lokali wynajmowanych na cele mieszkaniowe. Rozliczamy czynsz, media i kaucje, a przy okazji pilnujemy granicy, za którą najem prywatny przestaje być prywatny.',
+    points: [
+      `Ryczałt od najmu prywatnego, ewidencja przychodów i roczny PIT-28`,
+      'Rozdzielenie czynszu, mediów i opłat administracyjnych w umowie',
+      'Zwolnienie z VAT dla najmu na cele mieszkaniowe i pilnowanie limitu',
+    ],
+  },
+  {
+    icon: 'sparkle',
+    title: 'Apartamenty na doby',
+    description: 'Najem krótkoterminowy prowadzony samodzielnie albo przez Booking i Airbnb. To model, w którym najczęściej trafiamy na obowiązki, o których właściciel nie miał pojęcia.',
+    points: [
+      'Rozliczanie prowizji potrącanych przez platformy rezerwacyjne',
+      'Import usług, rejestracja do VAT-UE i deklaracja VAT-9M',
+      `Stawka ${vatObnizony} dla usług zakwaterowania i podział sprzedaży`,
+    ],
+  },
+  {
+    icon: 'pin',
+    title: 'Pensjonat, hostel i domki',
+    description: 'Mniejsze obiekty noclegowe, także sezonowe i agroturystyczne. Podatkowo mieszczą się w tej samej kategorii co apartamenty na doby, więc prowadzimy je na tych samych zasadach.',
+    points: [
+      'Sezonowość przychodów, przedpłaty i zaliczki za rezerwacje',
+      'Opłata miejscowa i uzdrowiskowa pobierana od gości',
+      'Zwolnienie dla agroturystyki i warunki, które trzeba spełnić razem',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Zarządca najmu',
+    description: 'Firma obsługująca lokale w imieniu właścicieli. Wszystko zaczyna się tu od rozdzielenia własnego wynagrodzenia od pieniędzy, które tylko przepływają przez Twoje konto.',
+    points: [
+      'Ustalenie przychodu na podstawie umowy z właścicielem lokalu',
+      'Rozliczenia i zestawienia dla właścicieli obsługiwanych mieszkań',
+      'Kadry zespołu, recepcji i ekip sprzątających',
+    ],
+  },
+  {
+    icon: 'chart',
+    title: 'Inwestor z kilkoma lokalami',
+    description: 'Portfel mieszkań kupowanych pod wynajem, często na kredyt, czasem z remontem i późniejszą sprzedażą. Liczy się tu przede wszystkim forma, w jakiej trzymasz nieruchomości.',
+    points: [
+      'Porównanie najmu prywatnego, działalności i spółki na Twoich liczbach',
+      'Rozliczanie remontów, wyposażenia i nakładów na lokal',
+      'Skutki podatkowe zakupu, wycofania z firmy i sprzedaży nieruchomości',
+    ],
+  },
+];
+
+/**
+ * Progi ryczałtu. Trzeci kafelek dotyczy małżonków, bo to jedyna sytuacja,
+ * w której próg jest inny niż ustawowy, a termin oświadczenia bywa przegapiony.
+ */
+const rateTiers = [
+  {
+    rate: stawkaNajem,
+    title: `Przychód do ${progNajem} w roku`,
+    body: 'Stawka podstawowa. Obejmuje zarówno najem prywatny, jak i usługi zakwaterowania świadczone w działalności gospodarczej, więc apartament na doby rozlicza się tak samo jak mieszkanie wynajęte na rok.',
+    featured: true,
+  },
+  {
+    rate: stawkaNajemWyzsza,
+    title: 'Nadwyżka ponad próg',
+    body: 'Wyższa stawka dotyczy wyłącznie nadwyżki, a nie całego przychodu. Podatek liczy się narastająco od początku roku, więc w miesiącu przekroczenia część przychodu rozliczasz jeszcze niżej.',
+  },
+  {
+    rate: progMalzonkowie,
+    title: 'Próg małżonków po oświadczeniu',
+    body: 'Domyślnie każde z małżonków rozlicza połowę przychodu i ma własny próg. Można też złożyć oświadczenie, że całość opodatkuje jedno z nich, i wtedy próg tej osoby jest dwukrotnie wyższy.',
+  },
+];
+
+/** Trzy rzeczy, które w tej branży najczęściej prowadzą do zawyżonego podatku. */
+const rateNotes = [
+  {
+    icon: 'search',
+    title: 'Najem prywatny czy działalność',
+    body: 'To najczęstszy punkt sporny przy kontroli. Uchwała siedmiu sędziów NSA z 2021 roku przesunęła punkt ciężkości na decyzję właściciela: dopóki nieruchomość nie trafiła do majątku firmy, najem zostaje prywatny. Swoboda nie jest jednak nieograniczona. Cztery apartamenty z recepcją, sprzątaniem i kalendarzem rezerwacji trudno obronić jako najem prywatny.',
+  },
+  {
+    icon: 'clock',
+    title: 'Amortyzacji mieszkań już nie ma',
+    body: `Od ${AMORTYZACJA_MIESZKAN_KONIEC} roku odpisy amortyzacyjne od budynków i lokali mieszkalnych nie stanowią kosztu uzyskania przychodu. Największa pozycja kosztowa, jaką dysponował wynajmujący, po prostu zniknęła. Dlatego dziś ryczałt wygrywa w większości przypadków, choć nie we wszystkich, i nadal warto to policzyć.`,
+  },
+  {
+    icon: 'file',
+    title: 'Media i kaucja to nie przychód',
+    body: 'Jeśli z umowy wynika, że ciężar mediów i czynszu administracyjnego ponosi najemca, a Ty jesteś tylko pośrednikiem przekazującym pieniądze dalej, kwoty te nie są Twoim przychodem. Przy jednym ryczałtowym czynszu przychodem jest całość. Kaucja nie jest przychodem, dopóki pozostaje zwrotna.',
+  },
+];
+
+/**
+ * Stawki VAT. Kolejność od zwolnienia do stawki podstawowej, bo tak wygląda
+ * droga od intuicji właściciela do tego, co faktycznie wynika z przepisów.
+ */
+const vatRates = [
+  {
+    what: 'Najem lokalu mieszkalnego osobie fizycznej na jej cele mieszkaniowe',
+    detail: 'klasyczny wynajem długoterminowy, umowa z osobą, która w lokalu mieszka',
+    rate: 'zwolniony',
+    tone: 'good',
+  },
+  {
+    what: 'Krótkotrwałe zakwaterowanie',
+    detail: 'apartament na doby, pensjonat, hostel, domki, pokoje gościnne',
+    rate: vatObnizony,
+    tone: 'neutral',
+  },
+  {
+    what: 'Najem mieszkania firmie, także gdy kwateruje w nim swoich pracowników',
+    detail: 'liczy się cel bezpośredniego najemcy, a nie osoby, która finalnie mieszka',
+    rate: vatPodstawowy,
+    tone: 'warn',
+  },
+  {
+    what: 'Najem lokalu użytkowego, biura, magazynu',
+    detail: 'bez względu na to, kim jest najemca i czy lokal jest w majątku prywatnym',
+    rate: vatPodstawowy,
+    tone: 'warn',
+  },
+  {
+    what: 'Miejsce postojowe i garaż, także wynajęte razem z mieszkaniem',
+    detail: 'zwolnienie obejmuje wyłącznie nieruchomości o charakterze mieszkalnym',
+    rate: vatPodstawowy,
+    tone: 'warn',
+  },
+];
+
+const vatTraps = [
+  {
+    tone: 'warn',
+    badge: 'Najczęstszy błąd',
+    title: 'Mieszkanie wynajęte firmie',
+    body: 'Zwolnienie obejmuje najem nieruchomości mieszkalnej wyłącznie na cele mieszkaniowe, a warunek ten musi być spełniony po stronie bezpośredniego najemcy. Jeżeli wynajmujesz mieszkanie firmie, która kwateruje w nim swoich pracowników, zwolnienie nie przysługuje. Rozstrzygnął to Minister Finansów w interpretacji ogólnej z 2021 roku i jest to dziś stanowisko utrwalone.',
+    foot: 'Właściciele dowiadują się o tym zwykle wtedy, gdy najemca prosi o fakturę z podatkiem, a umowa mówiła o czynszu bez VAT. Sprawdzamy to przy każdej nowej umowie.',
+  },
+  {
+    tone: 'neutral',
+    badge: 'Łatwo przeoczyć',
+    title: 'Miejsce postojowe przy mieszkaniu',
+    body: 'Organy podatkowe konsekwentnie odmawiają uznania najmu mieszkania razem z miejscem w hali garażowej za jedno świadczenie. Argument jest taki, że do zaspokojenia potrzeb mieszkaniowych miejsce postojowe nie jest potrzebne. Czynny podatnik VAT musi więc rozdzielić czynsz na część zwolnioną i część opodatkowaną.',
+    foot: 'Zapis w umowie o jednej kwocie za całość niczego nie rozwiązuje, a jedynie utrudnia obronę przy kontroli. Rozdzielamy to na etapie umowy, a nie pierwszej faktury.',
+  },
+];
+
+const platformCards = [
+  {
+    icon: 'file',
+    tone: 'warn',
+    badge: 'Co trzeba zrobić',
+    body: 'Zgłosić się na formularzu VAT-R do transakcji wewnątrzwspólnotowych, naliczyć krajowy podatek od wartości prowizji, zapłacić go i złożyć deklarację VAT-9M do 25. dnia następnego miesiąca. Dotyczy to również właścicieli korzystających ze zwolnienia z VAT, bo zwolnienie obejmuje Twoją sprzedaż, a nie zakupy od zagranicznych kontrahentów.',
+    foot: `U nas rejestracja do VAT-UE jest w abonamencie, a comiesięczne rozliczenie importu usług u podatnika zwolnionego z VAT to moduł za ${modulVatUe} zł netto, naliczany tylko w miesiącach, w których zakup wystąpił.`,
+  },
+  {
+    icon: 'calculator',
+    tone: 'neutral',
+    badge: 'Od czego liczysz przychód',
+    body: 'Od pełnej kwoty zapłaconej przez gościa, a nie od tego, co wpłynęło na konto po potrąceniu prowizji. Na ryczałcie prowizji nie odliczysz, bo podatek liczy się od przychodu. Przy rozliczeniu kosztowym prowizja jest kosztem i to jedna z liczb, które trzeba postawić obok siebie przed wyborem formy opodatkowania.',
+    foot: 'Księgowanie samej wypłaty zaniża przychód. Podatek może wyjść prawidłowo, ale przy kontroli takie księgi wyglądają źle.',
+  },
+  {
+    icon: 'search',
+    tone: 'neutral',
+    badge: 'Co wie urząd',
+    body: `Operatorzy platform przekazują administracji skarbowej dane o wynajmujących, a kopię zestawienia dostajesz również Ty. Przy najmie nieruchomości raportowanie nie jest ograniczone progiem liczby transakcji ani kwoty, więc obejmuje także właściciela, który wynajął mieszkanie na dwa tygodnie w sezonie.`,
+    foot: `Obowiązek działa od ${DAC7_OD}, a raport za rok poprzedni platforma przekazuje do ${DAC7_RAPORT_DO}.`,
+  },
+];
+
+const objectCards = [
+  {
+    icon: 'clock',
+    title: 'Sezonowość i zaliczki',
+    body: 'Przedpłaty i zaliczki za rezerwacje przyjmowane poza sezonem wymagają prawidłowego ustalenia momentu powstania przychodu i obowiązku podatkowego. W ryczałcie liczy się otrzymanie pieniędzy, w VAT bywa inaczej. Ustawiamy to tak, żeby rozliczenie nie rozjeżdżało się z kalendarzem rezerwacji.',
+  },
+  {
+    icon: 'pin',
+    title: 'Opłata miejscowa',
+    body: 'W gminach turystycznych i uzdrowiskowych obiekt pobiera od gości opłatę miejscową albo uzdrowiskową i rozlicza ją z gminą jako inkasent. To nie jest Twój przychód i nie może wpadać do ewidencji sprzedaży razem z ceną noclegu. Wysokość stawki uchwala rada gminy w granicach limitu ustawowego.',
+  },
+  {
+    icon: 'award',
+    title: 'Agroturystyka',
+    body: `Dochody z wynajmu pokoi gościnnych w budynku mieszkalnym położonym na terenie wiejskim w gospodarstwie rolnym, osobom przebywającym na wypoczynku, wraz z ich wyżywieniem, są zwolnione z podatku dochodowego, jeżeli pokoi jest nie więcej niż ${AGROTURYSTYKA_POKOJE_LIMIT}. Warunki trzeba spełnić wszystkie naraz, a wynajem całego domu albo domku letniskowego zwykle się w tym nie mieści.`,
+  },
+];
+
+/**
+ * Podatek od nieruchomości. Górne granice stawek, bo konkretną kwotę uchwala
+ * rada gminy - ale relacja między nimi jest wszędzie taka sama i to ona
+ * decyduje o opłacalności przejścia na najem krótkoterminowy.
+ */
+const propertyTax = [
+  {
+    value: `${zlAuto(PODATEK_NIERUCHOMOSCI_MAX.mieszkalny)} / m²`,
+    title: 'Budynek mieszkalny i jego części',
+    body: 'Stawka mieszkalna obejmuje także mieszkanie wynajęte na cele mieszkaniowe, również wtedy, gdy wynajmującym jest przedsiębiorca. Od 2025 roku mieści się w niej również miejsce postojowe w hali garażowej pod budynkiem.',
+    featured: true,
+  },
+  {
+    value: `${zlAuto(PODATEK_NIERUCHOMOSCI_MAX.pozostale)} / m²`,
+    title: 'Budynki pozostałe',
+    body: 'Tu trafia między innymi garaż wolnostojący, o ile nie jest zajęty na prowadzenie działalności gospodarczej. Kilkukrotnie wyżej niż stawka mieszkalna, ale wciąż daleko od najwyższej pozycji.',
+  },
+  {
+    value: `${zlAuto(PODATEK_NIERUCHOMOSCI_MAX.dzialalnosc)} / m²`,
+    title: 'Zajęte na działalność gospodarczą',
+    body: 'Stawka, która obejmuje lokal wykorzystywany do krótkotrwałego zakwaterowania oraz mieszkanie, w którym najemca prowadzi biuro. Przy pięćdziesięciu metrach to różnica rzędu tysiąca siedmiuset złotych rocznie wobec stawki mieszkalnej.',
+  },
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów albo księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki i roczny PIT-28',
+      'KPiR, zaliczki na PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'VAT i rozliczenia z platformami',
+    description: 'Ustalamy stawkę dla każdej umowy osobno i prowadzimy rozliczenia z operatorami zagranicznymi, żeby import usług nie okazał się niespodzianką po latach.',
+    points: [
+      'Podział sprzedaży zwolnionej i opodatkowanej oraz proporcja odliczenia',
+      'Rejestracja do VAT-UE, import usług i deklaracja VAT-9M',
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Obsługa KSeF po stronie faktur kosztowych i sprzedaży dla firm',
+    ],
+  },
+  {
+    icon: 'home',
+    title: 'Nieruchomości, koszty i umowy',
+    description: 'Nieruchomość jest w tej branży jednocześnie źródłem przychodu i największą pozycją kosztową, więc zasady jej rozliczania ustawiamy na starcie, a nie przy pierwszej kontroli.',
+    points: [
+      'Ewidencja lokali, wyposażenia i nakładów remontowych',
+      'Rozliczanie mediów, opłat administracyjnych i kaucji',
+      'Przegląd umów najmu pod kątem stawki VAT i podstawy przychodu',
+      'Skutki podatkowe zakupu, wycofania z firmy i sprzedaży nieruchomości',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'ZUS, kadry i kontakt z urzędami',
+    description: 'Obsługa ZUS właściciela jest w cenie abonamentu, a zespół obiektu rozliczamy od osoby, niezależnie od formy umowy.',
+    points: [
+      'Obsługa ZUS właściciela w cenie abonamentu',
+      'Kadry i płace recepcji, obsługi technicznej i ekip sprzątających',
+      'Kompletowanie dokumentów i wyjaśnień na potrzeby urzędu skarbowego i ZUS',
+      'Wnioski o interpretację indywidualną przy sytuacjach spornych',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'file', title: 'Zestawienia zamiast rezerwacji', description: 'Sprzedaż ujmujemy na podstawie zestawień okresowych z platform i systemu rezerwacyjnego. Sto pobytów w sezonie to nie sto dokumentów, więc obłożenie obiektu nie podnosi ceny obsługi.' },
+  { icon: 'sparkle', title: 'Faktura zdjęciem z telefonu', description: 'Rachunek za sprzątanie, pościel czy naprawę pralki wysyłasz zdjęciem, a my odczytujemy go automatycznie. Nie musisz wozić segregatora ani wracać do domu, żeby coś zeskanować.' },
+  { icon: 'users', title: 'Jeden opiekun księgowy', description: 'Masz jedną osobę, która zna Twoje lokale, umowy i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: `Dokumenty wymieniamy przez szyfrowany portal klienta. Mamy ${site.insurance.phrase} i działamy zgodnie z wymogami RODO.` },
+];
+
+const startupSteps = [
+  { title: 'Policzenie wariantów', description: 'Zanim cokolwiek zgłosimy, sprawdzamy, ile lokali masz, jak je wynajmujesz i jakie ponosisz koszty. Dopiero z tego wychodzi odpowiedź, czy najem zostaje prywatny, czy potrzebna jest działalność.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające temu, co faktycznie robisz, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}. Wynajem nieruchomości i krótkotrwałe zakwaterowanie to osobne pozycje.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start lub preferencyjne składki. Sam najem prywatny tytułem do ubezpieczenia nie jest.' },
+  { title: 'Decyzja w sprawie VAT', description: `Ustalamy, czy zaczynasz jako podatnik zwolniony, czy od razu rejestrujesz się do VAT. Przy sprzedaży na kilku stawkach naraz liczymy też proporcję odliczenia, żeby korekta po roku nie była zaskoczeniem.` },
+  { title: 'Kasa fiskalna albo zwolnienie', description: 'Sprawdzamy, czy przy Twoim sposobie przyjmowania płatności możesz korzystać ze zwolnienia z ewidencjonowania. Jeśli tak, ustawiamy ewidencję tak, żeby zwolnienie faktycznie się utrzymało.' },
+  { title: 'Uprawnienia w KSeF, pełnomocnictwo UPL-1 i portal klienta', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury kosztowe trafiały do nas bez Twojego udziału. UPL-1 to osobny dokument, dzięki któremu podpisujemy za Ciebie deklaracje i pliki JPK.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Przechodzimy przez Twoje nieruchomości, sposób wynajmu i kanały rezerwacji. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Ustalamy w niej wprost, jak liczymy dokumenty, żeby nie było niespodzianki na pierwszej fakturze.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Ustalamy też, jak będziesz przesyłać zestawienia z platform.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów i limitów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje przy wynajmie?',
+    a: `${stawkaNajem} do ${progNajem} przychodu w roku i ${stawkaNajemWyzsza} od nadwyżki ponad tę kwotę. Te same stawki obejmują zarówno najem prywatny, jak i usługi zakwaterowania świadczone w ramach działalności gospodarczej, więc apartament na doby rozlicza się tak samo jak mieszkanie wynajęte na rok. W internecie krąży informacja, że wynajem w działalności podlega stawce ${pct(0.17)} właściwej dla wolnych zawodów, ale nie dotyczy ona usług zakwaterowania.`,
+  },
+  {
+    q: `Czy przekroczenie ${progNajem} oznacza, że cały przychód opodatkuję wyższą stawką?`,
+    a: `Nie. Wyższa stawka dotyczy wyłącznie nadwyżki ponad próg. Podatek liczy się narastająco od początku roku, więc w miesiącu przekroczenia część przychodu opodatkujesz stawką ${stawkaNajem}, a resztę stawką ${stawkaNajemWyzsza}. Próg dotyczy przy tym podatnika, a nie pojedynczego lokalu: przychody z mieszkania i z garażu sumują się.`,
+  },
+  {
+    q: 'Najem prywatny czy działalność gospodarcza?',
+    a: 'To najczęstszy punkt sporny przy kontroli. Uchwała siedmiu sędziów NSA z 2021 roku przesunęła punkt ciężkości na decyzję właściciela: dopóki nieruchomość nie trafiła do majątku związanego z działalnością, przychód zostaje w źródle prywatnym. Swoboda nie jest jednak nieograniczona. Przy kilkunastu lokalach, własnym zespole i rozbudowanej obsłudze ryzyko sporu rośnie, a krótkoterminowy najem kilku apartamentów z recepcją trudno obronić jako najem prywatny. Oceniamy to na konsultacji, zanim wybierzesz formę rozliczenia.',
+  },
+  {
+    q: 'Wynajmujemy mieszkanie wspólnie z małżonkiem. Jak to rozliczyć?',
+    a: `Domyślnie każde z Was rozlicza połowę przychodu i korzysta z własnego progu ${progNajem}. Możecie też złożyć oświadczenie, że całość opodatkuje jedno z Was, i wtedy próg tej osoby wynosi ${progMalzonkowie}. Termin jest nieprzekraczalny: oświadczenie składa się do 20. dnia miesiąca następującego po miesiącu, w którym wpłynął pierwszy przychód z najmu w danym roku. Spóźnienie o jeden dzień oznacza rozliczanie po połowie przez cały rok, bez możliwości naprawienia tego w PIT-28.`,
+  },
+  {
+    q: 'Czy wynajem mieszkania jest zwolniony z VAT?',
+    a: `Najem lokalu mieszkalnego na cele mieszkaniowe korzysta ze zwolnienia, ale rozstrzyga cel najmu, a nie sam fakt, że lokal jest mieszkalny. Krótkotrwałe zakwaterowanie jest usługą objętą stawką ${vatObnizony}, więc mieszkanie wynajmowane turystom na kilka nocy zwolnienia nie ma. Nie ma go też najem lokalu użytkowego, biura ani miejsca postojowego.`,
+  },
+  {
+    q: 'Wynajmuję mieszkanie firmie, która zakwateruje w nim pracowników. Czy to nadal cel mieszkaniowy?',
+    a: `Nie w rozumieniu VAT. Liczy się cel bezpośredniego najemcy, a pracodawca realizuje cel gospodarczy, a nie własny cel mieszkaniowy. Taki najem podlega stawce ${vatPodstawowy}, co przesądził Minister Finansów w interpretacji ogólnej z 2021 roku. W podatku dochodowym nic się nie zmienia, nadal jest to najem rozliczany ryczałtem. Warto ustalić przed podpisaniem umowy, czy czynsz jest kwotą netto, czy brutto, bo od tego zależy, kto poniesie ciężar podatku.`,
+  },
+  {
+    q: 'Wynajmuję mieszkanie razem z miejscem postojowym. Czy to jedna usługa?',
+    a: `W ocenie organów podatkowych nie. Zwolnienie obejmuje wyłącznie nieruchomości o charakterze mieszkalnym, a do zaspokojenia potrzeb mieszkaniowych miejsce postojowe nie jest niezbędne, więc oba świadczenia są niezależne. Czynny podatnik VAT musi rozdzielić czynsz: część mieszkaniową wykazuje jako zwolnioną, część parkingową opodatkowuje stawką ${vatPodstawowy}. Stanowisko to bywa kwestionowane z powołaniem na orzecznictwo Trybunału Sprawiedliwości, ale wejście na tę ścieżkę oznacza spór z organem i wymaga świadomej decyzji.`,
+  },
+  {
+    q: 'Wynajmuję jeden apartament przez Booking i nie mam VAT. Czy coś mnie omija?',
+    a: `Prawdopodobnie tak i jest to najczęściej pomijany obowiązek w tej branży. Prowizja Booking.com czy Airbnb to zakup usługi od podmiotu zagranicznego, czyli import usług. Oznacza to rejestrację do VAT-UE, naliczenie krajowego podatku od wartości prowizji, zapłatę go i złożenie deklaracji VAT-9M do 25. dnia następnego miesiąca. Nie zależy to od wysokości Twojego przychodu, bo zwolnienie obejmuje Twoją sprzedaż, a nie zakupy. U nas rejestracja do VAT-UE jest w abonamencie, a comiesięczne rozliczenie to <a href="/cennik#moduly">moduł za ${modulVatUe} zł netto</a>, naliczany tylko w miesiącach z takim zakupem.`,
+  },
+  {
+    q: 'Prowizja jest potrącana przed wypłatą. Od czego liczę podatek?',
+    a: 'Od pełnej kwoty zapłaconej przez gościa, a nie od kwoty, która wpłynęła na Twoje konto. Na ryczałcie prowizji nie odliczysz, bo podatek liczy się od przychodu. Przy rozliczeniu kosztowym prowizja jest kosztem. To jedna z liczb, które warto postawić obok siebie przed wyborem formy opodatkowania, a wstępnie możesz to sprawdzić w <a href="/kalkulatory/ryczalt-vs-liniowy">kalkulatorze form opodatkowania</a>.',
+  },
+  {
+    q: 'Dostałem z platformy zestawienie moich przychodów. Co to znaczy?',
+    a: `Że operator przekazał te dane administracji skarbowej, zgodnie z obowiązkiem raportowania działającym od ${DAC7_OD}. Przy najmie nieruchomości nie ma progu liczby transakcji ani kwoty, więc raportowany jest także właściciel wynajmujący sporadycznie. Sam raport nie oznacza podatku, ale pozwala urzędowi porównać Twoje przychody z tym, co wykazałeś w rozliczeniu. Jeśli nie masz pewności, czy się zgadza, sprawdzimy to.`,
+  },
+  {
+    q: 'Czy mogę amortyzować mieszkanie na wynajem?',
+    a: `Nie. Od ${AMORTYZACJA_MIESZKAN_KONIEC} roku odpisy amortyzacyjne od budynków i lokali mieszkalnych nie stanowią kosztu uzyskania przychodu, niezależnie od tego, czy służą najmowi prywatnemu, czy działalności. Zmiana wyraźnie osłabiła opłacalność rozliczenia kosztowego przy mieszkaniach i jest jednym z powodów, dla których większość wynajmujących wybiera dziś ryczałt. Przy lokalach użytkowych amortyzacja pozostała.`,
+  },
+  {
+    q: 'Czy przy wynajmie potrzebuję kasy fiskalnej?',
+    a: `Zwykle nie. Wynajem i zarządzanie nieruchomościami własnymi lub dzierżawionymi korzystają ze zwolnienia z ewidencjonowania, jeżeli usługa jest w całości udokumentowana fakturą albo cała zapłata wpływa na rachunek, a z ewidencji jednoznacznie wynika, kogo i jakiej umowy dotyczy wpłata. Przyjmowanie gotówki od gości zmienia sytuację. Ustawiamy ewidencję na początku współpracy tak, żeby zwolnienie faktycznie się utrzymało.`,
+  },
+  {
+    q: 'Czy przeznaczenie mieszkania na wynajem zmienia podatek od nieruchomości?',
+    a: `Zależy od tego, na jaki wynajem. Zgodnie z ${PODATEK_NIERUCHOMOSCI_UCHWALA} lokal mieszkalny służący zaspokojeniu potrzeb mieszkaniowych najemcy podlega niższej stawce także wtedy, gdy wynajmującym jest przedsiębiorca. Jeżeli natomiast najemca prowadzi w mieszkaniu biuro albo lokal służy krótkotrwałemu zakwaterowaniu, wchodzi stawka dla nieruchomości zajętych na działalność gospodarczą, czyli maksymalnie ${zlAuto(PODATEK_NIERUCHOMOSCI_MAX.dzialalnosc)} za metr kwadratowy zamiast ${zlAuto(PODATEK_NIERUCHOMOSCI_MAX.mieszkalny)}. Przy przejściu na najem krótkoterminowy warto to policzyć razem z podatkiem dochodowym.`,
+  },
+  {
+    q: 'Prowadzę agroturystykę. Czy płacę podatek dochodowy?',
+    a: `Niekoniecznie. Dochody z wynajmu pokoi gościnnych w budynku mieszkalnym położonym na terenie wiejskim w gospodarstwie rolnym, osobom przebywającym na wypoczynku, wraz z ich wyżywieniem, są zwolnione z podatku dochodowego, jeżeli liczba wynajmowanych pokoi nie przekracza ${AGROTURYSTYKA_POKOJE_LIMIT}. Warunki trzeba spełnić wszystkie naraz, a wynajem całego domu albo domku letniskowego zwykle się w tym nie mieści. Sprawdzamy to na dokumentach gospodarstwa, zanim przyjmiemy zwolnienie za pewnik.`,
+  },
+  {
+    q: 'Obsługujecie hotele?',
+    a: 'Obsługujemy mniejsze i średnie obiekty noclegowe: pensjonaty, hostele, domki, apartamenty i gospodarstwa agroturystyczne. Duże hotele z rozbudowaną gastronomią, wieloma działami i raportowaniem zarządczym wyceniamy indywidualnie, bo zakres pracy różni się tam na tyle, że nie chcemy obiecywać ceny z cennika.',
+  },
+  {
+    q: 'Jestem zarządcą i pobieram czynsz w imieniu właścicieli. Co jest moim przychodem?',
+    a: 'Co do zasady wyłącznie Twoje wynagrodzenie, a nie cała kwota przechodząca przez rachunek. Rozstrzyga jednak treść umowy z właścicielem i to, czy działasz w jego imieniu, czy we własnym. Analizujemy umowę przed ustaleniem sposobu rozliczenia, bo pomyłka w tym miejscu zawyża przychód wielokrotnie, a przy ryczałcie przekłada się wprost na podatek.',
+  },
+  {
+    q: 'Zatrudniam obsługę obiektu. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę, a umowa cywilnoprawna bez składek ZUS ${hrZlecenie} zł. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi. Zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla wynajmującego?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${priceRows[1].price} zł netto, a KPiR od ${kpir} zł netto. Rozliczenia zarządców najmu i obiektów prowadzonych w formie spółki zaczynają się od ${fmt.format(fk)} zł netto. Liczba rezerwacji nie wpływa na cenę, bo sprzedaż z każdego kanału ujmujemy zestawieniem okresowym.`,
+  },
+  {
+    q: 'Rozliczam się sam i chyba przegapiłem kilka obowiązków. Da się to naprawić?',
+    a: 'Zwykle tak. Zaległości w VAT od importu usług czy w ewidencji przychodów da się uporządkować korektami i czynnym żalem, a im wcześniej się to zrobi, tym mniejsze są konsekwencje. Przegląd dotychczasowych rozliczeń pod kątem importu usług robimy przy zawarciu umowy bez dodatkowej opłaty, a to, co znajdziemy, mówimy wprost razem z szacunkiem kosztu naprawy.',
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla nieruchomości i najmu', href: '/ksiegowosc-dla-nieruchomosci-i-najmu' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-nieruchomosci-i-najmu#service`,
+  name: 'Księgowość dla nieruchomości, najmu i hotelarstwa',
+  serviceType: 'Usługi księgowe dla wynajmujących i obiektów noclegowych',
+  description: 'Obsługa księgowa wynajmujących mieszkania, właścicieli apartamentów na doby, pensjonatów, hosteli i domków oraz firm zarządzających najmem. Ryczałt, KPiR i pełna księgowość, stawki VAT dla najmu i zakwaterowania, import usług od platform rezerwacyjnych, podatek od nieruchomości.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-nieruchomosci-i-najmu`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Wynajmujący mieszkania, właściciele apartamentów na wynajem krótkoterminowy, pensjonaty, hostele, domki, gospodarstwa agroturystyczne, zarządcy najmu, inwestorzy w nieruchomości',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla nieruchomości, najmu i hotelarstwa',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}${r.vatLabel ? `, ${r.vatLabel}` : ''}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+
+<BaseLayout
+  title="Księgowość dla nieruchomości, najmu i hotelarstwa"
+  description={`Księgowość dla wynajmujących, apartamentów na doby i pensjonatów. Ryczałt ${stawkaNajem} i ${stawkaNajemWyzsza}, VAT ${vatObnizony}, prowizje Booking i Airbnb. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla nieruchomości, najmu i hotelarstwa"
+    description="Rozliczamy właścicieli mieszkań na wynajem, apartamentów na doby, pensjonatów i domków oraz firmy zarządzające najmem. Dobieramy formę opodatkowania, pilnujemy stawek VAT i rozliczamy prowizje platform rezerwacyjnych. Ty zajmujesz się gośćmi i najemcami, a my rozliczeniami."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla nieruchomości i najmu' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=nieruchomosci" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Ten sam lokal, a rozliczenia zupełnie inne</h2>
+        <p>Mieszkanie wynajęte studentowi na rok i to samo mieszkanie wynajmowane turystom na weekendy to w oczach przepisów dwie różne usługi, z inną stawką VAT, innym podatkiem od nieruchomości i innym zestawem obowiązków. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="nrh-segments">
+        {segments.map((s) => (
+          <article class="nrh-segment">
+            <div class="nrh-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ryczałt ───────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatek dochodowy</span>
+        <h2>{stawkaNajem} do stu tysięcy, potem {stawkaNajemWyzsza}</h2>
+        <p>Od 2023 roku najem prywatny może być opodatkowany wyłącznie ryczałtem. Skala i rozliczanie kosztów zostały z tego źródła usunięte, a razem z nimi amortyzacja lokali mieszkalnych. Poniżej progi, które w tej branży decydują o wysokości podatku.</p>
+      </div>
+
+      <div class="nrh-tiers">
+        {rateTiers.map((t) => (
+          <article class={`nrh-tier${t.featured ? ' nrh-tier--featured' : ''}`}>
+            <span class={`nrh-tier__value${t.featured ? ' nrh-tier__value--featured' : ''}`}>{t.rate}</span>
+            <h3>{t.title}</h3>
+            <p>{t.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="nrh-note">
+        <Icon name="search" size={16}/>
+        <span>Warto o tym wiedzieć, bo w internecie krąży informacja, że wynajem prowadzony w działalności gospodarczej podlega stawce {pct(RYCZALT_WOLNY_ZAWOD)} właściwej dla wolnych zawodów. Nie dotyczy ona usług zakwaterowania: apartament na doby i pensjonat mieszczą się w tych samych stawkach co zwykły najem.</span>
+      </p>
+
+      <div class="nrh-notes">
+        {rateNotes.map((n) => (
+          <article class="nrh-note-card">
+            <div class="nrh-note-card__head">
+              <Icon name={n.icon} size={20}/>
+              <h3>{n.title}</h3>
+            </div>
+            <p>{n.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="nrh-note">
+        <Icon name="calculator" size={16}/>
+        <span>Rozliczenie kosztowe nadal ma sens tam, gdzie nakłady są realne: przy obiekcie noclegowym ze sprzątaniem, praniem, mediami i obsługą albo przy lokalu użytkowym, którego amortyzacja nie została wyłączona. Przy mieszkaniu wynajmowanym długoterminowo ryczałt wygrywa dziś w większości przypadków, ale nie w każdym, więc na bezpłatnej konsultacji liczymy oba warianty na Twoich rzeczywistych kwotach z ostatnich miesięcy. Wstępnie możesz to sprawdzić w <a href="/kalkulatory/ryczalt-vs-liniowy">kalkulatorze form opodatkowania</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT</span>
+        <h2>O stawce decyduje cel najmu, a nie rodzaj lokalu</h2>
+        <p>To rozróżnienie zaskakuje wielu właścicieli. Sam fakt, że lokal jest mieszkalny, nie daje zwolnienia z VAT. Zwolnienie dotyczy najmu służącego zaspokajaniu potrzeb mieszkaniowych najemcy, więc ten sam lokal wynajmowany turystom na kilka nocy jest już usługą zakwaterowania.</p>
+      </div>
+
+      <div class="nrh-rates">
+        <div class="nrh-rates__head">
+          <span>Rodzaj najmu</span>
+          <span class="nrh-rates__rate">Stawka</span>
+        </div>
+        {vatRates.map((r) => (
+          <div class="nrh-rates__row">
+            <div class="nrh-rates__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="nrh-rates__rate">
+              <span class={`nrh-pill nrh-pill--${r.tone}`}>{r.rate}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="nrh-traps">
+        {vatTraps.map((t) => (
+          <article class={`nrh-trap nrh-trap--${t.tone}`}>
+            <div class="nrh-trap__badge"><Icon name="search" size={16}/><span>{t.badge}</span></div>
+            <h3>{t.title}</h3>
+            <p>{t.body}</p>
+            <p class="nrh-trap__foot">{t.foot}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="nrh-note">
+        <Icon name="chart" size={16}/>
+        <span>Właściciel prowadzący jednocześnie najem długoterminowy i krótkoterminowy ma sprzedaż mieszaną: część zwolnioną i część opodatkowaną. Odliczanie podatku naliczonego wymaga wtedy proporcji, a po zakończeniu roku korekty. Ustawiamy to od początku, żeby korekta nie była zaskoczeniem w styczniu.</span>
+      </p>
+
+      <p class="nrh-note">
+        <Icon name="shield" size={16}/>
+        <span>Do przekroczenia limitu sprzedaży {limitVat} można korzystać ze zwolnienia ze względu na obrót. Jest tu jednak pułapka: limit jest jeden dla całego podatnika, a czynsz z najmu wlicza się do niego razem z przychodami z Twojej firmy, bo długoterminowy najem nie jest transakcją pomocniczą. Przedsiębiorca, który obok działalności wynajmuje mieszkanie, wypada ze zwolnienia szybciej, niż się spodziewa. Pilnujemy tego limitu łącznie i uprzedzamy, zanim zostanie przekroczony. Rozkładamy to na czynniki pierwsze w artykule o <a href="/wiedza/jdg-i-najem-prywatny">JDG i najmie prywatnym</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Platformy rezerwacyjne ────────────────────────────────────────── -->
+  <section class="section section--alt" id="platformy">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Booking, Airbnb i inne platformy</span>
+        <h2>Prowizja platformy uruchamia obowiązek, o którym prawie nikt nie wie</h2>
+        <p>Jeżeli wynajmujesz przez Booking.com albo Airbnb, kupujesz usługę od podmiotu z siedzibą poza Polską. W świetle przepisów o VAT jest to import usług, a obowiązek jego rozliczenia nie zależy od tego, czy jesteś czynnym podatnikiem VAT ani jak duży masz przychód.</p>
+      </div>
+
+      <article class="nrh-platform__main">
+        <div class="nrh-platform__icon"><Icon name="globe" size={22}/></div>
+        <h3>Trzy rzeczy, które musisz mieć poukładane</h3>
+        <p>Rozliczenie z platformą rezerwacyjną wygląda inaczej niż zwykła sprzedaż i to właśnie tu powstaje większość zaległości, na które trafiamy przy przejmowaniu klientów.</p>
+        <p>Po pierwsze, prowizja jest zakupem od firmy zagranicznej i wymaga własnego rozliczenia w VAT. Po drugie, przychodem jest kwota zapłacona przez gościa, a nie przelew, który do Ciebie dotarł. Po trzecie, urząd zna Twoje przychody z platformy niezależnie od tego, co wykażesz w zeznaniu.</p>
+        <ul>
+          <li><Icon name="check" size={14}/>Zestawienia z paneli Booking, Airbnb i systemu rezerwacyjnego</li>
+          <li><Icon name="check" size={14}/>Rozdzielenie kwoty od gościa, prowizji i podatku od pobytu</li>
+          <li><Icon name="check" size={14}/>Uzgodnienie wypłat z rachunkiem bankowym co miesiąc</li>
+        </ul>
+      </article>
+
+      <div class="nrh-platform__cards">
+        {platformCards.map((c) => (
+          <article class={`nrh-platform__card nrh-platform__card--${c.tone}`}>
+            <div class="nrh-platform__badge"><Icon name={c.icon} size={16}/><span>{c.badge}</span></div>
+            <p>{c.body}</p>
+            <p class="nrh-platform__foot">{c.foot}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="nrh-note">
+        <Icon name="clock" size={16}/>
+        <span>Jeżeli wynajmujesz od kilku lat i nigdy nie słyszałeś o żadnym z tych obowiązków, warto sprawdzić przeszłe rozliczenia. Zaległości w tym obszarze da się uporządkować, a im wcześniej się to zrobi, tym mniejsze są konsekwencje. Przegląd dotychczasowych rozliczeń pod kątem importu usług robimy przy zawarciu umowy bez dodatkowej opłaty i mówimy wprost, co znaleźliśmy.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Obiekty noclegowe ─────────────────────────────────────────────── -->
+  <section class="section" id="obiekty">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obiekty noclegowe</span>
+        <h2>Pensjonat, hostel i domki rozliczają się jak apartament na doby</h2>
+        <p>Z punktu widzenia podatków najem krótkoterminowy i mniejsze hotelarstwo to jedna kategoria: ta sama klasyfikacja usług zakwaterowania, ta sama stawka VAT, te same stawki ryczałtu i te same prowizje platform. Dlatego prowadzimy obie grupy na tych samych zasadach.</p>
+      </div>
+
+      <div class="nrh-objects">
+        {objectCards.map((c) => (
+          <article class="nrh-object">
+            <div class="nrh-object__head">
+              <Icon name={c.icon} size={20}/>
+              <h3>{c.title}</h3>
+            </div>
+            <p>{c.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="nrh-docs">
+        <div class="nrh-docs__col">
+          <div class="nrh-docs__badge"><Icon name="printer" size={16}/><span>Kasa fiskalna</span></div>
+          <h3>Zwykle wystarczy przelew i porządna ewidencja</h3>
+          <p>Wynajem i zarządzanie nieruchomościami własnymi lub dzierżawionymi korzystają ze zwolnienia z obowiązku ewidencjonowania sprzedaży na kasie. Warunki trzeba jednak spełnić łącznie:</p>
+          <ul>
+            {KASA_NAJEM_WARUNKI.map((w) => <li><Icon name="check" size={14}/>{w}</li>)}
+          </ul>
+          <p class="nrh-docs__foot">Gotówka od gościa odbiera zwolnienie przy tej transakcji, więc sposób przyjmowania płatności ustalamy na starcie, a nie po fakcie.</p>
+        </div>
+        <div class="nrh-docs__col">
+          <div class="nrh-docs__badge"><Icon name="file" size={16}/><span>Co się zmienia</span></div>
+          <h3>Ewidencja obiektów krótkoterminowych</h3>
+          <p>Od {NAJEM_KROTKOTERMINOWY_UE_OD} obowiązuje unijne rozporządzenie o gromadzeniu i wymianie danych o najmie krótkoterminowym. Docelowo oznacza ono rejestrację obiektów i przekazywanie danych o pobytach przez platformy.</p>
+          <p>Polska ustawa wprowadzająca centralny wykaz turystycznych obiektów noclegowych nie została jeszcze uchwalona, więc dziś nie ma jeszcze obowiązku wpisu. Śledzimy ten proces i uprzedzimy Cię, zanim wejdzie w życie.</p>
+          <p class="nrh-docs__foot">Duże hotele z rozbudowaną gastronomią, wieloma działami i raportowaniem zarządczym wyceniamy indywidualnie. Zakres pracy różni się tam na tyle, że nie chcemy obiecywać ceny z cennika.</p>
+        </div>
+      </div>
+
+      <div class="nrh-tax">
+        <div class="nrh-tax__head">
+          <span class="eyebrow eyebrow--light">Podatek od nieruchomości</span>
+          <h3>Danina, o której najłatwiej zapomnieć przy przejściu na doby</h3>
+          <p>To osobny podatek, płacony gminie, a różnice między stawkami są kilkudziesięciokrotne. Poniżej górne granice na {TAX_YEAR} rok: konkretną stawkę uchwala rada gminy i nie może ich przekroczyć.</p>
+        </div>
+        <div class="nrh-tax__grid">
+          {propertyTax.map((t) => (
+            <article class={`nrh-tax__card${t.featured ? ' nrh-tax__card--featured' : ''}`}>
+              <span class={`nrh-tax__value${t.featured ? ' nrh-tax__value--featured' : ''}`}>{t.value}</span>
+              <h4>{t.title}</h4>
+              <p>{t.body}</p>
+            </article>
+          ))}
+        </div>
+        <p class="nrh-tax__foot">Spór o to, którą stawkę płaci przedsiębiorca wynajmujący mieszkanie, zamknęła {PODATEK_NIERUCHOMOSCI_UCHWALA}. Jeżeli lokal służy zaspokojeniu potrzeb mieszkaniowych najemcy, obowiązuje stawka mieszkalna, nawet gdy wynajmuje firma. Jeżeli natomiast najemca prowadzi w mieszkaniu biuro albo lokal służy krótkotrwałemu zakwaterowaniu, wchodzi stawka najwyższa. Przy przejściu z najmu długoterminowego na doby to jedna z pierwszych rzeczy, które liczymy.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Całość prowadzimy zdalnie, więc <a href="/ksiegowosc-online">sprawdź, jak wygląda współpraca online</a>, jeśli Twoje lokale są w innym mieście niż Ty.</p>
+      </div>
+      <div class="nrh-scope">
+        {scope.map((s) => (
+          <article class="nrh-scope__item">
+            <div class="nrh-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="nrh-actions">
+        <a href="/ksiegowosc" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Pełny zakres księgowości</span>
+        </a>
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="nrh-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia prowadzone w&nbsp;tle, także w&nbsp;środku sezonu</h2>
+          <p class="lede">W tej branży praca kumuluje się w kilku miesiącach w roku, a rozmowa z księgowym rzadko mieści się między jednym a drugim zameldowaniem. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="nrh-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Procesy prowadzone w pełni online', value: 100, suffix: '%' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow nrh-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="nrh-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="nrh-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="nrh-startup">
+        <div class="nrh-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Wychodzisz z najmu prywatnego? Ustawmy to we właściwej kolejności</h2>
+          <p class="lede">Przejście na najem krótkoterminowy albo dołożenie kolejnych lokali to moment, w którym decyzje zapadają na lata. Rejestracja do VAT, wybór formy i sposób przyjmowania płatności wpływają na siebie nawzajem, więc układamy je razem, a nie pojedynczo.</p>
+        </div>
+
+        <ol class="nrh-steps">
+          {startupSteps.map((s, i) => (
+            <li class="nrh-step">
+              <span class="nrh-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="nrh-startup__cols">
+          <div class="nrh-startup__col nrh-startup__col--primary">
+            <span class="nrh-startup__pill nrh-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="nrh-startup__col">
+            <span class="nrh-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=nieruchomosci" class="btn btn--accent btn--lg nrh-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla wynajmującego</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. Cena zależy od liczby dokumentów księgowych w miesiącu, a nie od liczby rezerwacji ani od liczby lokali.</p>
+      </div>
+
+      <div class="nrh-price">
+        <div class="nrh-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="nrh-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="nrh-price__row">
+            <span class="nrh-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów{r.vatLabel ? `, ${r.vatLabel}` : ''}</small>
+            </span>
+            <span class="nrh-price__situation">{r.situation}</span>
+            <span class="nrh-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="nrh-note">
+        <Icon name="file" size={16}/>
+        <span>Do limitu dokumentów wliczamy faktury kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Nie wliczamy pojedynczych rezerwacji: sprzedaż z każdej platformy i z systemu rezerwacyjnego to jeden dokument miesięcznie, na podstawie zestawienia okresowego, a czynsz z umowy długoterminowej jedna pozycja. Deklaracje wysyłane do urzędów też nie wchodzą do limitu. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</span>
+      </p>
+
+      <p class="nrh-note">
+        <Icon name="tag" size={16}/>
+        <span>Poza abonamentem stoją dwie pozycje, na które w tej branży warto zwrócić uwagę. Rozliczanie importu usług u podatnika zwolnionego z VAT to <a href="/cennik#moduly">moduł za {modulVatUe} zł netto miesięcznie</a>, naliczany wyłącznie w miesiącach, w których zakup od platformy wystąpił; u czynnego podatnika VAT jest w cenie pakietu. Roczne zeznanie z działalności jest w abonamencie, a PIT-28 z najmu prywatnego właściciela, czyli z nieruchomości spoza firmy, dochodzi do niego tylko wtedy, gdy jest osobnym drukiem. Jeżeli firma też rozlicza się ryczałtem, najem wchodzi do tego samego zeznania osobną rubryką i nie dopłacasz nic; przy skali, liniówce i w spółce to dodatkowy formularz z <a href="/cennik#dodatkowe">usług dodatkowych</a> za {pitNajem} zł. Obsługa kadrowa zaczyna się od {hrZlecenie} zł netto miesięcznie za osobę przy umowie cywilnoprawnej bez składek ZUS i od {hrMin} zł przy umowie o pracę.</span>
+      </p>
+
+      <div class="nrh-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=nieruchomosci" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swoją działalność</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość najmu"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twoich nieruchomości"
+    description="Jeśli wynajmujesz mieszkanie, prowadzisz apartamenty na doby albo obiekt noclegowy, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje lokale i kanały rezerwacji, policzymy formy opodatkowania i powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=nieruchomosci"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.nrh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.nrh-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.nrh-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.nrh-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+.nrh-pill {
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.nrh-pill--good { background: var(--accent-500); color: var(--ink-950); }
+.nrh-pill--neutral { background: var(--ink-100); color: var(--ink-800); }
+.nrh-pill--warn { background: #FEF3C7; color: #92400E; }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.nrh-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa pięć kart po trzy w rzędzie, a dwie ostatnie
+     rozkładają się symetrycznie w drugim wierszu. */
+  .nrh-segments { grid-template-columns: repeat(6, 1fr); }
+  .nrh-segments > * { grid-column: span 2; }
+  .nrh-segments > :nth-child(4) { grid-column: 2 / span 2; }
+  .nrh-segments > :nth-child(5) { grid-column: 4 / span 2; }
+}
+.nrh-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.nrh-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.nrh-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.nrh-segment h3 { font-size: 1.125rem; }
+.nrh-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.nrh-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.nrh-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.nrh-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Progi ryczałtu ───────────────────────────────────────────────────── */
+.nrh-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .nrh-tiers { grid-template-columns: repeat(3, 1fr); } }
+.nrh-tier {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.nrh-tier--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.nrh-tier__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--ink-800);
+  white-space: nowrap;
+}
+.nrh-tier__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.nrh-tier h3 { font-size: 1.0625rem; }
+.nrh-tier p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+.nrh-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 980px) { .nrh-notes { grid-template-columns: repeat(3, 1fr); } }
+.nrh-note-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.nrh-note-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.nrh-note-card__head h3 { font-size: 1.0625rem; }
+.nrh-note-card :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.nrh-note-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Stawki VAT ───────────────────────────────────────────────────────── */
+.nrh-rates {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.nrh-rates__head,
+.nrh-rates__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.nrh-rates__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.nrh-rates__row { border-bottom: 1px solid var(--border-subtle); }
+.nrh-rates__row:last-child { border-bottom: none; }
+.nrh-rates__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.nrh-rates__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.nrh-rates__rate { text-align: right; }
+
+.nrh-traps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 900px) { .nrh-traps { grid-template-columns: repeat(2, 1fr); } }
+.nrh-trap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.nrh-trap--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.nrh-trap__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+  line-height: 1.35;
+}
+.nrh-trap__badge :global(svg) { flex-shrink: 0; }
+.nrh-trap--warn .nrh-trap__badge { background: #FEF3C7; color: #92400E; }
+.nrh-trap h3 { font-size: 1.125rem; margin-bottom: 0.5rem; }
+.nrh-trap p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.nrh-trap__foot {
+  /* `auto` dosuwa stopkę do dołu karty, więc separatory w rzędzie stoją
+     równo mimo różnej długości opisów. */
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+/* ── Platformy rezerwacyjne ───────────────────────────────────────────── */
+.nrh-platform__main {
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  color: var(--text-on-dark);
+}
+.nrh-platform__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+  margin-bottom: 1.125rem;
+}
+.nrh-platform__main h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.75rem; }
+.nrh-platform__main p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.nrh-platform__main p + p { margin-top: 0.875rem; }
+.nrh-platform__main ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.nrh-platform__main li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-on-dark);
+  line-height: 1.5;
+}
+.nrh-platform__main li :global(svg) { color: var(--accent-400); flex-shrink: 0; margin-top: 5px; }
+@media (min-width: 900px) {
+  /* Trzy punkty z listy stają obok siebie, żeby ciemny panel nie rósł w słupek
+     i nie zostawiał pustego miejsca nad kartami pod nim. */
+  .nrh-platform__main ul { flex-direction: row; gap: 1.5rem; }
+  .nrh-platform__main li { flex: 1; }
+}
+
+.nrh-platform__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 980px) { .nrh-platform__cards { grid-template-columns: repeat(3, 1fr); } }
+.nrh-platform__card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.nrh-platform__card--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.nrh-platform__badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+  line-height: 1.35;
+}
+.nrh-platform__badge :global(svg) { flex-shrink: 0; }
+.nrh-platform__card--warn .nrh-platform__badge { background: #FEF3C7; color: #92400E; }
+.nrh-platform__card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.nrh-platform__foot {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+/* ── Obiekty noclegowe ────────────────────────────────────────────────── */
+.nrh-objects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .nrh-objects { grid-template-columns: repeat(3, 1fr); } }
+.nrh-object {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.nrh-object__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.nrh-object__head h3 { font-size: 1.0625rem; }
+.nrh-object :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.nrh-object p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+.nrh-docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 900px) { .nrh-docs { grid-template-columns: repeat(2, 1fr); } }
+.nrh-docs__col {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.25rem);
+  display: flex;
+  flex-direction: column;
+}
+.nrh-docs__badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  margin-bottom: 0.875rem;
+}
+.nrh-docs__badge :global(svg) { flex-shrink: 0; }
+.nrh-docs__col h3 { font-size: 1.1875rem; margin-bottom: 0.625rem; }
+.nrh-docs__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.nrh-docs__col p + p { margin-top: 0.75rem; }
+.nrh-docs__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+.nrh-docs__col li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.nrh-docs__col li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 5px; }
+.nrh-docs__foot {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--accent-200);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+/* ── Podatek od nieruchomości ─────────────────────────────────────────── */
+.nrh-tax {
+  margin-top: 1.75rem;
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  color: var(--text-on-dark);
+}
+.nrh-tax__head { max-width: 72ch; }
+.nrh-tax__head h3 { color: var(--white); font-size: clamp(1.25rem, 2.5vw, 1.625rem); margin: 0.5rem 0 0.75rem; }
+.nrh-tax__head p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.nrh-tax__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 900px) { .nrh-tax__grid { grid-template-columns: repeat(3, 1fr); } }
+.nrh-tax__card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.nrh-tax__card--featured { border-color: var(--accent-500); background: rgba(16,185,129,0.1); }
+.nrh-tax__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.1);
+  color: var(--white);
+  white-space: nowrap;
+}
+.nrh-tax__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.nrh-tax__card h4 { color: var(--white); font-size: 1rem; font-family: var(--font-display); }
+.nrh-tax__card p { font-size: 0.875rem; color: var(--text-on-dark-muted); line-height: 1.65; }
+.nrh-tax__foot {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.9375rem;
+  color: var(--text-on-dark-muted);
+  line-height: 1.75;
+}
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.nrh-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .nrh-scope { grid-template-columns: repeat(2, 1fr); } }
+.nrh-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.nrh-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.nrh-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.nrh-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.nrh-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.nrh-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.nrh-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.nrh-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.nrh-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .nrh-benefits { grid-template-columns: 1fr; } }
+.nrh-benefits .lede { margin-top: 1rem; }
+.nrh-benefits__stats { margin-top: 2rem; }
+.nrh-benefits__link { margin-top: 1.75rem; }
+.nrh-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.nrh-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.nrh-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.nrh-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.nrh-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.nrh-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.nrh-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.nrh-startup__head { max-width: 70ch; }
+.nrh-startup__head .lede { margin-top: 1rem; }
+.nrh-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .nrh-steps { grid-template-columns: repeat(3, 1fr); } }
+.nrh-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.nrh-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.nrh-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.nrh-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.nrh-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .nrh-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.nrh-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.nrh-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.nrh-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.nrh-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.nrh-startup__col h3 { font-size: 1.1875rem; }
+.nrh-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.nrh-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.nrh-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.nrh-price__head,
+.nrh-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.nrh-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.nrh-price__row { border-bottom: 1px solid var(--border-subtle); }
+.nrh-price__row:last-child { border-bottom: none; }
+.nrh-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.nrh-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.nrh-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.nrh-price__amount { text-align: right; }
+.nrh-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .nrh-price__head { display: none; }
+  .nrh-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .nrh-price__situation { grid-column: 1 / -1; }
+}
+</style>

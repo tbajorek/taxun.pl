@@ -1,0 +1,411 @@
+---
+import Icon from './Icon.astro';
+import { navigation } from '../data/site';
+/*
+ * Logo idzie przez potok zasobów, a nie z `public/`. Vite nadaje plikowi nazwę
+ * z odciskiem treści, więc adres zmienia się razem z obrazkiem i cały katalog
+ * `/assets/` może mieć nagłówek `immutable` z rocznym terminem ważności.
+ * Kopia w `public/logo-mark.png` zostaje pod stałym adresem dla danych
+ * strukturalnych - tego pliku przeglądarka nie pobiera.
+ */
+import logoWide from '../assets/brand/logo.png';
+import logoMark from '../assets/brand/logo-mark.png';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => {
+  if (href === '/') return path === '/';
+  return path === href || path.startsWith(href + '/');
+};
+---
+{/*
+  Znacznik wysokości progu przewinięcia. Leży poza układem (position: absolute),
+  więc niczego nie przesuwa, a IntersectionObserver mówi po nim, czy góra strony
+  jest jeszcze w kadrze - bez czytania `scrollY`. Nie może być dzieckiem
+  nagłówka: ten jest `sticky`, więc jechałby razem z nim i nigdy nie wyszedłby
+  z kadru.
+*/}
+<div class="scroll-sentinel" aria-hidden="true"></div>
+
+<header class="site-header" id="site-header">
+  <div class="site-header__blur" aria-hidden="true"></div>
+  <div class="container site-header__inner">
+    <a href="/" class="brand" aria-label="Taxun - biuro rachunkowe, strona główna">
+      <picture>
+        <source media="(min-width: 641px)" srcset={logoWide.src} width="480" height="134" />
+        <img
+          src={logoMark.src}
+          alt="Taxun - biuro rachunkowe"
+          width="256"
+          height="256"
+          class="brand__logo"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </picture>
+    </a>
+
+    <nav class="nav" id="primary-nav" aria-label="Główna nawigacja">
+      <ul class="nav__list">
+        {navigation.map((item) => (
+          item.children ? (
+            <li class="nav__item nav__item--has-children">
+              <button class="nav__link" aria-expanded="false" aria-haspopup="true" data-dropdown-toggle>
+                {item.label}
+                <Icon name="chevron-down" size={14} />
+              </button>
+              <div class={`nav__dropdown ${item.children.length > 5 ? 'nav__dropdown--wide' : ''}`}>
+                <div class="nav__dropdown-inner">
+                  {item.children.map((child) => (
+                    <a href={child.href} class={`nav__dropdown-link ${isActive(child.href) ? 'is-active' : ''}`}>
+                      <span class="nav__dropdown-icon"><Icon name={child.icon} size={20} /></span>
+                      <span>
+                        <strong>{child.label}</strong>
+                        <small>{child.description}</small>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </li>
+          ) : (
+            <li class="nav__item">
+              <a href={item.href} class={`nav__link ${isActive(item.href) ? 'is-active' : ''}`}>
+                {item.label}
+              </a>
+            </li>
+          )
+        ))}
+      </ul>
+      <a href="/wycena" class="btn btn--accent nav__mobile-cta">Bezpłatna wycena</a>
+    </nav>
+
+    <div class="site-header__cta">
+      <a href="/wycena" class="btn btn--accent btn--sm">Bezpłatna wycena</a>
+    </div>
+
+    <button class="nav-toggle" id="nav-toggle" aria-label="Otwórz menu" aria-expanded="false" aria-controls="primary-nav">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<style>
+.scroll-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  /* backdrop-filter lives on .site-header__blur so it doesn't create a
+     containing block for the position:fixed mobile nav */
+}
+.site-header__blur {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  transition: background var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.site-header.is-scrolled .site-header__blur {
+  background: rgba(255,255,255,0.95);
+  border-bottom-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: var(--nav-height);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+/* Phones get the square mark, everything wider gets the full lockup.
+   Both boxes are sized explicitly so the header never shifts while loading. */
+.brand__logo {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+@media (min-width: 641px) {
+  .brand__logo { width: 164px; height: 46px; }
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.nav__list {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+}
+.nav__item { position: relative; }
+.nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-full);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.nav__link:hover { background: var(--ink-50); color: var(--ink-900); }
+.nav__link.is-active { color: var(--ink-900); font-weight: 600; }
+.nav__link.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent-500);
+}
+
+.nav__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  min-width: 320px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: calc(0.5rem + 8px) 0.5rem 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base), transform var(--transition-base);
+}
+@media (min-width: 901px) {
+  .nav__dropdown {
+    transform: translateX(-50%) translateY(2px);
+  }
+  .nav__item--has-children:hover .nav__dropdown,
+  .nav__item--has-children:focus-within .nav__dropdown,
+  .nav__item--has-children.is-open .nav__dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.nav__dropdown-inner { display: flex; flex-direction: column; gap: 2px; }
+/* Rozbudowana lista (branże) nie mieści się w jednej kolumnie na wysokość
+   okna, więc od tej liczby pozycji panel rozkłada się na dwie kolumny. */
+@media (min-width: 901px) {
+  .nav__dropdown--wide { min-width: 640px; max-width: calc(100vw - 2rem); }
+  .nav__dropdown--wide .nav__dropdown-inner {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 0.25rem;
+  }
+}
+.nav__dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+.nav__dropdown-link:hover { background: var(--ink-50); }
+.nav__dropdown-link.is-active { background: var(--accent-50); }
+.nav__dropdown-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--ink-50);
+  color: var(--ink-900);
+}
+.nav__dropdown-link.is-active .nav__dropdown-icon { background: var(--accent-500); color: var(--ink-950); }
+.nav__dropdown-link strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.nav__dropdown-link small { display: block; color: var(--text-subtle); font-size: 0.8125rem; margin-top: 2px; }
+
+.site-header__cta { flex-shrink: 0; }
+
+.nav-toggle {
+  display: none;
+  width: 44px; height: 44px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-md);
+  background: var(--ink-50);
+}
+.nav-toggle span {
+  display: block;
+  width: 22px; height: 2px;
+  background: var(--ink-900);
+  border-radius: 2px;
+  transition: transform var(--transition-base), opacity var(--transition-fast);
+}
+.nav-toggle.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.nav-toggle.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 1024px) {
+  .site-header__cta { display: none; }
+}
+@media (max-width: 900px) {
+  .nav-toggle { display: flex; }
+  .nav {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: calc(100dvh - var(--nav-height));
+    z-index: 200;
+    background: var(--white);
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 1.5rem clamp(1.25rem, 4vw, 2rem) 2rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform var(--transition-base), visibility var(--transition-base);
+    border-top: 1px solid var(--border);
+  }
+  .nav.is-open { transform: translateX(0); visibility: visible; }
+  .nav__list {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    width: 100%;
+  }
+  .nav__link {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 1.0625rem;
+    border-radius: var(--radius-md);
+    justify-content: space-between;
+  }
+  .nav__dropdown {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    box-shadow: none;
+    border: none;
+    background: var(--surface-alt);
+    margin: 0;
+    min-width: 0;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 0.5rem;
+    transition: max-height var(--transition-base), padding var(--transition-base), margin var(--transition-base);
+  }
+  .nav__item--has-children.is-open .nav__dropdown {
+    /* Wysokość musi pomieścić najdłuższą listę z menu (branże), inaczej
+       ostatnie pozycje zostają ucięte przez overflow: hidden. */
+    max-height: 900px;
+    padding: 0.5rem;
+    margin: 0.25rem 0 0.75rem;
+  }
+  .nav__mobile-cta {
+    display: flex;
+    margin-top: 1.5rem;
+    text-align: center;
+    justify-content: center;
+  }
+}
+@media (min-width: 901px) {
+  .nav__mobile-cta { display: none; }
+}
+</style>
+
+<script>
+  const header = document.getElementById('site-header');
+  const toggle = document.getElementById('nav-toggle');
+  const nav = document.getElementById('primary-nav');
+
+  let savedScrollY = 0;
+
+  function lockScroll() {
+    savedScrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = '100%';
+  }
+
+  function unlockScroll() {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, savedScrollY);
+  }
+
+  if (toggle && nav) {
+    toggle.addEventListener('click', () => {
+      const isOpen = nav.classList.toggle('is-open');
+      toggle.classList.toggle('is-open', isOpen);
+      toggle.setAttribute('aria-expanded', String(isOpen));
+      toggle.setAttribute('aria-label', isOpen ? 'Zamknij menu' : 'Otwórz menu');
+      if (isOpen) lockScroll(); else unlockScroll();
+    });
+    nav.addEventListener('click', (e) => {
+      if (!(e.target as Element).closest('a')) return;
+      nav.classList.remove('is-open');
+      toggle.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      unlockScroll();
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-dropdown-toggle]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      if (window.innerWidth > 900) return;
+      e.preventDefault();
+      const item = btn.closest('.nav__item');
+      if (!item) return;
+      const open = item.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', String(open));
+    });
+  });
+
+  // Stan przewinięcia bierzemy z obserwatora, a nie z `scrollY`.
+  //
+  // Każdy odczyt geometrii - `scrollY`, `offsetWidth`, `getBoundingClientRect` -
+  // przy nieaktualnym układzie każe przeglądarce policzyć go synchronicznie.
+  // Odkładanie odczytu przez requestAnimationFrame tego nie rozwiązuje: między
+  // klatkami układ i tak zdąży się unieważnić (podmiana kroju, klasy dokładane
+  // przy odsłanianiu sekcji), więc kolejny odczyt znowu wymusza przeliczenie.
+  // Na dławionym procesorze wychodziło z tego ~49 ms zablokowanego wątku -
+  // niewidoczne na szybkiej maszynie, dobrze widoczne w pomiarze mobilnym.
+  //
+  // IntersectionObserver liczy przecięcia w rytmie klatek, poza wątkiem
+  // odczytów, i sam podaje stan początkowy przy pierwszym wywołaniu. Zastępuje
+  // przy okazji nasłuch przewijania - nie ma czego odpytywać przy każdym
+  // przesunięciu.
+  const sentinel = document.querySelector('.scroll-sentinel');
+  if (header && sentinel) {
+    new IntersectionObserver(([entry]) => {
+      header.classList.toggle('is-scrolled', !entry.isIntersecting);
+    }).observe(sentinel);
+  }
+</script>

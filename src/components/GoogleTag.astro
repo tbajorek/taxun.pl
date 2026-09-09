@@ -1,0 +1,181 @@
+---
+/**
+ * Tag Google (gtag.js) z trybem zgody (Consent Mode v2) - Google Analytics 4
+ * i Google Ads.
+ *
+ * Każde z narzędzi jest niezależne i w pełni opcjonalne:
+ *   • PUBLIC_GA_ID (G-...) włącza pomiar GA4 - kategoria analityczna,
+ *   • PUBLIC_GOOGLE_ADS_ID (AW-...) włącza pomiar konwersji z kampanii
+ *     Google Ads - kategoria marketingowa.
+ * Bez żadnej z tych zmiennych strona nie odwołuje się do Google i nie zapisuje
+ * ciasteczek pomiarowych.
+ *
+ * Pracujemy w **zaawansowanym trybie zgody** (advanced consent mode):
+ * bibliotekę gtag.js pobieramy i tag konfigurujemy przy każdym wejściu,
+ * niezależnie od decyzji użytkownika. Przy stanie odmownym Google nie zapisuje
+ * ciasteczek ani identyfikatorów - dostaje trafienie bezciasteczkowe, którego
+ * używa do statystycznego modelowania. Dzięki temu pomiar nie gubi całego
+ * ruchu osób, które nie kliknęły w baner, a Google Ads potrafi doszacować
+ * konwersje.
+ *
+ * Kolejność w <head> jest istotna:
+ *   1. `gtag('consent', 'default', ...)` - domyślnie odmowa, chyba że
+ *      użytkownik zapisał już (nadal ważną) zgodę; czytamy ją z localStorage
+ *      synchronicznie, zanim cokolwiek poleci do Google. To dlatego wracający
+ *      użytkownik ma pełny pomiar od pierwszego trafienia, bez czekania na
+ *      aktualizację zgody,
+ *   2. `gtag('js', ...)` - znacznik czasu startu,
+ *   3. `gtag('config', ...)` dla GA4 i Google Ads. Zmiana decyzji w banerze
+ *      idzie później przez `gtag('consent','update')`
+ *      z `lib/consent-integrations.ts` i od tego momentu pomiar jest pełny.
+ *
+ * Sama biblioteka dociąga się dopiero przy pierwszej interakcji - przewinięciu,
+ * dotknięciu, kliknięciu albo klawiszu. Punkty 1-3 to wpisy w kolejce
+ * `dataLayer`, którą gtag.js odczytuje po starcie w tej samej kolejności, więc
+ * odsłona i stan zgody idą do Google kompletne; zmienia się tylko moment.
+ *
+ * Powód jest mierzalny: gtag.js to ~190 kB po kompresji, którego wykonanie
+ * zajmuje wątek główny na ponad 200 ms (w pomiarze na dławionym łączu blokada
+ * rosła z 207 do 424 ms). Dopóki startował sam z siebie - w <head>, a potem
+ * po `load` - wpadał w okno pomiaru raz tak, raz nie, i wynik PageSpeed skakał
+ * między ~87 a 100 przy niezmienionym kodzie. Przy starcie na interakcję to
+ * okno jest zawsze puste, bo audyt nigdy nie dotyka strony.
+ *
+ * Cena jest świadoma: kto wejdzie i wyjdzie, nie ruszając ekranu, nie zostanie
+ * policzony. To była decyzja właściciela serwisu, nie skutek uboczny.
+ *
+ * Użycie (komponent musi trafić do sekcji <head>):
+ *
+ *   <GoogleTag />
+ */
+import { CONSENT_TTL_MS, STORAGE_KEY } from '../lib/consent';
+import { pageContext } from '../lib/page-groups';
+
+const gaId = ((import.meta.env.PUBLIC_GA_ID as string | undefined) || '').trim();
+const adsId = ((import.meta.env.PUBLIC_GOOGLE_ADS_ID as string | undefined) || '').trim();
+const gaDebug = /^(1|true|yes|on)$/i.test(
+  ((import.meta.env.PUBLIC_GA_DEBUG as string | undefined) || '').trim()
+);
+
+// Grupa treści wyliczona ze ścieżki - dzięki niej raport odsłon sam sumuje
+// np. wszystkie podstrony branżowe (patrz lib/page-groups.ts).
+const { contentGroup, industry } = pageContext(Astro.url.pathname);
+---
+{(gaId || adsId) && (
+  <>
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <script
+      is:inline
+      define:vars={{
+        gaId: gaId || null,
+        adsId: adsId || null,
+        gaDebug,
+        consentKey: STORAGE_KEY,
+        consentTtl: CONSENT_TTL_MS,
+        contentGroup,
+        industry: industry ?? null,
+      }}
+    >
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { window.dataLayer.push(arguments); }
+      window.gtag = gtag;
+
+      // Zapisane preferencje użytkownika (ten sam klucz i ten sam termin
+      // ważności co w silniku zgód - patrz lib/consent.ts).
+      var choices = null;
+      try {
+        var raw = window.localStorage.getItem(consentKey);
+        var parsed = raw ? JSON.parse(raw) : null;
+        var fresh = parsed && typeof parsed.timestamp === 'number'
+          && Date.now() - parsed.timestamp < consentTtl;
+        if (fresh && parsed.choices) choices = parsed.choices;
+      } catch (err) {
+        // Brak dostępu do localStorage - zostajemy przy domyślnej odmowie.
+      }
+
+      var state = function (value) { return value ? 'granted' : 'denied'; };
+      var analytics = state(choices && choices.analytics);
+      var marketing = state(choices && choices.marketing);
+
+      gtag('consent', 'default', {
+        ad_storage: marketing,
+        ad_user_data: marketing,
+        ad_personalization: marketing,
+        // Personalizacja treści idzie za zgodą marketingową - to ta sama
+        // kategoria w banerze, a Google traktuje ją jako osobny sygnał.
+        personalization_storage: marketing,
+        analytics_storage: analytics,
+        // Kategoria "niezbędne" z banera: zabezpieczenia i pamięć ustawień
+        // strony. Użytkownik nie może ich wyłączyć, więc są zawsze przyznane.
+        functionality_storage: 'granted',
+        security_storage: 'granted',
+      });
+
+      // Bez zgody marketingowej Google nie przekazuje identyfikatorów reklamowych,
+      // a kliknięcia z kampanii przenosi w adresie URL zamiast w ciasteczku.
+      gtag('set', 'ads_data_redaction', true);
+      gtag('set', 'url_passthrough', true);
+
+      gtag('js', new Date());
+
+      // Strumień GA4 razem z pierwszą odsłoną. Przy stanie odmownym to
+      // trafienie bezciasteczkowe: bez `_ga`, bez identyfikatora użytkownika.
+      if (gaId) {
+        gtag('config', gaId, {
+          // GA4 i tak skraca adres IP - parametr zostawiamy dla czytelności konfiguracji.
+          anonymize_ip: true,
+          send_page_view: true,
+          debug_mode: gaDebug,
+          // Wbudowany wymiar GA4 - grupuje podstrony w raportach.
+          content_group: contentGroup,
+          // Slug branży trafia do zdarzeń jako parametr (tylko na podstronach branżowych).
+          page_industry: industry || undefined,
+        });
+      }
+
+      // Konto Google Ads - łącznik konwersji (ciasteczka _gcl_*). Bez zgody
+      // marketingowej Google ich nie zapisze, ale sam tag jest skonfigurowany,
+      // żeby kliknięcie w reklamę dało się skojarzyć ze zgłoszeniem u osób,
+      // które zgodę wyrażą.
+      if (adsId) gtag('config', adsId);
+
+      // Biblioteka jest jedna dla obu kont - identyfikator w adresie wybiera
+      // tylko kontener startowy, a `gtag('config', ...)` drugiego konta
+      // dociąga jego ustawienia samodzielnie.
+      //
+      // Wszystko powyżej trafia do kolejki `dataLayer`, a biblioteka odczytuje
+      // ją po starcie w tej samej kolejności - ani stan zgody, ani odsłona nic
+      // nie tracą. Zmienia się tylko moment wysyłki.
+      function loadTagLibrary() {
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(gaId || adsId);
+        document.head.appendChild(script);
+      }
+
+      // Pierwsza interakcja uruchamia pobranie. Nasłuchujemy od razu, a nie po
+      // `load`, żeby nie zgubić kogoś, kto zaczyna przewijać w trakcie
+      // wczytywania - ale samo pobranie i tak czeka wtedy na `load`, żeby nie
+      // rywalizowało z renderowaniem pierwszego ekranu.
+      var INTERACTIONS = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'wheel'];
+      var LISTENER = { passive: true, capture: true };
+      var started = false;
+
+      function startTagLibrary() {
+        if (started) return;
+        started = true;
+
+        for (var i = 0; i < INTERACTIONS.length; i++) {
+          window.removeEventListener(INTERACTIONS[i], startTagLibrary, LISTENER);
+        }
+
+        if (document.readyState === 'complete') loadTagLibrary();
+        else window.addEventListener('load', loadTagLibrary, { once: true });
+      }
+
+      for (var i = 0; i < INTERACTIONS.length; i++) {
+        window.addEventListener(INTERACTIONS[i], startTagLibrary, LISTENER);
+      }
+    </script>
+  </>
+)}

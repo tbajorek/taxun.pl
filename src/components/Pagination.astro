@@ -1,0 +1,133 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  currentPage: number;
+  lastPage: number;
+  /** Buduje adres n-tej strony. */
+  hrefFor: (page: number) => string;
+  label?: string;
+}
+
+const { currentPage, lastPage, hrefFor, label = 'Paginacja artykułów' } = Astro.props;
+
+/**
+ * Okno numerów stron wokół bieżącej: 1 … 4 [5] 6 … 12.
+ * Dzięki temu pasek nie rośnie wraz z liczbą artykułów.
+ */
+function pageItems(current: number, last: number): (number | 'gap')[] {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+  const pages = new Set<number>([1, last, current]);
+  if (current - 1 > 1) pages.add(current - 1);
+  if (current + 1 < last) pages.add(current + 1);
+  if (current <= 3) { pages.add(2); pages.add(3); pages.add(4); }
+  if (current >= last - 2) { pages.add(last - 1); pages.add(last - 2); pages.add(last - 3); }
+  const sorted = Array.from(pages).filter((p) => p >= 1 && p <= last).sort((a, b) => a - b);
+  const items: (number | 'gap')[] = [];
+  let previous = 0;
+  for (const page of sorted) {
+    if (previous && page - previous > 1) items.push('gap');
+    items.push(page);
+    previous = page;
+  }
+  return items;
+}
+
+const items = lastPage > 1 ? pageItems(currentPage, lastPage) : [];
+const prevHref = currentPage > 1 ? hrefFor(currentPage - 1) : null;
+const nextHref = currentPage < lastPage ? hrefFor(currentPage + 1) : null;
+---
+{lastPage > 1 && (
+  <nav class="pagination" aria-label={label}>
+    {prevHref ? (
+      <a class="pagination__step" href={prevHref} rel="prev">
+        <Icon name="chevron-right" size={14} class="pagination__icon-prev"/>
+        <span>Poprzednia</span>
+      </a>
+    ) : (
+      <span class="pagination__step is-disabled" aria-hidden="true">
+        <Icon name="chevron-right" size={14} class="pagination__icon-prev"/>
+        <span>Poprzednia</span>
+      </span>
+    )}
+
+    <ol class="pagination__pages">
+      {items.map((item) => (
+        item === 'gap' ? (
+          <li class="pagination__gap" aria-hidden="true">…</li>
+        ) : item === currentPage ? (
+          <li><span class="pagination__page is-current" aria-current="page">{item}</span></li>
+        ) : (
+          <li><a class="pagination__page" href={hrefFor(item)} aria-label={`Strona ${item}`}>{item}</a></li>
+        )
+      ))}
+    </ol>
+
+    {nextHref ? (
+      <a class="pagination__step" href={nextHref} rel="next">
+        <span>Następna</span>
+        <Icon name="chevron-right" size={14}/>
+      </a>
+    ) : (
+      <span class="pagination__step is-disabled" aria-hidden="true">
+        <span>Następna</span>
+        <Icon name="chevron-right" size={14}/>
+      </span>
+    )}
+  </nav>
+)}
+
+<style>
+.pagination {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.pagination__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0 0.25rem;
+  padding: 0;
+}
+.pagination__page,
+.pagination__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.pagination__page:hover,
+.pagination__step:hover { background: var(--ink-900); border-color: var(--ink-900); color: var(--white); }
+.pagination__page.is-current {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+  color: var(--white);
+}
+.pagination__step.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.pagination__gap { padding: 0 0.25rem; color: var(--text-subtle); }
+.pagination__icon-prev { transform: rotate(180deg); }
+@media (max-width: 520px) {
+  .pagination__step span { display: none; }
+  .pagination__step { min-width: 40px; padding: 0; }
+}
+@media print { .pagination { display: none !important; } }
+</style>

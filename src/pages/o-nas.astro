@@ -1,0 +1,554 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+import { surchargeFreeUntilDay } from '../data/pricing';
+
+const values = [
+  { icon: 'shield', title: 'Odpowiedzialność', description: 'Bierzemy pełną odpowiedzialność za prowadzoną obsługę kadrowo - księgową. Chcemy, aby była ona na najwyższym poziomie. Posiadamy ubezpieczenie dla biura rachunkowego.' },
+  { icon: 'sparkle', title: 'Klarowność', description: 'Każdy problem kadrowy lub podatkowy tłumaczymy prostym językiem, bez branżowego żargonu. Zależy nam na zrozumieniu przez klienta analizowanego problemu i wspólnym jego rozwiązaniu.' },
+  { icon: 'zap', title: 'Technologia', description: 'Automatyzujemy procesy, które można w ten sposób zoptymalizować. Pozwala nam to świadczyć usługi na wysokim poziomie przy równoczesnej konkurencyjności cenowej.' },
+  { icon: 'heart', title: 'Partnerstwo', description: 'Traktujemy Twój sukces jak własny i chcemy na niego pracować. Sygnalizujemy ryzyka i proponujemy oszczędności. Umiemy szczerze powiedzieć "nie" ryzykownym praktykom.' },
+];
+
+const differentiators = [
+  { icon: 'check-circle', title: 'Bezpłatna konsultacja na start', description: 'Zanim podpiszesz umowę, rozmawiamy o tym, jak działa Twoja firma i w jaki sposób możemy Ci realnie pomóc. Zapewniamy miłą atmosferę oraz brak zobowiązań i sprzedażowego nacisku.' },
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela JDG i roczne PIT/CIT - to wszystko oferujemy w ramach pakietu. Nie pobieramy dopłat za rzeczy, które w innych biurach mogą być traktowane jako dodatek.' },
+  { icon: 'check-circle', title: 'Przejrzysty cennik', description: 'Cały cennik jest publiczny i dostępny na stronie. Nie stosujemy gwiazdek, widełek czy tajemniczej prośby o wycenę. Wiesz, ile zapłacisz, jeszcze zanim się z nami skontaktujesz.' },
+  { icon: 'headset', title: 'Księgowość w chmurze', description: 'Dokumenty, raporty i faktury są dostępne online przez całą dobę. Masz do nich dostęp z każdego urządzenia, bez instalowania dodatkowego oprogramowania. Wystarczy przeglądarka internetowa.' },
+];
+
+/*
+ * Lista zobowiązań UMOWNYCH - sekcja zapowiada, że każde z nich jest zapisane
+ * w umowie, więc nie wolno tu wpisywać niczego, czego umowa nie zawiera.
+ * Czas odpowiedzi na wiadomości do niej nie należy: to standard obsługi
+ * opisany w treści strony, a nie termin, do którego się zobowiązujemy.
+ */
+const commitments = [
+  { title: 'Gwarancja terminowości', commitment: `Deklaracje (JPK_V7, ZUS, PIT) wysyłamy zgodnie z terminem urzędowym, o ile komplet dokumentów za dany miesiąc dotrze do nas do ${surchargeFreeUntilDay}. dnia miesiąca.`, benefits: 'Nie musisz płacić żadnych odsetek ani ponosić konsekwencji z powodu naszego opóźnienia' },
+  { title: 'Gwarancja ceny', commitment: 'Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.', benefits: 'Możesz planować budżet firmy bez ryzyka niespodziewanej podwyżki w środku roku. Kwota na fakturze zmienia się tylko wraz z zakresem obsługi: liczbą dokumentów, liczbą pracowników i włączonymi modułami.' },
+  { title: 'Gwarancja transparentności', commitment: 'Cały cennik jest publiczny, a faktura zawiera wyłącznie pozycje z cennika.', benefits: 'Nie doświadczysz żadnych niespodzianek na fakturze. Płacisz dokładnie tyle, ile zostało ustalone w umowie.' },
+  { title: 'Gwarancja płynnego przejęcia', commitment: 'Formalności związane z przejęciem dokumentów od poprzedniego biura załatwiamy za Ciebie.', benefits: 'Zmiana biura rachunkowego nie oznacza dla Ciebie dodatkowej pracy ani przerwy w obsłudze kadrowo - księgowej.' },
+  { title: 'Gwarancja swobody zakończenia', commitment: 'Umowa jest na czas nieokreślony, a wypowiedzieć ją możesz z jednomiesięcznym okresem wypowiedzenia ze skutkiem na koniec miesiąca kalendarzowego. Komplet ksiąg przekazujemy w ciągu 7 dni roboczych od zakończenia współpracy.', benefits: 'Nie jesteś zablokowany na lata. Możesz zakończyć współpracę, kiedy chcesz, z dokumentami w ręku, bez opłat za wyjście i bez zwrotu przyznanych rabatów.' },
+];
+
+const security = [
+  { icon: 'shield', label: 'Ubezpieczenie OC biura rachunkowego' },
+  { icon: 'lock', label: 'Bezpieczna wymiana dokumentów' },
+  { icon: 'lock', label: 'Certyfikowana infrastruktura chmurowa' },
+  { icon: 'shield', label: 'Zgodność z RODO' },
+  { icon: 'check-circle', label: 'Regularne aktualizacje oprogramowania' },
+  { icon: 'check-circle', label: 'Codzienne kopie zapasowe danych' },
+];
+
+const registry = [
+  { label: 'NIP', value: site.taxId.nip, href: `https://www.podatki.gov.pl/wykaz-podatnikow-vat-wyszukiwarka/?nip=${site.taxId.nip}`, linkLabel: 'Sprawdź na białej liście VAT' },
+  { label: 'REGON', value: site.taxId.regon, href: `https://wyszukiwarkaregon.stat.gov.pl/appBIR/index.aspx`, linkLabel: 'GUS REGON' },
+  { label: 'CEIDG', value: site.legalName, href: `https://aplikacja.ceidg.gov.pl/CEIDG/CEIDG.Public.UI/Search.aspx`, linkLabel: 'Zweryfikuj wpis CEIDG' },
+];
+
+const stack = [
+  { label: 'Krajowy System e-Faktur', value: 'Nasz system informatyczny posiada pełną integrację z KSeF' },
+  { label: 'OCR dokumentów', value: 'Skalujemy naszą pracę, wykorzystując nowoczesną technologię automatycznego rozpoznawania dokumentów z PDF-ów i zdjęć' },
+  { label: 'Portal klienta', value: 'Oferujemy dostęp 24/7 do systemu księgowego dla naszych klientów' },
+  { label: 'Bezpieczeństwo', value: 'Komfort zdalnego dostępu łączymy z kompleksowymi standardami bezpieczeństwa danych' },
+  { label: 'Konsultacje online', value: 'W razie potrzeby świadczymy konsultacje on-line, dostępne zarówno na komputerze, laptopie, tablecie czy smartfonie' },
+];
+
+const aboutSchema = {
+  '@type': 'AboutPage',
+  name: 'O nas - Biuro rachunkowe Taxun',
+  description: 'Taxun to biuro rachunkowe online dla JDG i spółek. Posiadamy przejrzysty cennik, nowoczesne narzędzia. Chcemy wspierać naszych klientów w ich sukcesie.',
+  mainEntity: { '@id': 'https://taxun.pl/#tomasz-bajorek' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const breadcrumbs = [{ label: 'O nas' }];
+---
+<BaseLayout
+  title="O nas - kto prowadzi biuro rachunkowe Taxun"
+  description="Kto prowadzi biuro rachunkowe Taxun i za co odpowiadamy. Ubezpieczenie OC, dane rejestrowe i zobowiązania zapisane w umowie."
+  schema={aboutSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="O nas"
+    title="Biuro rachunkowe stworzone dla przedsiębiorców"
+    description="Klasyczne biura rachunkowe rzadko myślą o kliencie jak o partnerze. Dlatego zbudowaliśmy Taxun od samego początku tak, aby zaradzić tej sytuacji. Korzystamy z nowoczesnych narzędzi. Oferujemy przejrzyste zasady współpracy. Chcemy, aby nasza księgowość realnie wspierała rozwój naszych klientów. Ich sukces to także nasz sukces."
+    breadcrumbs={breadcrumbs}
+  />
+
+  <!-- Founder section -->
+  <section class="section">
+    <div class="container">
+      <div class="founder">
+        <picture class="founder__avatar">
+          <source srcset="/founder.webp" type="image/webp" />
+          <img
+            src="/founder.jpg"
+            alt={`${site.founder.name} - ${site.founder.jobTitle}, założyciel biura rachunkowego Taxun`}
+            width="256"
+            height="256"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
+        <div class="founder__bio">
+          <span class="eyebrow">O założycielu</span>
+          <h2>{site.founder.name} - {site.founder.jobTitle}</h2>
+          <p class="lede">Od ponad 10 lat tworzę oprogramowanie dla różnych firm, wspierając technologicznie ich rozwój. Gdy w pewnym momencie sam założyłem działalność gospodarczą, szybko przekonałem się, że rynek biur rachunkowych pozostawia wiele do życzenia. Dotyczy to zarówno jakości obsługi, jak i podejścia do nowoczesnych narzędzi.</p>
+          <p>Wierzę, że droga do sukcesu to ciągły rozwój. Biuro księgowe powinno być dla przedsiębiorcy partnerem, a nie kolejnym problemem do rozwiązania. Dlatego zbudowałem biuro rachunkowe Taxun w taki sposób, jak sam chciałbym, żeby wyglądała księgowość, z której usług będę korzystał. Jej podstawowe cechy to publiczny i konkurencyjny cennik, bez ukrytych opłat, maksymalna automatyzacja procesów, rzetelna obsługa i realne wsparcie w sprawach księgowych i kadrowych.</p>
+          <p>Możesz skontaktować się ze mną bezpośrednio poprzez mój adres mailowy <a href={`mailto:${site.founder.email}`}>{site.founder.email}</a>.</p>
+          <dl class="founder__facts">
+            <div>
+              <dt>Rola w Taxun</dt>
+              <dd>{site.founder.role}. Odpowiadam za produkt, technologię, kontakt z klientami oraz za treści merytoryczne publikowane w serwisie: artykuły w dziale Wiedza, opisy usług i kalkulatory podatkowe. Pod każdym artykułem widnieje nazwisko autora i data ostatniej aktualizacji - <a href="/wiedza/autor/tomasz-bajorek">wszystkie teksty opublikowane pod moim nazwiskiem</a> są dostępne w jednym miejscu.</dd>
+            </div>
+            <div>
+              <dt>Doświadczenie</dt>
+              <dd>Ponad 10 lat tworzenia oprogramowania dla firm i prowadzenia projektów SaaS, w tym własnej działalności gospodarczej. Integrację Taxun z Krajowym Systemem e-Faktur zbudowaliśmy samodzielnie, w oparciu o dokumentację Ministerstwa Finansów.</dd>
+            </div>
+            <div>
+              <dt>Kto prowadzi księgi</dt>
+              <dd>Za prowadzenie ksiąg i rozliczeń odpowiada zespół księgowy Taxun. Ja odpowiadam za stronę produktową i technologiczną biura oraz za to, żeby publikowane przez nas informacje były aktualne i zgodne z przepisami.</dd>
+            </div>
+            <div>
+              <dt>Odpowiedzialność</dt>
+              <dd>Działalność prowadzi {site.legalName} pod marką Taxun. Posiadamy {site.insurance.phrase} z sumą gwarancyjną {site.insurance.coverage}. Dane rejestrowe firmy możesz zweryfikować samodzielnie w <a href="#registry">publicznych rejestrach</a>.</dd>
+            </div>
+          </dl>
+          <div class="founder__links">
+            <a href={site.founder.linkedin} rel="noopener" target="_blank" class="btn btn--ghost btn--sm">
+              <Icon name="linkedin" size={14}/>
+              <span>LinkedIn</span>
+            </a>
+            <a href={`mailto:${site.founder.email}`} class="btn btn--ghost btn--sm">
+              <Icon name="mail" size={14}/>
+              <span>Skontaktuj się</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Manifesto -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="manifesto">
+        <div>
+          <span class="eyebrow">Nasza misja</span>
+          <h2>Spokój zamiast chaosu</h2>
+          <p class="lede">Księgowość powinna być wsparciem dla przedsiębiorcy w prowadzeniu biznesu. W natłoku codziennych obowiązków oraz nieprzewidywalnych sytuacji nasze biuro oferuje spokój i pomoc w obszarze księgowo - kadrowym.</p>
+          <p>W Taxun każdy klient ma dostęp do swoich dokumentów online przez całą dobę. Posiada dedykowanego księgowego oraz przewidywalny abonament bez ukrytych dopłat. KSeF, OCR czy naliczenia składki ZUS właściciela to dla nas standardowy element usług, a nie płatny osobno dodatek.</p>
+          <p>Pracujemy z firmami, które chcą mieć poukładaną księgowość. Nasi klienci nie chcą martwić się o terminy czy zgodność ich działań z prawem podatkowym. Chcą natomiast wiedzieć, co się dzieje z ich finansami oraz&nbsp;skupiać się na tym, co jest w ich biznesie naprawdę ważne.</p>
+        </div>
+        <aside class="manifesto-side">
+          <h3>Co to oznacza w praktyce</h3>
+          <ul>
+            <li><Icon name="check-circle" size={16}/> Przyjmujemy dokumenty poprzez elektroniczny panel klienta.</li>
+            <li><Icon name="check-circle" size={16}/> Standardowo odpowiadamy na maile w ciągu 4 godzin roboczych.</li>
+            <li><Icon name="check-circle" size={16}/> Deklaracje i raporty wysyłamy w urzędowym terminie.</li>
+            <li><Icon name="check-circle" size={16}/> O zmianach w prawie i ryzykach informujemy z wyprzedzeniem.</li>
+            <li><Icon name="check-circle" size={16}/> Posiadamy przejrzysty cennik, obowiązujący przez 12 miesięcy.</li>
+          </ul>
+          <a href="/wycena" class="btn btn--accent btn--block">
+            <span>Otrzymaj bezpłatną wycenę</span>
+            <Icon name="arrow-right" size={16}/>
+          </a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- Values -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Wartości</span>
+        <h2>Cztery filary, które definiują naszą działalność</h2>
+      </div>
+      <div class="values">
+        {values.map((v) => (
+          <div class="value reveal">
+            <div class="value__icon"><Icon name={v.icon} size={22}/></div>
+            <h3>{v.title}</h3>
+            <p>{v.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- What sets us apart -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Co nas wyróżnia</span>
+        <h2>Konkretne rzeczy, które robimy dobrze</h2>
+        <p>Nie chcemy kusić sloganami. Każdy z poniższych punktów jest konkretny i łatwy do weryfikacji.</p>
+      </div>
+      <div class="differences">
+        {differentiators.map((d) => (
+          <article class="difference reveal">
+            <div class="difference__icon"><Icon name={d.icon} size={22}/></div>
+            <h3>{d.title}</h3>
+            <p>{d.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Commitments -->
+  <section class="section" id="zobowiazania">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Nasze zobowiązania</span>
+        <h2>Oferujemy zobowiązania zamiast obietnic</h2>
+        <p>Poniżej znajdziesz zobowiązania, które przekładają się na konkretne korzyści. Każde z nich jest zapisane w umowie, a nie tylko wspomniane na stronie internetowej.</p>
+      </div>
+      <div class="commitments">
+        {commitments.map((c) => (
+          <article class="commitment reveal">
+            <h3>{c.title}</h3>
+            <p class="commitment__commitment"><strong>Zobowiązanie:</strong> {c.commitment}</p>
+            <p class="commitment__benefits"><strong>Twoje korzyści:</strong> {c.benefits}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Security & compliance -->
+  <section class="section section--alt" id="bezpieczenstwo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Bezpieczeństwo</span>
+        <h2>Twoje dane są u nas bezpieczne</h2>
+        <p>Dane finansowe i kadrowe Twojej firmy to informacje wrażliwe. Traktujemy je poważnie zarówno od strony prawnej, jak i technicznej.</p>
+      </div>
+      <ul class="security">
+        {security.map((s) => (
+          <li class="security__item">
+            <span class="security__icon"><Icon name={s.icon} size={20}/></span>
+            <span>{s.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="registry">
+    <div class="container">
+      <div class="stack">
+        <div>
+          <span class="eyebrow">Transparentność</span>
+          <h2>Sprawdź nas w publicznych rejestrach</h2>
+          <p>Jesteśmy realną i rzetelną firmą. Stawiamy na transparentność. Dlatego zachęcamy do weryfikacji nas na stronach rządowych. Możesz samodzielnie sprawdzić naszą wiarygodność.</p>
+        </div>
+        <dl class="registry__list">
+          {registry.map((r) => (
+            <div class="registry__item">
+              <dt>{r.label}</dt>
+              <dd>
+                <strong>{r.value}</strong>
+                <a href={r.href} target="_blank" rel="noopener">{r.linkLabel} →</a>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech stack -->
+  <section class="section section--alt" id="technologie">
+    <div class="container">
+      <div class="stack">
+        <div>
+          <span class="eyebrow">Z czego korzystamy</span>
+          <h2>Nowoczesne technologie dla biura rachunkowego</h2>
+          <p class="lede">Chcemy iść z duchem czasu. Dlatego wykorzystujemy nowe technologie informatyczne, aby upraszczać współpracę z naszymi klientami i świadczyć im usługi na najwyższym poziomie. W postępie cyfrowym widzimy szansę, a nie zagrożenie.</p>
+        </div>
+        <dl class="stack__list">
+          {stack.map((item) => (
+            <div class="stack__item">
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  </section>
+  <CTA />
+</BaseLayout>
+
+<style>
+.founder__facts {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+.founder__facts dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--accent-700);
+  margin-bottom: 0.25rem;
+}
+.founder__facts dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.founder__facts a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+
+.founder {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+}
+.founder__avatar {
+  display: block;
+  width: 200px;
+  height: 200px;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ink-800), var(--ink-950));
+  box-shadow: var(--shadow-lg);
+  position: sticky;
+  top: 100px;
+}
+.founder__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+.founder__bio .lede { margin-top: 1.25rem; }
+.founder__bio p { margin-top: 1rem; max-width: 64ch; line-height: 1.65; }
+.founder__bio a { color: var(--accent-700); text-decoration: underline; }
+.founder__links { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 720px) {
+  .founder { grid-template-columns: 1fr; text-align: center; }
+  .founder__avatar { margin: 0 auto; position: static; width: 140px; height: 140px; }
+  .founder__bio p { text-align: left; }
+  .founder__links { justify-content: center; }
+}
+
+.manifesto {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.manifesto .lede { margin-top: 1.25rem; }
+.manifesto p { margin-top: 1rem; max-width: 56ch; }
+.manifesto-side {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  position: sticky;
+  top: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.manifesto-side h3 { font-size: 1.0625rem; }
+.manifesto-side ul { list-style: none; display: flex; flex-direction: column; gap: 0.625rem; }
+.manifesto-side li { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.manifesto-side li svg { color: var(--accent-600); flex-shrink: 0; margin-top: 3px; }
+@media (max-width: 900px) {
+  .manifesto { grid-template-columns: 1fr; }
+  .manifesto-side { position: static; }
+}
+
+.values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+.value {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color var(--transition-base), transform var(--transition-base);
+}
+.value:hover { border-color: var(--ink-100); transform: translateY(-3px); }
+.value__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  display: grid; place-items: center;
+  background: var(--accent-50); color: var(--accent-700);
+}
+.value h3 { font-size: 1.125rem; }
+.value p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+
+.differences {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .differences { grid-template-columns: repeat(2, 1fr); } }
+.difference {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.difference:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.difference__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50); color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.25rem;
+}
+.difference h3 { font-size: 1.0625rem; }
+.difference p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+
+/* Commitments */
+.commitments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.commitment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.commitment h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; color: var(--text-strong); }
+.commitment p { font-size: 0.9375rem; line-height: 1.5; color: var(--text-muted); }
+.commitment__commitment { color: var(--text); }
+.commitment__benefits { color: var(--text-muted); padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); }
+.commitment strong { color: var(--text-strong); }
+
+/* Security */
+.security {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+.security__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+}
+.security__icon {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-50); color: var(--accent-700);
+  flex-shrink: 0;
+}
+
+/* Registry / public verification */
+.registry {
+  margin-top: 2.5rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.registry h3 { font-size: 1.25rem; margin-top: 0.5rem; }
+.registry > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; margin: 0.5rem 0 1.25rem; max-width: 64ch; }
+.registry__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.registry__item {
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+}
+.registry__item dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 0.25rem;
+}
+.registry__item dd strong { display: block; font-size: 1rem; color: var(--text-strong); }
+.registry__item dd a {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+/* Tech stack */
+.stack {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.stack .lede { margin-top: 1rem; }
+.stack__list {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.stack__item {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.stack__item:last-child { border-bottom: none; }
+.stack__item dt { font-weight: 600; color: var(--text-strong); }
+.stack__item dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+@media (max-width: 800px) {
+  .stack { grid-template-columns: 1fr; }
+  .stack__item { grid-template-columns: 1fr; gap: 0.25rem; }
+}
+
+/* State */
+.state {
+  max-width: 70ch;
+  margin: 0 auto;
+  text-align: center;
+}
+.state p { margin-top: 1rem; line-height: 1.65; color: var(--text); }
+.state__cta {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+</style>

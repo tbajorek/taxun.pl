@@ -1,0 +1,674 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import WhyChoose from '../components/WhyChoose.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { currencyInvoices, setupFees, startsFrom } from '../data/pricing';
+import {
+  RYCZALT_DORADZTWO,
+  RYCZALT_EDUKACJA,
+  RYCZALT_HANDEL,
+  RYCZALT_IT,
+  RYCZALT_MEDYCZNY,
+  RYCZALT_NAJEM,
+  RYCZALT_NAJEM_PROG,
+  RYCZALT_NAJEM_WYZSZY,
+  RYCZALT_POSREDNICTWO_DETAL,
+  RYCZALT_PROJEKTOWANIE,
+  RYCZALT_SPORT,
+  RYCZALT_TRANSPORT,
+  RYCZALT_USLUGI,
+  TRANSPORT_LADOWNOSC_PROG,
+  VAT_BEAUTY_OBNIZKA_OD,
+  VAT_RATE,
+  VAT_RATE_OBNIZONA,
+} from '../lib/tax-constants';
+import { num, pct, zl } from '../lib/format';
+
+const variants = [
+  {
+    icon: 'zap',
+    title: `Ryczałt ewidencjonowany - od ${startsFrom('ryczalt')} zł`,
+    description: 'Najprostsza forma rozliczenia, najczęściej wybierana przez freelancerów, firmy usługowe i branżę IT. Pomożemy dobrać właściwą stawkę, zweryfikujemy klasyfikację PKWiU i zadbamy o prawidłowe naliczenie składek ZUS.',
+    features: ['Wybór i weryfikacja stawki ryczałtu', 'Ewidencja przychodów online', 'Zaliczki i roczne PIT-28', 'KSeF, OCR i portal klienta w cenie'],
+    href: '/cennik#kalkulator',
+    cta: 'Wyceń ryczałt',
+  },
+  {
+    icon: 'file',
+    title: `KPiR - Książka Przychodów i Rozchodów - od ${startsFrom('kpir')} zł`,
+    description: 'Odpowiednia dla jednoosobowych działalności rozliczających się na skali podatkowej lub podatku liniowym. Prowadzimy ewidencję na bieżąco, wyliczamy zaliczki PIT, składamy JPK_V7 i monitorujemy terminy ZUS.',
+    features: ['Bieżąca ewidencja przychodów i kosztów', 'Optymalizacja kosztów uzyskania przychodu', 'Zaliczki PIT, JPK_V7 i KSeF', 'Wsparcie przy fakturach zagranicznych'],
+    href: '/cennik#kalkulator',
+    cta: 'Sprawdź cennik KPiR',
+    featured: true,
+  },
+  {
+    icon: 'briefcase',
+    title: `Pełna księgowość (księgi handlowe) - od ${startsFrom('fk')} zł`,
+    description: 'Właściwa dla spółek z o.o., komandytowych i akcyjnych. Prowadzimy pełną rachunkowość zgodnie z ustawą o rachunkowości, sporządzamy sprawozdania finansowe i raporty zarządcze na potrzeby zarządu.',
+    features: ['Plan kont szyty na miarę firmy', 'CIT-8, JPK_KR, sprawozdanie finansowe w cenie', 'Cash flow i raporty zarządcze'],
+    href: '/cennik#kalkulator',
+    cta: 'Pakiety dla spółek',
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne PIT/CIT - wszystko w cenie pakietu, bez dopłat.' },
+  { icon: 'globe', title: 'Operacje międzynarodowe', description: 'VAT-OSS, eksport usług, faktury w EUR/USD/GBP, transakcje wewnątrzwspólnotowe.' },
+  { icon: 'chart', title: 'Podgląd finansów online', description: 'W portalu klienta masz stały dostęp do swoich dokumentów, deklaracji i bieżącego stanu rozliczeń - z każdego urządzenia przez całą dobę.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy przez szyfrowany portal klienta. Biuro posiada ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja', description: 'Rozmawiamy o tym, jak działa Twoja firma i czy możemy Ci realnie pomóc. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Formalności z poprzednim biurem bierzemy na siebie. Konfigurujemy portal klienta i e-fakturowanie. Bez przerwy w rozliczeniach.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej uwagi i jesteśmy w stałym kontakcie.' },
+];
+
+const breadcrumbs = [{ label: 'Usługi' }, { label: 'Księgowość', href: '/ksiegowosc' }];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': 'https://taxun.pl/ksiegowosc#service',
+  name: 'Usługi księgowe - KPiR, ryczałt, księgi handlowe',
+  serviceType: 'Księgowość (KPiR, ryczałt, księgi handlowe)',
+  description: 'Pełna obsługa księgowa JDG i spółek. KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne PIT/CIT w cenie abonamentu.',
+  provider: { '@id': 'https://taxun.pl/#organization' },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: 'Kraków' }],
+  url: 'https://taxun.pl/ksiegowosc',
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Pakiety księgowe Taxun',
+    itemListElement: [
+      {
+        '@type': 'Offer',
+        name: 'Ryczałt ewidencjonowany',
+        price: '199',
+        priceCurrency: 'PLN',
+        priceSpecification: { '@type': 'UnitPriceSpecification', price: '199', priceCurrency: 'PLN', referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' } },
+        url: 'https://taxun.pl/cennik#kalkulator',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Książka przychodów i rozchodów (KPiR)',
+        price: '249',
+        priceCurrency: 'PLN',
+        url: 'https://taxun.pl/cennik#kalkulator',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Księgi rachunkowe (pełna księgowość)',
+        price: '999',
+        priceCurrency: 'PLN',
+        url: 'https://taxun.pl/cennik#kalkulator',
+      },
+    ],
+  },
+};
+
+const faq = [
+  { q: 'Czy mogę zmienić formę opodatkowania w trakcie roku?', a: 'Zmianę formy opodatkowania można zgłosić do 20. dnia miesiąca następującego po miesiącu, w którym pojawił się pierwszy przychód w danym roku. Pomożemy ocenić skutki podatkowe i przygotujemy stosowne oświadczenie do urzędu skarbowego.' },
+  { q: 'Jak przebiega przejęcie ksiąg z poprzedniego biura?', a: 'Całość formalności, czyli wypowiedzenie umowy, odbiór dokumentów i uzyskanie pełnomocnictw, bierzemy na siebie. Standardowo proces zajmuje od 7 do 14 dni i nie wpływa na bieżące rozliczenia.' },
+  { q: 'Czy obsługujecie e-fakturę i KSeF?', a: 'Tak. Pomagamy skonfigurować integrację z KSeF, weryfikujemy poprawność wystawianych faktur i monitorujemy zmiany w przepisach. Możemy wystawiać faktury w Twoim imieniu lub wesprzeć Twój zespół w obsłudze systemu.' },
+  { q: 'Jakie dokumenty wliczają się do limitu pakietu?', a: 'Każdy wpis księgowy jest traktowany jako dokument, a więc: faktura sprzedaży, faktura kosztowa, wyciąg bankowy, lista płac i ewidencja środków trwałych. Deklaracje wysyłane do urzędów, takie jak JPK_V7, ZUS i PIT, nie są wliczane do limitu.' },
+  { q: 'Czy doradzicie w wyborze ulgi IP Box lub B+R?', a: 'Tak. Przeprowadzamy analizę kwalifikowalności, przygotowujemy ewidencję IP Box, wnioski o interpretację indywidualną i oceniamy ryzyka podatkowe.' },
+];
+---
+<BaseLayout
+  title={`Usługi księgowe - KPiR, ryczałt, księgi handlowe`}
+  description={`KPiR, ryczałt i pełna księgowość spółek. KSeF, OCR, JPK_V7, VAT-UE i roczne PIT lub CIT w cenie abonamentu. Ryczałt od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość"
+    title="Księgowość dla JDG i spółek - ryczałt, KPiR i księgi rachunkowe"
+    description="Prowadzimy ryczałt, KPiR i pełną księgowość spółek. Ta strona pomoże Ci wybrać formę rozliczenia; jeśli szukasz opisu samej współpracy, zajrzyj do sekcji o księgowości prowadzonej online."
+    breadcrumbs={[{ label: 'Usługi' }, { label: 'Księgowość' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie" class="btn btn--accent btn--lg">
+        <span>Bezpłatna wycena</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Cennik</span>
+      </a>
+    </div>
+  </PageHero>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Co oferujemy</span>
+        <h2>Trzy formy rozliczeń - ta sama jakość obsługi</h2>
+        <p>Dobieramy formę księgowości do profilu Twojej firmy, skali przychodów i planów na przyszłość</p>
+      </div>
+      <div class="ksgrid">
+        {variants.map((v) => <ServiceCard {...v} />)}
+      </div>
+      <aside class="ks-online-note">
+        <div class="ks-online-note__icon"><Icon name="globe" size={20}/></div>
+        <div>
+          <h3>Forma rozliczenia to jedno, sposób współpracy to drugie</h3>
+          <p>Każdą z tych trzech form prowadzimy zdalnie: dokumenty przekazujesz zdjęciem albo plikiem, deklaracje wysyłamy elektronicznie, a rozmowy prowadzimy przez telefon i wideo. <a href="/ksiegowosc-online">Zobacz, jak działa księgowość online w Taxun</a> - od pierwszej faktury po zamknięcie miesiąca.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Dla kogo - segmenty klientów -->
+  <section class="section section--alt" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Księgowość dopasowana do profilu Twojej firmy</h2>
+        <p>Każda firma potrzebuje innej księgowości. Poniżej przedstawiamy jedenaście najczęstszych profili klientów, dla których świadczymy usługi.</p>
+      </div>
+      <div class="dla-kogo">
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="zap" size={22}/></div>
+          <h3>IT i programiści B2B</h3>
+          <p>Usługi związane z oprogramowaniem mieszczą się w stawce ryczałtu {pct(RYCZALT_IT)}, a część czynności okołoprojektowych może kwalifikować się do {pct(RYCZALT_USLUGI)}. Decyduje PKWiU konkretnej usługi, nie kod PKD. Rozliczamy faktury walutowe, obsługujemy VAT-UE oraz liczymy warianty przy wyborze formy opodatkowania, w tym przy IP Box.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Faktury walutowe w USD, EUR i GBP - w cenie do {currencyInvoices.freeLimit} szt. miesięcznie</li>
+            <li><Icon name="check" size={14}/>Obsługa VAT-UE i VAT-OSS dla klientów z UE i spoza niej</li>
+            <li><Icon name="check" size={14}/>Analiza i rekomendacja przy wyborze formy opodatkowania</li>
+          </ul>
+          <a href="/ksiegowosc-dla-programistow" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla programistów</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="sparkle" size={22}/></div>
+          <h3>Marketing, reklama i branże kreatywne</h3>
+          <p>Usługi reklamowe i badanie rynku mieszczą się w stawce ryczałtu {pct(RYCZALT_DORADZTWO)}, specjalistyczne projektowanie, w tym grafika i interfejsy, w stawce {pct(RYCZALT_PROJEKTOWANIE)}, a produkcja wideo zwykle w {pct(RYCZALT_USLUGI)}. Agencja z realnymi kosztami częściej wychodzi lepiej na KPiR. Pilnujemy też obowiązków przy zakupie reklam i narzędzi za granicą.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Dobór stawki ryczałtu i rozdzielenie przychodów między stawki</li>
+            <li><Icon name="check" size={14}/>Podatek u źródła, IFT-2R oraz import usług i VAT-9M</li>
+            <li><Icon name="check" size={14}/>Rozliczanie barteru, podwykonawców B2B i umów autorskich</li>
+          </ul>
+          <a href="/ksiegowosc-dla-marketingu-i-branz-kreatywnych" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla marketingu i reklamy</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="globe" size={22}/></div>
+          <h3>E-commerce i sprzedaż online</h3>
+          <p>Sklepy internetowe, sprzedawcy na marketplace'ach i dropshipping rozliczają się zwykle ryczałtem ze stawką {pct(RYCZALT_HANDEL)} przy sprzedaży we własnym imieniu albo {pct(RYCZALT_POSREDNICTWO_DETAL)} przy pośrednictwie. Najwięcej zależy tu od asortymentu, bo przy sprzedaży na odległość część towarów wyklucza zwolnienie z VAT od pierwszej transakcji. Pracujemy na raportach eksportowanych z platform i bramek płatniczych, więc nie musisz przygotowywać zestawień ręcznie.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Weryfikacja asortymentu pod kątem wyłączeń ze zwolnienia z VAT</li>
+            <li><Icon name="check" size={14}/>Sprzedaż do konsumentów w UE, procedura VAT-OSS i IOSS</li>
+            <li><Icon name="check" size={14}/>Uzgadnianie bramek płatniczych, zwrotów i korekt sprzedaży</li>
+          </ul>
+          <a href="/ksiegowosc-dla-e-commerce" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla e-commerce</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="briefcase" size={22}/></div>
+          <h3>Spółki z o.o. - od startu po skalę</h3>
+          <p>Pełna księgowość zgodna z ustawą o rachunkowości. Sporządzamy sprawozdania finansowe, liczymy opłacalność estońskiego CIT i pomagamy uporządkować wypłaty dla wspólników.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Estoński CIT - analiza opłacalności i wdrożenie</li>
+            <li><Icon name="check" size={14}/>Sprawozdanie finansowe oraz e-sprawozdanie do KRS</li>
+            <li><Icon name="check" size={14}/>Wynagrodzenia wspólników i powtarzające się świadczenia</li>
+          </ul>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="heart" size={22}/></div>
+          <h3>Lekarze, fizjoterapeuci i psycholodzy</h3>
+          <p>Lekarze, fizjoterapeuci i psycholodzy na kontrakcie rozliczają się najczęściej ryczałtem ze stawką {pct(RYCZALT_MEDYCZNY)}, a prywatne gabinety dochodzą jeszcze do kasy fiskalnej i podziału sprzedaży na zwolnioną i opodatkowaną VAT. Obowiązki formalne różnią się przy tym zawód od zawodu. Prowadzimy też pielęgniarki, położne, diagnostów i ratowników medycznych.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Weryfikacja stawki ryczałtu i podstawy zwolnienia z VAT</li>
+            <li><Icon name="check" size={14}/>Kasa fiskalna w gabinecie i rozliczanie raportów</li>
+            <li><Icon name="check" size={14}/>Zakładanie praktyki wraz z wpisem do RPWDL</li>
+          </ul>
+          <a href="/ksiegowosc-dla-lekarzy" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla zawodów medycznych</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="star" size={22}/></div>
+          <h3>Salony beauty, fryzjerskie i stylistki</h3>
+          <p>Usługi fryzjerskie i kosmetyczne mieszczą się w stawce ryczałtu {pct(RYCZALT_USLUGI)}, a sprzedaż kosmetyków klientkom w stawce {pct(RYCZALT_HANDEL)}. W VAT obniżka z {VAT_BEAUTY_OBNIZKA_OD} objęła tylko część zabiegów, więc gabinet z szeroką ofertą prowadzi sprzedaż mieszaną. Do tego kasa fiskalna od pierwszej klientki i vouchery rozliczane inaczej w zależności od tego, na co opiewają.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Weryfikacja stawki VAT dla każdej pozycji z cennika gabinetu</li>
+            <li><Icon name="check" size={14}/>Kasa fiskalna bez limitu obrotu i ulga na jej zakup</li>
+            <li><Icon name="check" size={14}/>Wynajem stanowiska i współpraca ze stylistkami na własnej działalności</li>
+          </ul>
+          <a href="/ksiegowosc-dla-branzy-beauty" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla branży beauty</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="shield" size={22}/></div>
+          <h3>BHP, szkolenia i usługi techniczne</h3>
+          <p>Specjaliści BHP na własnej działalności rozliczają się zwykle ryczałtem ze stawką {pct(RYCZALT_USLUGI)}, ale o tym, czy muszą być czynnymi podatnikami VAT, decyduje zakres usług, a nie obrót. Szkolenia są zwolnione przedmiotowo, doradztwo zamyka drogę do zwolnienia, a sprzedaż sprzętu ma własną stawkę ryczałtu.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Ustalenie statusu w VAT na podstawie zakresu usług</li>
+            <li><Icon name="check" size={14}/>Podział sprzedaży zwolnionej, opodatkowanej i towarów</li>
+            <li><Icon name="check" size={14}/>Weryfikacja ryczałtu przy współpracy z byłym pracodawcą</li>
+          </ul>
+          <a href="/ksiegowosc-dla-branzy-bhp" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla branży BHP</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="award" size={22}/></div>
+          <h3>Edukacja, szkolenia i kursy online</h3>
+          <p>Trenerzy, korepetytorzy, lektorzy, twórcy kursów online i szkoły językowe rozliczają się zwykle ryczałtem ze stawką {pct(RYCZALT_EDUKACJA)} właściwą dla działu 85 PKWiU. Najwięcej zależy tu od VAT, bo zwolnienie dla edukacji ma kilka odrębnych podstaw, a kurs nagrany bywa traktowany inaczej niż zajęcia prowadzone na żywo.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Weryfikacja podstawy zwolnienia z VAT dla każdej usługi</li>
+            <li><Icon name="check" size={14}/>Sprzedaż kursów do UE i procedura VAT-OSS</li>
+            <li><Icon name="check" size={14}/>Kadry lektorów i trenerów na wszystkich formach umów</li>
+          </ul>
+          <a href="/ksiegowosc-dla-branzy-edukacyjnej" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla branży edukacyjnej</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="activity" size={22}/></div>
+          <h3>Sport, fitness i zawodnicy</h3>
+          <p>Trenerzy personalni i instruktorzy płacą ryczałt {pct(RYCZALT_EDUKACJA)} albo {pct(RYCZALT_SPORT)} i o stawce decyduje klasyfikacja PKWiU faktycznie wykonywanej usługi, a nie kod PKD ani nazwa zawodu. W klubie dochodzi do tego podział sprzedaży w VAT, bo karnet wstępu ma stawkę {pct(VAT_RATE_OBNIZONA)}, a trening personalny {pct(VAT_RATE)}. Rozliczamy też zawodników na kontraktach.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Ustalenie stawki ryczałtu i ewidencja przy dwóch stawkach</li>
+            <li><Icon name="check" size={14}/>Podział sprzedaży na wstęp i usługi dodatkowe w VAT</li>
+            <li><Icon name="check" size={14}/>Kasa fiskalna u trenera i współpraca B2B z klubem</li>
+          </ul>
+          <a href="/ksiegowosc-dla-trenerow-i-sportowcow" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla trenerów i sportowców</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="truck" size={22}/></div>
+          <h3>Taksówkarze, kurierzy i firmy transportowe</h3>
+          <p>Przewóz osób taksówką i aplikacjami oraz lekki transport towarów mieszczą się w stawce ryczałtu {pct(RYCZALT_USLUGI)}, a przewóz ładunków taborem o ładowności powyżej {num(TRANSPORT_LADOWNOSC_PROG)} ton w stawce {pct(RYCZALT_TRANSPORT)}. Decyduje ładowność pojazdu, a nie jego masa całkowita. Największą pozycją jest tu jednak auto, więc razem z formą opodatkowania liczymy koszty paliwa, serwisu i amortyzacji.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Dobór stawki ryczałtu na podstawie dokumentów pojazdu</li>
+            <li><Icon name="check" size={14}/>Koszty auta, limity wartości pojazdu i odliczenie VAT</li>
+            <li><Icon name="check" size={14}/>Kasa fiskalna w taksówce i zestawienia z platform przewozowych</li>
+          </ul>
+          <a href="/ksiegowosc-dla-kierowcow" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla kierowców</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dla-kogo__card">
+          <div class="dla-kogo__icon"><Icon name="home" size={22}/></div>
+          <h3>Nieruchomości, najem i hotelarstwo</h3>
+          <p>Wynajem i usługi zakwaterowania mieszczą się w stawce ryczałtu {pct(RYCZALT_NAJEM)} do {zl(RYCZALT_NAJEM_PROG)} przychodu w roku i {pct(RYCZALT_NAJEM_WYZSZY)} od nadwyżki. W VAT o stawce decyduje cel najmu, a nie rodzaj lokalu: mieszkanie na cele mieszkaniowe jest zwolnione, doba w apartamencie to {pct(VAT_RATE_OBNIZONA)}, a to samo mieszkanie wynajęte firmie {pct(VAT_RATE)}. Do tego prowizje Booking i Airbnb, które u nievatowca uruchamiają rejestrację do VAT-UE.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Stawki VAT ustalane osobno dla każdej umowy najmu</li>
+            <li><Icon name="check" size={14}/>Import usług od platform rezerwacyjnych i deklaracja VAT-9M</li>
+            <li><Icon name="check" size={14}/>Podatek od nieruchomości przy przejściu na najem krótkoterminowy</li>
+          </ul>
+          <a href="/ksiegowosc-dla-nieruchomosci-i-najmu" class="btn-arrow dla-kogo__link">
+            <span>Księgowość dla nieruchomości i najmu</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="benefits">
+        <div>
+          <span class="eyebrow">Korzyści ze współpracy</span>
+          <h2>Rozliczenia bez pomyłek i&nbsp;niespodzianek</h2>
+          <p class="lede">Każdy klient ma dedykowanego księgowego, który zna specyfikę jego firmy. Proaktywnie przypominamy o zbliżających się terminach, żebyś nigdy nie musiał o nich pamiętać sam.</p>
+          <div class="benefits__stats">
+            <Stats items={[
+              { label: 'Terminowość deklaracji', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi', value: 4, suffix: ' h' },
+              { label: 'Zautomatyzowane procesy online', value: 100, suffix: '%' },
+            ]} />
+          </div>
+        </div>
+        <ul class="benefits__list">
+          {benefits.map((b) => (
+            <li class="benefits__item">
+              <div class="benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="startup">
+        <div class="startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zakładasz firmę? Przejdziemy przez to razem</h2>
+          <p class="lede">Wypełnienie wniosku jest najprostszą częścią. Trudniejsze są decyzje, które w nim zapadają: forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT, kody PKD. Spotykamy się online i przechodzimy przez to punkt po punkcie, z policzonymi wariantami zamiast ogólników.</p>
+        </div>
+
+        <div class="startup__cols">
+          <div class="startup__col startup__col--primary">
+            <div class="startup__pill startup__pill--primary">jednoosobowa działalność</div>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Godzina z księgowym, zanim cokolwiek wyślesz. Wychodzisz z wypełnionym wnioskiem na ekranie i wiedzą, dlaczego każde pole wygląda tak, a nie inaczej.</p>
+            <ul class="startup__list">
+              <li><Icon name="check" size={16}/>Policzone warianty: ryczałt, skala i liniowy na Twoich liczbach, razem ze składką zdrowotną</li>
+              <li><Icon name="check" size={16}/>Wniosek CEIDG-1 wypełniony razem, z właściwymi kodami PKD</li>
+              <li><Icon name="check" size={16}/>Kod tytułu ubezpieczenia w ZUS: ulga na start, preferencyjny ZUS albo pełny</li>
+              <li><Icon name="check" size={16}/>Decyzja o VAT-R i VAT-UE, jeśli są potrzebne, oraz uprawnienia w KSeF</li>
+              <li><Icon name="check" size={16}/>Wsparcie mailowe przez 14 dni po rejestracji</li>
+            </ul>
+            <a href="/wycena?tryb=zalozenie" class="btn btn--accent">
+              <span>Umów konsultację</span>
+              <Icon name="arrow-right" size={16}/>
+            </a>
+          </div>
+
+          <div class="startup__col">
+            <div class="startup__pill">spółka</div>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: dochodzi kapitał, udziały, zarząd i wybór CIT. Przechodzimy przez system S24 na wspólnym spotkaniu.</p>
+            <ul class="startup__list">
+              <li><Icon name="check" size={16}/>Kapitał, liczba i wartość udziałów, skład zarządu i sposób reprezentacji</li>
+              <li><Icon name="check" size={16}/>Policzone warianty CIT: 9%, 19% i estoński, razem ze składkami wspólników</li>
+              <li><Icon name="check" size={16}/>Przejście przez wzorzec umowy w S24 i wybór wariantów klauzul</li>
+              <li><Icon name="check" size={16}/>Lista załączników, których system nie generuje, i danych do e-Doręczeń</li>
+              <li><Icon name="check" size={16}/>Terminy po wpisie: PCC-3, NIP-8, VAT-R, KSeF, ZAW-RD przy estońskim CIT</li>
+            </ul>
+            <a href="/wycena?tryb=zalozenie" class="btn btn--ghost">
+              <span>Umów konsultację</span>
+              <Icon name="arrow-right" size={16}/>
+            </a>
+          </div>
+        </div>
+
+        <div class="startup__terms">
+          <h3>Co robimy my, a co zostaje po Twojej stronie</h3>
+          <p>Liczymy, tłumaczymy i sprawdzamy kompletność. <strong>Wniosek podpisujesz i wysyłasz sam</strong> - profilem zaufanym albo podpisem kwalifikowanym, przy spółce razem z pozostałymi wspólnikami i całym zarządem. Nie występujemy w rejestracji jako pełnomocnik i nie chcemy tej roli.</p>
+          <p>Nie jest to wyłącznie nasz wybór. Wniosku o pierwszy wpis do CEIDG pełnomocnik nie złoży przez internet - musiałby pójść z pisemnym pełnomocnictwem do urzędu gminy. Spółkę wpisuje sąd rejestrowy, a przed nim reprezentować może wyłącznie adwokat albo radca prawny. Wolimy powiedzieć to wprost, niż obiecywać, że „załatwimy wszystko”.</p>
+          <p>Jeżeli w ciągu {setupFees.creditWithinDays} dni podpiszesz z nami umowę o obsługę księgową, <strong>kwotę konsultacji zaliczamy na poczet pierwszej faktury</strong>. Jeżeli po rozmowie zrezygnujesz z założenia firmy, płacisz tylko za tę rozmowę i nic poza tym.</p>
+        </div>
+
+        <p class="startup__note">
+          <Icon name="shield" size={14}/>
+          Aport, uprzywilejowane udziały, nietypowa umowa spółki i formy prawne bez wzorca w S24 wymagają aktu notarialnego. Tego nie zastąpimy - w takim wariancie zaczynamy od zgłoszeń po wpisie i prowadzenia ksiąg.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps items={process} eyebrow="Rozpoczęcie współpracy" title="Płynne przejęcie księgowości w 14 dni" description="Zmiana biura rachunkowego nie musi oznaczać chaosu. Prowadzimy cały proces od pierwszej rozmowy po uruchomienie portalu klienta. Dbamy o to, żebyś na żadnym etapie nie musiał martwić się o terminy."/>
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Często zadawane pytania - księgowość"
+    items={faq}
+  />
+
+  <CTA
+    title="Sprawdź, ile zyskasz na zmianie biura rachunkowego"
+    description="Zrobimy bezpłatny audyt Twojej ostatniej deklaracji VAT i pokażemy konkretne miejsca, w których możesz odzyskać czas i pieniądze."
+    primaryHref="/wycena?tryb=przeniesienie"
+  />
+</BaseLayout>
+
+<style>
+.ks-online-note {
+  margin-top: 2rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+  padding: 1.375rem 1.625rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.ks-online-note__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.ks-online-note h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.ks-online-note p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.ks-online-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+
+.ksgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) {
+  .ksgrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Dla kogo - client segments */
+.dla-kogo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .dla-kogo { grid-template-columns: repeat(2, 1fr); } }
+.dla-kogo__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.dla-kogo__card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.dla-kogo__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50); color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dla-kogo__card h3 { font-size: 1.125rem; }
+.dla-kogo__card > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.dla-kogo__card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.dla-kogo__card li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.dla-kogo__card li svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+.dla-kogo__link { margin-top: auto; padding-top: 1rem; align-self: flex-start; }
+/* Przy nieparzystej liczbie profili ostatnia karta zostawałaby sama w rzędzie,
+   z pustą połową obok. Rozciągamy ją wtedy na całą szerokość siatki. */
+@media (min-width: 980px) {
+  .dla-kogo__card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+.benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.benefits .lede { margin-top: 1rem; }
+.benefits__stats { margin-top: 2rem; }
+
+.benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.benefits__item {
+  display: flex;
+  gap: 1rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  align-items: flex-start;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.benefits__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.benefits__icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+}
+.benefits__item h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.benefits__item p { font-size: 0.9375rem; color: var(--text-muted); }
+
+@media (max-width: 900px) {
+  .benefits { grid-template-columns: 1fr; }
+}
+
+/* ── Startup / zakładanie firmy ─────────────────────────────── */
+.startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.startup__head { max-width: 70ch; margin-bottom: 2rem; }
+.startup__head .lede { margin-top: 1rem; }
+
+.startup__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 880px) { .startup__cols { grid-template-columns: 1fr; } }
+
+.startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  position: relative;
+}
+.startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.startup__col h3 { font-size: 1.375rem; }
+.startup__col > p { color: var(--text-muted); font-size: 0.9375rem; line-height: 1.6; }
+.startup__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0.25rem 0 0.5rem;
+}
+.startup__list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.startup__list svg {
+  flex-shrink: 0;
+  color: var(--accent-600);
+  margin-top: 4px;
+}
+.startup__col .btn { margin-top: auto; align-self: flex-start; }
+
+.startup__terms {
+  margin-top: 2rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.startup__terms h3 { font-size: 1.0625rem; color: var(--ink-900); }
+.startup__terms p {
+  margin-top: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 78ch;
+}
+
+.startup__note {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 0.75rem 1rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-md);
+}
+.startup__note svg { color: var(--accent-700); flex-shrink: 0; }
+</style>

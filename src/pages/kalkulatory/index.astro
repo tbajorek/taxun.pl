@@ -1,0 +1,299 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import CTA from '../../components/CTA.astro';
+import Icon from '../../components/Icon.astro';
+import {
+  TAX_YEAR, CAR_LIMIT, KASA_LIMIT_ROCZNY, KUP_STANDARD, KUP_TWORCZE,
+  SICK_RATE_STANDARD, SICK_RATE_FULL, MATERNITY_RATE_AVG, MATERNITY_RATE_FULL, PARENTAL_RATE,
+  ODSETKI_STANDARD, ODSETKI_OBNIZONE, ODSETKI_PODWYZSZONE,
+} from '../../lib/tax-constants';
+import { zl, pct } from '../../lib/format';
+
+const year = TAX_YEAR;
+const limityAut = `${zl(CAR_LIMIT.spalinowy)}, ${zl(CAR_LIMIT.niskoemisyjny)} lub ${zl(CAR_LIMIT.elektryczny)}`;
+
+const calculators = [
+  {
+    href: '/kalkulatory/skladka-zdrowotna',
+    title: `Składka zdrowotna ${year}`,
+    description: `Sprawdź, ile wynosi Twoja składka zdrowotna w ${year} roku. Wyliczenia dla ryczałtu, skali podatkowej, podatku liniowego i karty podatkowej - bez rejestracji i bez podawania maila.`,
+    icon: 'shield',
+    tag: 'ZUS',
+    cta: 'Policz składkę',
+  },
+  {
+    href: '/kalkulatory/ryczalt-vs-liniowy',
+    title: 'Ryczałt vs podatek liniowy',
+    description: `Wpisz przychód i koszty - pokażemy, która forma opodatkowania jest dla Ciebie korzystniejsza. Z uwzględnieniem składki zdrowotnej ${year}.`,
+    icon: 'chart',
+    tag: 'PIT',
+    cta: 'Porównaj formy',
+    featured: true,
+  },
+  {
+    href: '/kalkulatory/wynagrodzenie-brutto-netto-2026',
+    title: `Wynagrodzenie brutto → netto ${year}`,
+    description: 'Brutto pracownika do wypłaty na rękę. Z PPK, ulgą na start, kwotą wolną. Wariant z dochodami z innych źródeł lub bez.',
+    icon: 'users',
+    tag: 'Wynagrodzenia',
+    cta: 'Policz wypłatę',
+  },
+  {
+    href: '/kalkulatory/auta-w-leasingu',
+    title: `Auto w leasingu ${year}`,
+    description: `Realny koszt leasingu samochodu osobowego: wpłata wstępna, kapitał i odsetki w ratach, wykup, limit ${limityAut} oraz odliczenie VAT.`,
+    icon: 'briefcase',
+    tag: 'Koszty',
+    cta: 'Policz leasing',
+  },
+  {
+    href: '/kalkulatory/zakupow-na-firme',
+    title: 'Zakupy na firmę',
+    description: 'Ile realnie kosztuje firmowy zakup po odliczeniu VAT i podatku dochodowego. Dla skali, liniówki i ryczałtu.',
+    icon: 'check-circle',
+    tag: 'Koszty',
+    cta: 'Policz koszt',
+  },
+  {
+    href: '/kalkulatory/zasilku-chorobowego',
+    title: 'Zasiłek chorobowy',
+    description: `Podstawa wymiaru i kwota zasiłku chorobowego dla stawek ${pct(SICK_RATE_STANDARD)} i ${pct(SICK_RATE_FULL)}. Z pomniejszeniem o składki ZUS pracownika.`,
+    icon: 'shield',
+    tag: 'Świadczenia',
+    cta: 'Policz zasiłek',
+  },
+  {
+    href: '/kalkulatory/zasilku-macierzynskiego',
+    title: 'Zasiłek macierzyński',
+    description: `Miesięczny zasiłek i łączna kwota za urlop macierzyński i rodzicielski. Warianty ${pct(MATERNITY_RATE_AVG)} oraz ${pct(MATERNITY_RATE_FULL)}/${pct(PARENTAL_RATE)}.`,
+    icon: 'users',
+    tag: 'Świadczenia',
+    cta: 'Policz świadczenie',
+  },
+  {
+    href: '/kalkulatory/odsetek-podatkowych',
+    title: `Odsetki podatkowe ${year}`,
+    description: `Odsetki za zwłokę od zaległości podatkowych. Stawka ${pct(ODSETKI_STANDARD)}, obniżona ${pct(ODSETKI_OBNIZONE)} i podwyższona ${pct(ODSETKI_PODWYZSZONE)}. Z liczbą dni zwłoki.`,
+    icon: 'clock',
+    tag: 'Podatki',
+    cta: 'Policz odsetki',
+  },
+  {
+    href: '/kalkulatory/podrozy-sluzbowej',
+    title: 'Podróż służbowa',
+    description: 'Diety krajowe, ryczałt za nocleg i ryczałt na dojazdy. Z potrąceniami za zapewnione posiłki i niepełne doby.',
+    icon: 'briefcase',
+    tag: 'Delegacje',
+    cta: 'Policz delegację',
+  },
+  {
+    href: '/kalkulatory/limitu-kasy-fiskalnej',
+    title: 'Limit kasy fiskalnej',
+    description: `Sprawdź, czy musisz mieć kasę fiskalną. Limit ${zl(KASA_LIMIT_ROCZNY)}, proporcjonalny dla firm startujących w trakcie roku.`,
+    icon: 'calculator',
+    tag: 'VAT',
+    cta: 'Sprawdź limit',
+  },
+  {
+    href: '/kalkulatory/umow-zlecenie',
+    title: `Umowa zlecenie ${year}`,
+    description: 'Wynagrodzenie netto z umowy zlecenia: składki ZUS, zdrowotna i zaliczka PIT. Z wariantem studenckim i ulgą dla młodych.',
+    icon: 'users',
+    tag: 'Umowy',
+    cta: 'Policz zlecenie',
+  },
+  {
+    href: '/kalkulatory/umow-o-dzielo',
+    title: `Umowa o dzieło ${year}`,
+    description: `Wynagrodzenie netto z umowy o dzieło: koszty uzyskania ${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)} i zaliczka PIT. Bez składek ZUS.`,
+    icon: 'users',
+    tag: 'Umowy',
+    cta: 'Policz dzieło',
+  },
+  {
+    href: '/kalkulatory/kilometrowki',
+    title: `Kilometrówka ${year}`,
+    description: 'Zwrot za używanie prywatnego auta w firmie. Stawki za 1 km dla samochodu, motocykla i motoroweru.',
+    icon: 'briefcase',
+    tag: 'Koszty',
+    cta: 'Policz zwrot',
+  },
+  {
+    href: '/kalkulatory/amortyzacji',
+    title: `Amortyzacja ${year}`,
+    description: 'Odpisy amortyzacyjne środka trwałego: metoda liniowa, degresywna, jednorazowa i niskocenne. Roczny i miesięczny odpis.',
+    icon: 'chart',
+    tag: 'Koszty',
+    cta: 'Policz odpisy',
+  },
+  {
+    href: '/kalkulatory/emisji-co2',
+    title: 'Emisja CO₂ - limit auta',
+    description: `Sprawdź, jaki limit kosztów (${limityAut}) obejmie Twój samochód w firmie na podstawie napędu i emisji CO₂.`,
+    icon: 'briefcase',
+    tag: 'Koszty',
+    cta: 'Sprawdź limit',
+  },
+];
+
+const breadcrumbs = [{ label: 'Kalkulatory' }];
+
+const itemListSchema = {
+  '@type': 'ItemList',
+  name: 'Kalkulatory podatkowe Taxun',
+  description: `Bezpłatne kalkulatory podatkowe i księgowe na ${year} r. - ZUS, składka zdrowotna, ryczałt vs liniówka, brutto-netto, leasing auta, zakupy na firmę, zasiłki, odsetki, diety i limit kasy fiskalnej.`,
+  numberOfItems: calculators.length,
+  itemListElement: calculators.map((c, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: c.title,
+    url: `https://taxun.pl${c.href}`,
+    description: c.description,
+  })),
+};
+---
+<BaseLayout
+  title={`Kalkulatory podatkowe ${year} - ZUS, ryczałt, PIT`}
+  description={`Bezpłatne kalkulatory podatkowe na ${year} rok: składka zdrowotna, ryczałt i liniówka, brutto-netto, leasing, zasiłki, kilometrówka. Bez logowania.`}
+  schema={itemListSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Narzędzia"
+    title={`Kalkulatory podatkowe ${year}`}
+    description="Bezpłatne, dokładne i bez formularzy kontaktowych. Każdy kalkulator pokazuje też, skąd biorą się liczby - żeby nie były czarną skrzynką."
+    breadcrumbs={breadcrumbs}
+    align="center"
+  />
+
+  <section class="section">
+    <div class="container">
+      <div class="calc-grid">
+        {calculators.map((c) => (
+          <a href={c.href} class={`calc-card ${c.featured ? 'calc-card--featured' : ''}`}>
+            <div class="calc-card__head">
+              <div class="calc-card__icon"><Icon name={c.icon} size={22}/></div>
+              <span class="calc-card__tag">{c.tag}</span>
+            </div>
+            <p class="calc-card__title">{c.title}</p>
+            <p>{c.description}</p>
+            <span class="calc-card__cta">
+              <span>{c.cta}</span>
+              <Icon name="arrow-right" size={16}/>
+            </span>
+          </a>
+        ))}
+      </div>
+
+      <aside class="calc-note">
+        <div class="calc-note__icon"><Icon name="sparkle" size={18}/></div>
+        <div>
+          <strong>Dlaczego sami budujemy kalkulatory?</strong>
+          <p>Zależy nam na tym, żeby nasze narzędzia działały poprawnie, były darmowe i łatwo dostępne dla każdego. Budując je samodzielnie, mamy pełną kontrolę nad ich jakością. Każdy kalkulator działa bezpośrednio w przeglądarce, więc Twoje dane nie są wysyłane na żaden serwer.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <CTA
+    title="Potrzebujesz indywidualnej kalkulacji?"
+    description="Kalkulatory pokazują uśrednione warianty. Dla konkretnej firmy zawsze policzmy też ulgi, koszty pośrednie i optymalizację formy opodatkowania w trakcie konsultacji."
+  />
+</BaseLayout>
+
+<style>
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .calc-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.calc-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+  position: relative;
+}
+.calc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-300);
+}
+.calc-card--featured {
+  border-color: var(--accent-300);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.calc-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.calc-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.calc-card__tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--text-subtle);
+}
+.calc-card .calc-card__title {
+  font-size: 1.1875rem;
+  /* `.calc-card p` rozciąga opis (flex: 1), żeby odnośnik trafił na dół
+     karty. Tytuł jest teraz też akapitem, więc musi wrócić do wartości
+     początkowej - inaczej dzieli wolne miejsce z opisem. */
+  flex: 0 1 auto;
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+.calc-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; flex: 1; }
+.calc-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--accent-700);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-top: 0.25rem;
+}
+.calc-card:hover .calc-card__cta { gap: 0.625rem; }
+.calc-card__cta svg { transition: transform var(--transition-fast); }
+
+.calc-note {
+  margin-top: 2.5rem;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 1rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem;
+}
+.calc-note__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.calc-note strong { display: block; color: var(--text-strong); margin-bottom: 0.25rem; }
+.calc-note p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+</style>

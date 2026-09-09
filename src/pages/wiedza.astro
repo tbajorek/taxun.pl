@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import CTA from '../components/CTA.astro';
+import BlogArchive from '../components/BlogArchive.astro';
+import {
+  blogPath,
+  collectCategories,
+  collectTags,
+  getPostAuthor,
+  getSortedPosts,
+  lastPageOf,
+  pageSlice,
+  paginatedPosts,
+  pickFeatured,
+  POSTS_PER_PAGE,
+} from '../lib/blog';
+import { personSchemaId } from '../data/team';
+import { site } from '../data/site';
+
+const posts = await getSortedPosts();
+const featured = pickFeatured(posts);
+const rest = paginatedPosts(posts, featured);
+const lastPage = lastPageOf(rest.length, POSTS_PER_PAGE);
+const pagePosts = pageSlice(rest, 1, POSTS_PER_PAGE);
+
+const categories = collectCategories(posts);
+const popularTags = collectTags(posts);
+
+// Do schematu trafiają tylko artykuły widoczne na tej stronie - dzięki temu
+// wielkość JSON-LD nie rośnie razem z liczbą artykułów w serwisie.
+const schemaPosts = featured ? [featured, ...pagePosts] : pagePosts;
+
+const collectionSchema = {
+  '@type': 'CollectionPage',
+  '@id': `${site.url}/wiedza#collection`,
+  name: 'Wiedza Taxun - artykuły o podatkach i księgowości',
+  description: 'Praktyczna wiedza podatkowa pisana przez zespół Taxun - od KSeF po IP Box, od JDG po pełną księgowość spółek.',
+  url: `${site.url}/wiedza`,
+  inLanguage: 'pl-PL',
+  isPartOf: { '@id': `${site.url}/#website` },
+  hasPart: schemaPosts.map((p) => ({
+    '@type': 'BlogPosting',
+    headline: p.data.title,
+    description: p.data.description,
+    url: `${site.url}/wiedza/${p.id}`,
+    datePublished: p.data.pubDate.toISOString(),
+    dateModified: (p.data.updatedDate ?? p.data.pubDate).toISOString(),
+    author: { '@id': personSchemaId(getPostAuthor(p), site.url) },
+  })),
+};
+
+// noindex dla widoku wyszukiwania (?q=) - zapobiega indeksowaniu cienkich duplikatów
+const hasQuery = Astro.url.searchParams.has('q');
+---
+<BaseLayout
+  title="Wiedza - przepisy, ulgi i praktyka księgowa | Taxun"
+  description="Praktyczna wiedza podatkowa pisana przez zespół Taxun - KSeF, IP Box, JDG, ZUS, pełna księgowość spółek. Bez branżowego żargonu."
+  schema={collectionSchema}
+  breadcrumbs={[{ label: 'Wiedza' }]}
+  noindex={hasQuery}
+>
+  {lastPage > 1 && <link slot="head" rel="next" href={new URL(blogPath(2), site.url).toString()} />}
+
+  <PageHero
+    eyebrow="Wiedza"
+    title="Praktyczna wiedza podatkowa - bez branżowego żargonu"
+    description="Co zmienia się w przepisach, jak rozliczać konkretne sytuacje, kiedy warto skorzystać z ulg. Praktyczna wiedza pisana przez zespół Taxun."
+    breadcrumbs={[{ label: 'Wiedza' }]}
+  />
+
+  <section class="section">
+    <div class="container">
+      <BlogArchive
+        posts={pagePosts}
+        currentPage={1}
+        lastPage={lastPage}
+        total={posts.length}
+        hrefFor={blogPath}
+        featured={featured}
+        categories={categories}
+        popularTags={popularTags}
+      />
+    </div>
+  </section>
+
+  <CTA
+    variant="dark"
+    title="Potrzebujesz indywidualnej odpowiedzi?"
+    description="Każdy artykuł to ogólny przewodnik. Szczegóły zawsze zależą od kontekstu Twojej firmy - porozmawiajmy."
+  />
+</BaseLayout>

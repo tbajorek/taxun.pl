@@ -1,0 +1,1504 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, ossFees, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  DZIELO_RUD_DNI,
+  KASA_EDUKACJA_WYJATKI,
+  KASA_LIMIT_ROCZNY,
+  NAUCZYCIEL_POZA_WOLNYM_ZAWODEM_OD,
+  NIEREJESTROWANA_CEIDG_DNI,
+  NIEREJESTROWANA_LIMIT,
+  NIEREJESTROWANA_PRZERWA_MIESIACE,
+  OSS_LIMIT,
+  OSS_LIMIT_EUR,
+  PIT_RATE_LINIOWY,
+  PKD_NOWA_OD,
+  RYCZALT_EDUKACJA,
+  RYCZALT_LIMIT,
+  RYCZALT_LIMIT_EUR,
+  RYCZALT_WOLNY_ZAWOD,
+  VAT_ZWOLNIENIE_LIMIT,
+  WYDARZENIA_WIRTUALNE_OD,
+} from '../lib/tax-constants';
+import { num, pct, zl, zlAuto } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const ryczaltVat = tables.find((t) => t.id === 'ryczalt')?.buckets[0].withVat ?? ryczalt;
+const stawkaEdukacja = pct(RYCZALT_EDUKACJA);
+const stawkaWolnyZawod = pct(RYCZALT_WOLNY_ZAWOD);
+const stawkaLiniowa = pct(PIT_RATE_LINIOWY);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+const limitNierejestrowana = zlAuto(NIEREJESTROWANA_LIMIT);
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+const hrEtat = hrPricing.find((h) => h.id === 'uop')?.price ?? hrMin;
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * W edukacji spora część usług jest zwolniona przedmiotowo z VAT, więc obie
+ * kolumny cennika są tu realnie używane i wybór kolumny jest parametrem.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Korepetytor lub trener korzystający ze zwolnienia z VAT'),
+  priceRow('ryczalt', 10, 'withVat', 'Trener będący czynnym podatnikiem VAT'),
+  priceRow('ryczalt', 30, 'withVat', 'Szkoła językowa lub ośrodek szkoleniowy ze sprzedażą mieszaną'),
+  priceRow('kpir', 10, 'withVat', 'Działalność rozliczająca koszty sal, sprzętu i współpracowników'),
+  priceRow('fk', 10, 'noVat', 'Placówka lub firma szkoleniowa prowadzona w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt ${stawkaEdukacja} od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'users',
+    title: 'Trener biznesu i firma szkoleniowa',
+    description: 'Szkolenia dla firm, warsztaty, konferencje i wystąpienia. Najwięcej pracy jest tu przed pierwszą fakturą: trzeba ustalić, czy dane szkolenie korzysta ze zwolnienia z VAT, bo od tego zależy cena, którą zapłaci klient.',
+    points: [
+      'Weryfikacja podstawy zwolnienia dla każdego rodzaju szkolenia',
+      'Rozliczanie szkoleń finansowanych ze środków publicznych',
+      'Szkolenia dla klientów zagranicznych i odwrotne obciążenie',
+    ],
+  },
+  {
+    icon: 'star',
+    title: 'Korepetytor i lektor języka obcego',
+    description: 'Zajęcia indywidualne i grupowe, stacjonarnie albo online. W tej grupie najczęściej wraca pytanie o to, od kiedy w ogóle trzeba zakładać firmę, a nie o to, jak ją rozliczać.',
+    points: [
+      'Ustalenie momentu przejścia z działalności nierejestrowanej na firmę',
+      'Zwolnienie z VAT dla nauczania prywatnego i nauki języków obcych',
+      'Weryfikacja obowiązku posiadania kasy fiskalnej',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'Twórca kursów online i produktów cyfrowych',
+    description: 'Kursy wideo, e-booki, subskrypcje i społeczności edukacyjne. Tutaj sposób prowadzenia kursu przekłada się wprost na stawkę podatku, o czym piszemy w osobnej sekcji niżej.',
+    points: [
+      'Rozróżnienie kursu nagranego i prowadzonego na żywo',
+      'Sprzedaż konsumentom z Unii Europejskiej i procedura VAT OSS',
+      'Rozliczanie wpływów z platform sprzedażowych i bramek płatniczych',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Szkoła językowa i ośrodek szkoleniowy',
+    description: 'Firma z zespołem lektorów, salami i stałym grafikiem zajęć. Do rozliczeń podatkowych dochodzi obsługa kadrowa i rozliczanie współpracowników na różnych formach umów.',
+    points: [
+      'Umowy z lektorami i trenerami, etatowe i cywilnoprawne',
+      'Ewidencja wpłat kursantów i rozliczanie czesnego',
+      'Koszty najmu sal, materiałów i licencji na podręczniki',
+    ],
+  },
+  {
+    icon: 'award',
+    title: 'Niepubliczne przedszkole, żłobek i szkoła',
+    description: 'Placówka z zespołem nauczycieli, stałymi wpłatami rodziców i własnym kalendarzem rozliczeń. Prowadzimy tu bieżącą księgowość i kadry, a dokładny zakres współpracy ustalamy indywidualnie, bo różni się w zależności od formy prawnej i wielkości placówki.',
+    points: [
+      'Ryczałt, KPiR albo pełne księgi, zależnie od formy prawnej',
+      'Rozliczanie wpłat rodziców za czesne, wyżywienie i zajęcia dodatkowe',
+      'Obsługa kadrowa nauczycieli, opiekunów i personelu pomocniczego',
+    ],
+  },
+];
+
+const taxForms = [
+  {
+    badge: 'najczęstszy wybór',
+    featured: true,
+    title: `Ryczałt ${stawkaEdukacja}`,
+    body: `Podatek liczy się od przychodu, bez pomniejszania go o koszty. W edukacji sprawdza się to zwykle najlepiej, bo trener i korepetytor mają niewiele wydatków firmowych: sprzęt, dojazdy, materiały i księgowość.`,
+    note: 'Koszty nie obniżają podatku, a wspólne rozliczenie z małżonkiem i ulga na dzieci przepadają. Przy kilku rodzajach działalności trzeba rozdzielić przychody między stawki.',
+  },
+  {
+    badge: 'przy realnych kosztach',
+    title: `Podatek liniowy ${stawkaLiniowa}`,
+    body: 'Podatek liczy się od dochodu, więc każdy koszt realnie obniża podstawę. To ścieżka dla ośrodka, który wynajmuje sale, płaci lektorom, produkuje materiały albo inwestuje w sprzęt do nagrań.',
+    note: 'Nie ma tu kwoty wolnej, a składkę zdrowotną liczy się od dochodu. Przy niskich kosztach ryczałt zwykle wypada lepiej.',
+  },
+  {
+    badge: 'przy niższych dochodach',
+    title: 'Skala podatkowa',
+    body: 'Skala bywa rozsądna na początku działalności, przy niższych dochodach albo wtedy, gdy zależy Ci na wspólnym rozliczeniu z małżonkiem lub na uldze na dzieci.',
+    note: 'Przy wyższych dochodach warto policzyć łączny efekt drugiego progu i składki zdrowotnej, zanim podejmiesz decyzję.',
+  },
+];
+
+/**
+ * Podstawy zwolnienia z VAT w edukacji. Nie ma jednego zwolnienia dla całej
+ * branży, tylko kilka odrębnych przepisów o różnych warunkach - dlatego
+ * zestawienie, a nie akapit.
+ */
+const vatRows = [
+  {
+    tone: 'good',
+    what: 'Jednostka objęta systemem oświaty, uczelnia lub instytut',
+    detail: 'przedszkole, szkoła i placówka wpisana do właściwego rejestru',
+    status: 'Zwolnienie przedmiotowe',
+    note: 'Warunkiem jest wpis do właściwego rejestru i świadczenie usług w zakresie kształcenia. Zwolnienie obejmuje też dostawę towarów i usług ściśle z tym kształceniem związanych.',
+  },
+  {
+    tone: 'good',
+    what: 'Nauczanie prywatne przez nauczyciela',
+    detail: 'zajęcia prowadzone osobiście i na własny rachunek',
+    status: 'Zwolnienie przedmiotowe',
+    note: 'Dotyczy nauczania na poziomie przedszkolnym, podstawowym, ponadpodstawowym i wyższym. Kluczowe jest to, że nauczyciel uczy osobiście, a nie że ma odpowiedni kod PKD.',
+  },
+  {
+    tone: 'good',
+    what: 'Nauczanie języków obcych',
+    detail: 'lektorat, konwersacje, kurs językowy, także zdalny',
+    status: 'Zwolnienie przedmiotowe',
+    note: 'Najszersza z podstaw w tej branży. Obejmuje samą naukę języka niezależnie od poziomu nauczania i od tego, kto ją prowadzi.',
+  },
+  {
+    tone: 'neutral',
+    what: 'Kształcenie zawodowe i przekwalifikowanie',
+    detail: 'kursy przygotowujące do pracy w zawodzie i podnoszące kwalifikacje',
+    status: 'Zwolnienie warunkowe',
+    note: 'Musi być spełniony jeden z warunków dodatkowych: prowadzenie w formach określonych w odrębnych przepisach, akredytacja albo finansowanie ze środków publicznych.',
+  },
+  {
+    tone: 'neutral',
+    what: 'Szkolenie zawodowe finansowane ze środków publicznych',
+    detail: 'projekty unijne, zlecenia urzędów pracy, szkolenia dla instytucji',
+    status: 'Zwolnienie warunkowe',
+    note: 'Odrębne zwolnienie z rozporządzenia wykonawczego, przy finansowaniu w co najmniej 70% ze środków publicznych. Źródło finansowania trzeba udokumentować.',
+  },
+  {
+    tone: 'warn',
+    what: 'Pozostałe usługi edukacyjne i rozwojowe',
+    detail: 'coaching, warsztaty rozwoju osobistego, kursy hobbystyczne',
+    status: 'Zwolnienie do limitu albo stawka podstawowa',
+    note: `Żadne ze zwolnień przedmiotowych tu nie sięga, więc zostaje zwolnienie ze względu na wartość sprzedaży do ${limitVat} rocznie, a po jego przekroczeniu stawka podstawowa.`,
+  },
+];
+
+const vatTraps = [
+  {
+    icon: 'search',
+    title: 'Szkolenie rozwojowe to nie zawsze kształcenie zawodowe',
+    description: 'Warsztat z zarządzania czasem, kurs rozwoju osobistego czy sesja coachingowa zwykle nie mieszczą się w definicji kształcenia zawodowego. Ten sam program prowadzony dla osób przygotowujących się do wykonywania konkretnego zawodu bywa oceniany inaczej.',
+    note: 'Decyduje związek szkolenia z zawodem uczestnika, a nie nazwa w ofercie. To rozróżnienie sprawdzamy dla każdej pozycji z Twojego cennika osobno.',
+  },
+  {
+    icon: 'file',
+    title: 'Finansowanie ze środków publicznych trzeba udokumentować',
+    description: 'Zwolnienie działa, jeżeli szkolenie jest finansowane w odpowiedniej części ze środków publicznych. W praktyce potrzebne jest oświadczenie zamawiającego potwierdzające źródło finansowania, najlepiej odebrane przed szkoleniem, a nie po nim.',
+    note: 'Bez takiego oświadczenia zwolnienia trudno bronić podczas kontroli, nawet gdy pieniądze faktycznie pochodziły z projektu.',
+  },
+  {
+    icon: 'users',
+    title: 'Nauczanie prywatne oznacza nauczanie osobiste',
+    description: 'Zwolnienie dla nauczyciela dotyczy sytuacji, w której uczy on osobiście i na własny rachunek. Nie obejmuje przypadku, w którym nauczyciel jest podwykonawcą podmiotu prowadzącego własny system zajęć i to ten podmiot odpowiada wobec ucznia.',
+    note: 'Lektor współpracujący ze szkołą językową na własnej działalności zwykle korzysta z innej podstawy zwolnienia niż korepetytor uczący u siebie w domu.',
+  },
+];
+
+const courseTypes = [
+  {
+    tone: 'warn',
+    badge: 'zwykle bez zwolnienia',
+    icon: 'zap',
+    title: 'Kurs w pełni zautomatyzowany',
+    body: 'Nagrania, testy i dostęp do platformy bez udziału prowadzącego bywają kwalifikowane jako usługa elektroniczna, czyli świadczenie zasadniczo zautomatyzowane, wymagające minimalnego udziału człowieka.',
+    note: 'Zwolnienia przewidziane dla nauczania zwykle wtedy nie działają, ponieważ brakuje elementu rzeczywistego przekazywania wiedzy przez człowieka.',
+  },
+  {
+    tone: 'good',
+    badge: 'droga do zwolnienia otwarta',
+    icon: 'users',
+    title: 'Kurs prowadzony na żywo',
+    body: 'Zajęcia z trenerem lub lektorem w czasie rzeczywistym, z możliwością zadawania pytań i reagowania na uczestników, są traktowane jak nauczanie, a nie jak dostarczenie pliku.',
+    note: 'Otwiera to drogę do zwolnień opisanych wyżej, na przykład dla nauki języków obcych prowadzonej zdalnie.',
+  },
+];
+
+const ossPoints = [
+  'Ustalamy, czy Twój kurs jest usługą elektroniczną, czy nauczaniem',
+  'Pilnujemy progu sprzedaży do konsumentów z Unii Europejskiej',
+  'Rejestrujemy do procedury OSS i składamy deklaracje kwartalne',
+  'Rozliczamy wpływy z platform sprzedażowych i bramek płatniczych',
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów lub księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'VAT, sprzedaż online i KSeF',
+    description: 'Weryfikujemy podstawę zwolnienia dla każdego rodzaju usługi i ustawiamy prawidłowy podział przy sprzedaży mieszanej. Faktury wysyłamy i odbieramy w KSeF.',
+    points: [
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Procedura VAT OSS i informacje podsumowujące VAT-UE',
+      'Proporcja odliczenia przy sprzedaży zwolnionej i opodatkowanej',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Kadry lektorów, nauczycieli i trenerów',
+    description: 'W tej branży zespół rzadko składa się wyłącznie z etatowców. Prowadzimy dokumentację dla wszystkich form zatrudnienia, także dla osób pracujących sezonowo.',
+    points: [
+      'Umowy o pracę, zlecenia i o dzieło wraz ze zgłoszeniami do ZUS',
+      'Rozliczanie honorariów autorskich za materiały dydaktyczne',
+      'Panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi',
+    ],
+  },
+  {
+    icon: 'shield',
+    title: 'ZUS, ulgi i kontakt z urzędami',
+    description: 'Naliczamy składki właściciela działalności i pilnujemy progów przychodowych wpływających na składkę zdrowotną. W kontaktach z urzędem skarbowym i ZUS wspieramy Cię dokumentacją: kompletujemy zestawienia z ksiąg i przygotowujemy wyjaśnienia dotyczące ujęcia zdarzeń.',
+    points: [
+      'Obsługa ZUS właściciela JDG w cenie abonamentu',
+      'Ulga na start i preferencyjne składki dla rozpoczynających działalność',
+      'Wnioski o interpretację indywidualną w sprawie zwolnienia z VAT',
+    ],
+  },
+];
+
+const benefits = [
+  {
+    icon: 'sparkle',
+    title: 'Abonament all-inclusive',
+    description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.',
+  },
+  {
+    icon: 'globe',
+    title: 'Sprzedaż online bez zaskoczeń w cenie',
+    description: 'Jeśli sprzedajesz kursy przez własny sklep albo platformę, przed podpisaniem umowy ustalamy, jak księgujemy tę sprzedaż i co dokładnie wchodzi do limitu dokumentów. Chcemy, żeby cena wynikała z nakładu pracy, a nie z liczby drobnych płatności.',
+  },
+  {
+    icon: 'users',
+    title: 'Jeden opiekun kadrowo-księgowy',
+    description: 'Masz jedną osobę, która zna Twoją ofertę i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.',
+  },
+  {
+    icon: 'lock',
+    title: 'Bezpieczeństwo danych',
+    description: 'Dokumenty wymieniamy przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.',
+  },
+];
+
+const startupSteps = [
+  {
+    title: 'Analiza oferty i wybór formy opodatkowania',
+    description: 'Przechodzimy przez Twoje usługi po kolei i sprawdzamy, które mieszczą się w dziale 85 klasyfikacji PKWiU oraz na jakiej podstawie przysługuje Ci zwolnienie z VAT.',
+  },
+  {
+    title: 'Wniosek CEIDG-1',
+    description: `Dobieramy kody PKD odpowiadające faktycznemu zakresowi zajęć, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}.`,
+  },
+  {
+    title: 'Zgłoszenia do ZUS i urzędu skarbowego',
+    description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start albo preferencyjne składki.',
+  },
+  {
+    title: 'VAT-R, VAT-UE i procedura OSS',
+    description: 'Rejestrujemy tam, gdzie jest to potrzebne, zależnie od tego, komu i gdzie sprzedajesz. Przy zwolnieniu przedmiotowym też trzeba złożyć zgłoszenie.',
+  },
+  {
+    title: 'Konfiguracja KSeF i pełnomocnictwo UPL-1',
+    description: 'Ustawiamy uprawnienia tak, aby faktury wychodziły i przychodziły bez Twojego udziału.',
+  },
+  {
+    title: 'Onboarding w portalu klienta',
+    description: 'Od pierwszego miesiąca masz dostęp do dokumentów, deklaracji i bieżącego stanu rozliczeń.',
+  },
+];
+
+const process = [
+  {
+    title: 'Bezpłatna konsultacja na start',
+    description: 'Przechodzimy przez Twoją ofertę usługa po usłudze i ustalamy, jak każda z nich jest opodatkowana. Bez zobowiązań i sprzedażowego nacisku.',
+  },
+  {
+    title: 'Wycena i umowa',
+    description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.',
+  },
+  {
+    title: 'Przejęcie dokumentacji',
+    description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.',
+  },
+  {
+    title: 'Stała obsługa',
+    description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.',
+  },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje w edukacji?',
+    a: `Usługi w zakresie edukacji, czyli dział 85 klasyfikacji PKWiU, są opodatkowane stawką ${stawkaEdukacja}. Obejmuje to korepetycje, szkolenia, kursy zawodowe i pozaszkolne formy edukacji. Jeśli obok nauczania prowadzisz inną działalność, część przychodów może podlegać innej stawce i wtedy potrzebna jest ewidencja pozwalająca je rozdzielić. Prowadzimy ją w ramach abonamentu.`,
+  },
+  {
+    q: `Czy nauczyciela obowiązuje stawka ${stawkaWolnyZawod} przewidziana dla wolnych zawodów?`,
+    a: `Nie. Z początkiem ${NAUCZYCIEL_POZA_WOLNYM_ZAWODEM_OD} roku nauczyciele świadczący usługi edukacyjne polegające na udzielaniu lekcji na godziny zostali wykreśleni z ustawowej definicji wolnego zawodu. Informacja o stawce ${stawkaWolnyZawod} nadal krąży w internecie, ale jest nieaktualna. Właściwa jest stawka ${stawkaEdukacja} dla działu 85 PKWiU.`,
+  },
+  {
+    q: 'Czy moje szkolenia są zwolnione z VAT?',
+    a: `To zależy od tego, na której podstawie miałoby opierać się zwolnienie. Odrębne przepisy dotyczą jednostek objętych systemem oświaty, nauczania prywatnego przez nauczyciela, nauki języków obcych oraz kształcenia zawodowego i przekwalifikowania. Osobne zwolnienie przewidziano dla szkoleń zawodowych finansowanych w co najmniej siedemdziesięciu procentach ze środków publicznych. Szkolenia rozwojowe i coaching zwykle w żadnej z tych kategorii się nie mieszczą i wtedy zostaje zwolnienie ze względu na wartość sprzedaży do ${limitVat} albo stawka podstawowa. Sprawdzamy to dla każdej usługi z Twojej oferty osobno.`,
+  },
+  {
+    q: 'Sprzedaję nagrany kurs online. Czy korzystam ze zwolnienia dla edukacji?',
+    a: 'Zwykle nie. Kurs w pełni zautomatyzowany, bez udziału prowadzącego, bywa kwalifikowany jako usługa elektroniczna, a nie jako nauczanie. Inaczej wygląda sytuacja przy zajęciach prowadzonych na żywo, gdzie trener lub lektor ma kontakt z uczestnikami w czasie rzeczywistym. Ta różnica jest kluczowa dla ceny brutto, więc ustalamy ją przed rozpoczęciem sprzedaży, a nie po pierwszym kwartale.',
+  },
+  {
+    q: 'Sprzedaję kursy osobom prywatnym z innych krajów Unii Europejskiej. Co się zmieniło?',
+    a: `Od ${WYDARZENIA_WIRTUALNE_OD} miejscem opodatkowania wstępu na wydarzenia transmitowane lub udostępniane wirtualnie jest kraj, w którym mieszka kupujący. Po przekroczeniu progu sprzedaży transgranicznej do konsumentów z Unii, wynoszącego ${num(OSS_LIMIT_EUR)} euro rocznie, czyli ${zl(OSS_LIMIT)}, podatek rozlicza się według stawek obowiązujących w krajach kupujących. Służy do tego procedura OSS, dzięki której nie trzeba rejestrować się w każdym państwie osobno. Rejestracja do OSS kosztuje ${ossFees.ossSetup} zł jednorazowo, a obsługa procedury wraz z deklaracjami kwartalnymi ${ossFees.ossMonthly} zł netto miesięcznie. Rejestracja do VAT-UE i informacje podsumowujące pozostają w abonamencie.`,
+  },
+  {
+    q: 'Czy korepetytor musi mieć kasę fiskalną?',
+    a: `Co do zasady nie, ponieważ usługi w zakresie edukacji są zwolnione z obowiązku ewidencjonowania na kasie rejestrującej. Wyjątkiem są zajęcia sportowe i rekreacyjne, szkoły tańca oraz szkoły nauki jazdy, które z tego zwolnienia wyłączono. W pozostałych przypadkach warto jeszcze sprawdzić limit sprzedaży na rzecz osób prywatnych, wynoszący ${zl(KASA_LIMIT_ROCZNY)} rocznie. Pomaga w tym nasz <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulator limitu kasy fiskalnej</a>.`,
+  },
+  {
+    q: 'Od kiedy muszę założyć firmę, jeśli udzielam korepetycji?',
+    a: `Do pewnego poziomu przychodu możesz działać w ramach działalności nierejestrowanej. Od 2026 roku limit liczy się kwartalnie i wynosi ${limitNierejestrowana}, a dodatkowym warunkiem jest to, że w ostatnich ${NIEREJESTROWANA_PRZERWA_MIESIACE} miesiącach nie prowadziłeś zarejestrowanej działalności. Po przekroczeniu limitu w danym kwartale masz ${NIEREJESTROWANA_CEIDG_DNI} dni na złożenie wniosku do CEIDG.`,
+  },
+  {
+    q: 'Prowadzę przedszkole niepubliczne. Jaką księgowość muszę prowadzić?',
+    a: 'Zależy to od formy prawnej i skali działalności. Osoba fizyczna prowadząca placówkę może rozliczać się w formie uproszczonej, czyli ryczałtem albo księgą przychodów i rozchodów, natomiast spółki kapitałowe prowadzą pełną księgowość. Na bezpłatnej konsultacji przechodzimy przez strukturę przychodów placówki i mówimy wprost, jaki zakres obsługi bierzemy na siebie.',
+  },
+  {
+    q: 'Zatrudniam lektorów na umowy o dzieło. O czym muszę pamiętać?',
+    a: `Między innymi o zgłoszeniu umowy do Zakładu Ubezpieczeń Społecznych w terminie ${DZIELO_RUD_DNI} dni od jej zawarcia. Obowiązek dotyczy również umów, od których nie odprowadza się składek. Warto też wiedzieć, że samo prowadzenie zajęć rzadko jest dziełem w rozumieniu przepisów, bo brakuje w nim samoistnego rezultatu, więc kwalifikacja umowy bywa kwestionowana podczas kontroli. Omawiamy to przy ustalaniu formy współpracy z zespołem, w ramach <a href="/kadry-place">obsługi kadrowej</a>.`,
+  },
+  {
+    q: 'Czy przy dużej liczbie sprzedanych kursów cena obsługi wzrośnie?',
+    a: 'Cena zależy od liczby dokumentów księgowych w miesiącu, a nie od liczby uczestników kursu. Przy sprzedaży przez sklep internetowy albo platformę kursową ustalamy przed podpisaniem umowy, jak księgujemy tę sprzedaż i co wchodzi do limitu dokumentów, żeby wycena odpowiadała rzeczywistemu nakładowi pracy. Mówimy o tym wprost na pierwszej rozmowie, zamiast zostawiać niespodziankę na pierwszą fakturę.',
+  },
+  {
+    q: 'Do jakiego przychodu mogę rozliczać się ryczałtem?',
+    a: `Ryczałt przysługuje przedsiębiorcom, których przychody w roku poprzednim nie przekroczyły równowartości ${num(RYCZALT_LIMIT_EUR)} euro, czyli ${zl(RYCZALT_LIMIT)} na 2026 rok. Pilnujemy tego progu za Ciebie i sygnalizujemy zawczasu, gdyby zbliżał się moment przejścia na KPiR.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla trenera lub korepetytora?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${ryczaltVat} zł netto. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto. Cały <a href="/cennik">cennik</a> jest publiczny, bez widełek i bez prośby o kontakt w celu poznania ceny.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const path = '/ksiegowosc-dla-branzy-edukacyjnej';
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla branży edukacyjnej', href: path },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}${path}#service`,
+  name: 'Księgowość dla branży edukacyjnej',
+  serviceType: 'Usługi księgowe dla firm szkoleniowych i placówek oświatowych',
+  description: 'Obsługa księgowa trenerów, korepetytorów, twórców kursów online, szkół językowych oraz niepublicznych przedszkoli, żłobków i szkół. Ryczałt, KPiR i pełna księgowość, zwolnienia z VAT w edukacji, procedura VAT OSS i rozliczanie sprzedaży kursów za granicą.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}${path}`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Trenerzy, firmy szkoleniowe, korepetytorzy, lektorzy, twórcy kursów online, szkoły językowe, niepubliczne przedszkola, żłobki i szkoły',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla branży edukacyjnej',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: [r.form, r.vatLabel, `${r.docs} dokumentów / mies.`].filter(Boolean).join(', '),
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla szkoleń, kursów i placówek"
+  description={`Księgowość dla trenerów, korepetytorów, szkół językowych i placówek niepublicznych. Ryczałt ${stawkaEdukacja}, zwolnienia z VAT, kursy online i VAT OSS. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla branży edukacyjnej"
+    description="Prowadzimy rozliczenia trenerów, korepetytorów, twórców kursów online oraz niepublicznych placówek oświatowych. Sprawdzamy, na jakiej podstawie przysługuje Ci zwolnienie z VAT, rozliczamy sprzedaż kursów w kraju i za granicą oraz pilnujemy obowiązków, o których w tej branży najłatwiej zapomnieć. Ty uczysz, a my zajmujemy się resztą."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla branży edukacyjnej' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=edukacja" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Edukacja to nie jedna branża, tylko kilka osobnych światów</h2>
+        <p>Trener prowadzący warsztaty dla firm, korepetytor przyjmujący uczniów w domu i twórca sprzedający nagrany kurs mają ze sobą wspólne właściwie tylko hasło. Ich obowiązki podatkowe różnią się niemal we wszystkim. Poniżej opisujemy pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="edu-segments">
+        {segments.map((s) => (
+          <article class="edu-segment">
+            <div class="edu-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ryczałt ───────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt {stawkaEdukacja} i mit siedemnastu procent</h2>
+        <p>W branży edukacyjnej ryczałt jest zwykle formą najprostszą i najkorzystniejszą, bo koszty są niskie, a stawka też. Usługi w zakresie edukacji, czyli dział 85 klasyfikacji PKWiU, są opodatkowane stawką {stawkaEdukacja}. Dotyczy to zarówno korepetycji, jak i szkoleń, kursów zawodowych oraz pozaszkolnych form edukacji.</p>
+      </div>
+
+      <div class="edu-forms">
+        {taxForms.map((f) => (
+          <article class={`edu-form ${f.featured ? 'edu-form--featured' : ''}`}>
+            <span class={`edu-form__badge ${f.featured ? 'edu-form__badge--featured' : ''}`}>{f.badge}</span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+            <p class="edu-form__note">{f.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="edu-warning">
+        <div class="edu-warning__icon"><Icon name="search" size={22}/></div>
+        <div>
+          <h3>Skąd bierze się nieporozumienie</h3>
+          <p>W internecie nadal krąży informacja, że nauczyciela obowiązuje stawka {stawkaWolnyZawod} przewidziana dla wolnych zawodów. Jest to nieaktualne. Z początkiem {NAUCZYCIEL_POZA_WOLNYM_ZAWODEM_OD} roku nauczyciele świadczący usługi edukacyjne polegające na udzielaniu lekcji na godziny zostali wykreśleni z ustawowej definicji wolnego zawodu. Od tego momentu rozliczają się na zasadach ogólnych dla działu 85, czyli stawką {stawkaEdukacja}.</p>
+          <p>Jeśli od tamtej pory płacisz {stawkaWolnyZawod}, warto sprawdzić rozliczenia wstecz. Nadpłacony ryczałt da się odzyskać przez korektę, a im wcześniej się do niej zabierzemy, tym więcej lat jeszcze się nie przedawniło.</p>
+        </div>
+      </div>
+
+      <p class="edu-note">
+        <Icon name="sparkle" size={16}/>
+        <span>O stawce decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności, a nie nazwa zawodu ani kod PKD. Jeśli obok nauczania sprzedajesz nagrania, prowadzisz doradztwo albo świadczysz usługi reklamowe, część przychodów może podlegać innej stawce. Ryczałt liczy się wtedy osobno dla każdego rodzaju działalności, a warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody. Prowadzimy taką ewidencję w ramach abonamentu, bez dopłat.</span>
+      </p>
+
+      <p class="edu-lede-center">Ryczałt przestaje być oczywistym wyborem, gdy pojawiają się realne koszty: wynajem sal, wynagrodzenia lektorów, produkcja materiałów, sprzęt do nagrań. Przy większej skali porównujemy ryczałt z podatkiem liniowym i skalą na Twoich liczbach, z uwzględnieniem składki zdrowotnej. Prawo do ryczałtu przysługuje przy przychodach za rok poprzedni nieprzekraczających równowartości {num(RYCZALT_LIMIT_EUR)} euro, czyli {zl(RYCZALT_LIMIT)} na 2026 rok.</p>
+
+      <div class="edu-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT w edukacji</span>
+        <h2>Kiedy szkolenie jest zwolnione z VAT, a kiedy nie</h2>
+        <p>To najważniejsze pytanie w tej branży i jednocześnie najczęściej upraszczane. Nie istnieje jedno zwolnienie dla edukacji. Istnieje kilka odrębnych podstaw, z których każda ma własne warunki. Jeśli nie spełniasz żadnej z nich, zostaje zwolnienie ze względu na wysokość sprzedaży albo stawka podstawowa.</p>
+      </div>
+
+      <div class="edu-vat">
+        <div class="edu-vat__head">
+          <span>Podstawa zwolnienia</span>
+          <span>Warunki</span>
+        </div>
+        {vatRows.map((r) => (
+          <div class="edu-vat__row">
+            <div class="edu-vat__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="edu-vat__how">
+              <span class={`edu-pill edu-pill--${r.tone}`}>{r.status}</span>
+              <p>{r.note}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h3 class="edu-subhead">Trzy pułapki, które widzimy najczęściej</h3>
+      <div class="edu-cards">
+        {vatTraps.map((t) => (
+          <article class="edu-card">
+            <div class="edu-card__icon"><Icon name={t.icon} size={22}/></div>
+            <h4>{t.title}</h4>
+            <p>{t.description}</p>
+            <p class="edu-card__note">{t.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <aside class="edu-approach">
+        <div class="edu-approach__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Jak do tego podchodzimy</h3>
+          <p>Sprawdzamy podstawę zwolnienia dla każdego rodzaju usługi z Twojej oferty, zanim wystawisz pierwszą fakturę. Jeśli część sprzedaży jest zwolniona, a część opodatkowana, ustawiamy proporcję odliczenia i pilnujemy rocznej korekty.</p>
+          <p>Gdy sprawa jest niejednoznaczna, przygotowujemy wniosek o interpretację indywidualną. To jedyny sposób, żeby uzyskać ochronę prawną, zamiast opierać się na cudzych domysłach z forum. Znaczenie pojęć, które padają w tej sekcji, wyjaśniamy w <a href="/slownik">słowniku księgowym</a>. Jeśli prowadzisz szkolenia z bezpieczeństwa pracy, osobno opisujemy je na podstronie dla <a href="/ksiegowosc-dla-branzy-bhp">branży BHP</a>.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Kursy online ──────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="kursy-online">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Sprzedaż online</span>
+        <h2>Kurs nagrany i kurs na żywo to dwie różne usługi podatkowe</h2>
+        <p>Jeżeli sprzedajesz kursy przez internet, ta sekcja jest dla Ciebie najważniejsza na całej stronie. Ten sam materiał merytoryczny bywa rozliczany zupełnie inaczej w zależności od tego, jak jest dostarczany, a różnica idzie wprost w cenę brutto.</p>
+      </div>
+
+      <div class="edu-compare">
+        {courseTypes.map((c) => (
+          <article class={`edu-compare__col edu-compare__col--${c.tone}`}>
+            <div class="edu-compare__head">
+              <span class="edu-compare__icon"><Icon name={c.icon} size={20}/></span>
+              <span class={`edu-pill edu-pill--${c.tone}`}>{c.badge}</span>
+            </div>
+            <h3>{c.title}</h3>
+            <p>{c.body}</p>
+            <p class="edu-compare__note">{c.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="edu-oss">
+        <div class="edu-oss__head">
+          <h3>Zmiana, o której warto wiedzieć</h3>
+          <p>Od {WYDARZENIA_WIRTUALNE_OD} obowiązują nowe zasady ustalania miejsca opodatkowania wydarzeń transmitowanych lub udostępnianych wirtualnie. Jeśli sprzedajesz dostęp do webinaru czy szkolenia online osobie prywatnej z innego kraju Unii Europejskiej, miejscem opodatkowania jest kraj, w którym ta osoba mieszka.</p>
+          <p>W praktyce oznacza to, że po przekroczeniu progu sprzedaży transgranicznej do konsumentów z Unii, wynoszącego {num(OSS_LIMIT_EUR)} euro rocznie, czyli {zl(OSS_LIMIT)}, podatek trzeba rozliczyć według stawek obowiązujących w krajach kupujących. Nie wymaga to rejestracji w każdym z tych państw, bo służy do tego procedura OSS, czyli jedno okienko rozliczeniowe.</p>
+        </div>
+        <ul class="edu-oss__list">
+          {ossPoints.map((p) => <li><Icon name="check-circle" size={16}/><span>{p}</span></li>)}
+        </ul>
+        <p class="edu-oss__foot">Rejestracja do VAT-UE i informacje podsumowujące są w cenie abonamentu. Procedura OSS ma własne pozycje w cenniku, bo jest odrębnym obiegiem ze stawkami kraju nabywcy i własnym kalendarzem deklaracji: {ossFees.ossSetup} zł jednorazowo za rejestrację i {ossFees.ossMonthly} zł netto miesięcznie za obsługę. Sprzedaż kursów firmom z innych krajów Unii rozliczamy zwykle w mechanizmie odwrotnego obciążenia, z informacją podsumowującą VAT-UE, w abonamencie. Sprzedaż osobom prywatnym spoza Unii co do zasady nie podlega polskiemu podatkowi, choć warto sprawdzić, czy nie powstają obowiązki lokalne.</p>
+      </div>
+
+      <p class="edu-note">
+        <Icon name="tag" size={16}/>
+        <span>Jeśli obok kursów sprzedajesz produkty cyfrowe albo współpracujesz z markami, przyda Ci się też podstrona dla <a href="/ksiegowosc-dla-marketingu-i-branz-kreatywnych">marketingu i branż kreatywnych</a>. Opisujemy tam rozliczanie barteru, przychodów z platform i zakupów reklam od podmiotów zagranicznych.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obowiązki formalne</span>
+        <h2>Kasa fiskalna w edukacji i jej trzy wyjątki</h2>
+        <p>Usługi w zakresie edukacji są co do zasady zwolnione z obowiązku ewidencjonowania sprzedaży na kasie rejestrującej. Korepetytor przyjmujący uczniów prywatnie kasy zatem nie potrzebuje. Z tego zwolnienia wyłączono jednak trzy rodzaje działalności, które formalnie mieszczą się w edukacji.</p>
+      </div>
+
+      <ul class="edu-exceptions">
+        {KASA_EDUKACJA_WYJATKI.map((e, i) => (
+          <li class="edu-exception">
+            <span class="edu-exception__num">{String(i + 1).padStart(2, '0')}</span>
+            <span>{e}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="edu-note">
+        <Icon name="search" size={16}/>
+        <span>Jeśli prowadzisz zajęcia sportowe dla dzieci, szkołę tańca albo ośrodek szkolenia kierowców, sprawdzamy, czy i od kiedy obowiązek Cię dotyczy oraz czy przysługuje Ci ulga na zakup kasy. Trenerom personalnym, instruktorom i klubom opisujemy to szczegółowo na podstronie <a href="/ksiegowosc-dla-trenerow-i-sportowcow">dla trenerów i sportowców</a>, bo tam do kasy dochodzi jeszcze wybór między dwiema stawkami ryczałtu. W pozostałych przypadkach weryfikujemy, czy mieścisz się jeszcze w limicie sprzedaży na rzecz osób prywatnych, wynoszącym {zl(KASA_LIMIT_ROCZNY)} rocznie. Policzysz to również sam w <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Pracujemy zdalnie, więc rozliczenia nie wymuszają na Tobie wizyt między zajęciami - szczegóły opisujemy w sekcji o <a href="/ksiegowosc-online">księgowości prowadzonej online</a>.</p>
+      </div>
+      <div class="edu-scope">
+        {scope.map((s) => (
+          <article class="edu-scope__item">
+            <div class="edu-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <p class="edu-note">
+        <Icon name="users" size={16}/>
+        <span>Obsługa kadrowa jest rozliczana za osobę, więc koszt rośnie razem z zespołem, a nie skokowo. Umowa zlecenie lub o dzieło bez składek ZUS to {hrZlecenie} zł netto miesięcznie za osobę, umowa o pracę {hrEtat} zł. Minimalny abonament kadrowy wynosi {hrMin} zł niezależnie od liczby zatrudnionych. Pełny zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="edu-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia, które nie zabierają czasu przeznaczonego na&nbsp;uczenie</h2>
+          <p class="lede">Trener w trakcie szkolenia i lektor w trakcie zajęć nie odbierają telefonu. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="edu-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow edu-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="edu-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="edu-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="edu-startup">
+        <div class="edu-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Dopiero zaczynasz? Sprawdź, czy firma jest Ci już potrzebna</h2>
+          <p class="lede">Wiele osób w tej branży zaczyna od kilku godzin korepetycji tygodniowo albo od jednego kursu sprzedanego znajomym. Nie zawsze wymaga to od razu rejestracji działalności.</p>
+        </div>
+
+        <div class="edu-unregistered">
+          <div class="edu-unregistered__icon"><Icon name="star" size={22}/></div>
+          <div>
+            <h3>Działalność nierejestrowana</h3>
+            <p>Od 2026 roku limit przychodu dla działalności nierejestrowanej liczy się kwartalnie i wynosi {limitNierejestrowana}. Zmiana jest korzystna, bo pozwala na nierówne miesiące, a to dobrze pasuje do sezonowości korepetycji: intensywny maj i czerwiec nie wypychają Cię już z limitu z powodu jednego dobrego miesiąca.</p>
+            <p>Drugim warunkiem jest to, że w ostatnich {NIEREJESTROWANA_PRZERWA_MIESIACE} miesiącach nie prowadziłeś zarejestrowanej działalności. Po przekroczeniu limitu w danym kwartale masz {NIEREJESTROWANA_CEIDG_DNI} dni na złożenie wniosku do CEIDG. Pomagamy ustalić, kiedy ten moment nastąpi, żeby nie dowiedzieć się o nim po fakcie.</p>
+          </div>
+        </div>
+
+        <h3 class="edu-subhead">Zakładanie działalności gospodarczej</h3>
+        <ol class="edu-steps">
+          {startupSteps.map((s, i) => (
+            <li class="edu-step">
+              <span class="edu-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h4>{s.title}</h4>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="edu-startup__cols">
+          <div class="edu-startup__col edu-startup__col--primary">
+            <span class="edu-startup__pill edu-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem: {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="edu-startup__col">
+            <span class="edu-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem: {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=edukacja" class="btn btn--accent btn--lg edu-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla trenera i placówki</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. Ponieważ znaczna część usług edukacyjnych korzysta ze zwolnienia z VAT, wielu klientów z tej branży rozlicza się u nas według stawki przewidzianej dla podatników zwolnionych.</p>
+      </div>
+
+      <div class="edu-price">
+        <div class="edu-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="edu-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="edu-price__row">
+            <span class="edu-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.vatLabel ? `${r.vatLabel}, ` : ''}{r.docs} dokumentów</small>
+            </span>
+            <span class="edu-price__situation">{r.situation}</span>
+            <span class="edu-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="edu-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Przy sprzedaży prowadzonej przez sklep internetowy lub platformę kursową sposób księgowania ustalamy przed podpisaniem umowy, żeby wycena odpowiadała rzeczywistemu nakładowi pracy. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</span>
+      </p>
+
+      <div class="edu-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/slownik" class="btn btn--ghost btn--lg">
+          <Icon name="search" size={18}/>
+          <span>Słownik księgowy</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w branży edukacyjnej"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej działalności"
+    description="Jeśli prowadzisz szkolenia, uczysz, sprzedajesz kursy albo prowadzisz placówkę oświatową, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoją ofertę, sprawdzimy podstawę zwolnienia z VAT i powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=edukacja"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.edu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.edu-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.edu-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.edu-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+.edu-lede-center {
+  margin-top: 1.75rem;
+  text-align: center;
+  max-width: 72ch;
+  margin-inline: auto;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.edu-subhead {
+  font-size: 1.375rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+}
+.edu-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  line-height: 1.35;
+  text-align: center;
+}
+.edu-pill--good { background: var(--accent-100); color: var(--accent-700); }
+.edu-pill--neutral { background: var(--ink-100); color: var(--text-muted); }
+.edu-pill--warn { background: rgba(245,158,11,0.16); color: #92400e; }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.edu-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn pozwala ułożyć pięć kart bez pustego miejsca: trzy karty po
+     dwie kolumny w pierwszym rzędzie, dwie po trzy kolumny w drugim. */
+  .edu-segments { grid-template-columns: repeat(6, 1fr); }
+  .edu-segments > * { grid-column: span 2; }
+  .edu-segments > :nth-child(4),
+  .edu-segments > :nth-child(5) { grid-column: span 3; }
+}
+.edu-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.edu-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.edu-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-segment h3 { font-size: 1.125rem; }
+.edu-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.edu-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.edu-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.edu-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Formy opodatkowania ──────────────────────────────────────────────── */
+.edu-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .edu-forms { grid-template-columns: repeat(3, 1fr); } }
+.edu-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.edu-form--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.edu-form__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.edu-form__badge--featured { background: var(--accent-500); color: var(--ink-950); }
+.edu-form h3 { font-size: 1.1875rem; }
+.edu-form p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.edu-form p.edu-form__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Wyróżniony blok ostrzegawczy ─────────────────────────────────────── */
+.edu-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--accent-200);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+}
+.edu-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-warning h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.edu-warning p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.edu-warning p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .edu-warning { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Panel wyjaśniający (ciemny) ──────────────────────────────────────── */
+.edu-approach {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.edu-approach__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.edu-approach--warn .edu-approach__icon { background: rgba(245,158,11,0.16); color: var(--warning); }
+.edu-approach h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.edu-approach p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.edu-approach p + p { margin-top: 0.75rem; }
+.edu-approach a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .edu-approach { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Podstawy zwolnienia z VAT ────────────────────────────────────────── */
+.edu-vat {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.edu-vat__head,
+.edu-vat__row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+}
+.edu-vat__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.edu-vat__row { border-bottom: 1px solid var(--border-subtle); align-items: start; }
+.edu-vat__row:last-child { border-bottom: none; }
+.edu-vat__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.edu-vat__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.edu-vat__how { display: flex; flex-direction: column; gap: 0.5rem; }
+.edu-vat__how p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+@media (max-width: 760px) {
+  .edu-vat__head { display: none; }
+  .edu-vat__row { grid-template-columns: 1fr; gap: 0.75rem; }
+}
+
+/* ── Karty (pułapki VAT) ──────────────────────────────────────────────── */
+.edu-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .edu-cards { grid-template-columns: repeat(3, 1fr); } }
+.edu-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.edu-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.edu-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-card h4 { font-size: 1.0625rem; line-height: 1.4; }
+.edu-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.edu-card p.edu-card__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Kurs nagrany kontra kurs na żywo ─────────────────────────────────── */
+.edu-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .edu-compare { grid-template-columns: 1fr 1fr; } }
+.edu-compare__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.edu-compare__col--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.edu-compare__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.edu-compare__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.edu-compare__col--good .edu-compare__icon { background: var(--white); }
+.edu-compare h3 { font-size: 1.25rem; }
+.edu-compare p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.edu-compare p.edu-compare__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Procedura OSS ────────────────────────────────────────────────────── */
+.edu-oss {
+  margin-top: 1.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  box-shadow: var(--shadow-sm);
+}
+.edu-oss__head { max-width: 72ch; }
+.edu-oss__head h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.edu-oss__head p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.edu-oss__head p + p { margin-top: 0.75rem; }
+.edu-oss__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.625rem;
+  margin-top: 1.5rem;
+}
+.edu-oss__list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.875rem 1.125rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+  line-height: 1.5;
+}
+.edu-oss__list li :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 2px; }
+.edu-oss__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.7;
+}
+
+/* ── Wyjątki od zwolnienia z kasy ─────────────────────────────────────── */
+.edu-exceptions {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .edu-exceptions { grid-template-columns: repeat(3, 1fr); } }
+.edu-exception {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-lg);
+  padding: 1.375rem 1.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  font-weight: 500;
+  line-height: 1.55;
+}
+.edu-exception__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.edu-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .edu-scope { grid-template-columns: repeat(2, 1fr); } }
+.edu-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.edu-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.edu-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.edu-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.edu-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.edu-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.edu-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.edu-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .edu-benefits { grid-template-columns: 1fr; } }
+.edu-benefits .lede { margin-top: 1rem; }
+.edu-benefits__stats { margin-top: 2rem; }
+.edu-benefits__link { margin-top: 1.75rem; }
+.edu-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.edu-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.edu-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.edu-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.edu-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.edu-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.edu-startup__head { max-width: 70ch; }
+.edu-startup__head .lede { margin-top: 1rem; }
+
+.edu-unregistered {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-xl);
+}
+.edu-unregistered__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.edu-unregistered h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.edu-unregistered p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.edu-unregistered p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .edu-unregistered { flex-direction: column; gap: 1rem; }
+}
+
+.edu-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+@media (min-width: 980px) { .edu-steps { grid-template-columns: repeat(3, 1fr); } }
+.edu-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.edu-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.edu-step h4 { font-size: 1rem; margin-bottom: 0.25rem; }
+.edu-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.edu-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .edu-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.edu-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.edu-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.edu-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.edu-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.edu-startup__col h3 { font-size: 1.1875rem; }
+.edu-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.edu-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.edu-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.edu-price__head,
+.edu-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.edu-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.edu-price__row { border-bottom: 1px solid var(--border-subtle); }
+.edu-price__row:last-child { border-bottom: none; }
+.edu-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.edu-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.edu-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.edu-price__amount { text-align: right; }
+.edu-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .edu-price__head { display: none; }
+  .edu-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .edu-price__situation { grid-column: 1 / -1; }
+}
+</style>

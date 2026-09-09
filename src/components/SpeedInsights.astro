@@ -1,0 +1,22 @@
+---
+/**
+ * Vercel Speed Insights - pomiar Core Web Vitals prawdziwych użytkowników.
+ *
+ * Zamiennik komponentu `@vercel/speed-insights/astro`, który ładował się bez
+ * pytania o zgodę. Narzędzie zbiera dane o zachowaniu przeglądarki, więc
+ * należy do kategorii analitycznej i musi podlegać temu samemu banerowi co
+ * Google Analytics. Ten komponent tylko odkłada w dokumencie dane o trasie -
+ * o samym uruchomieniu decyduje wpis `vercel-speed-insights`
+ * w `lib/consent-integrations.ts`.
+ *
+ * `Astro.params` zwija adresy dynamiczne do wzorca trasy (np. wszystkie wpisy
+ * blogowe do `/wiedza/[...slug]`), dzięki czemu raport Vercela nie rozsypuje
+ * się na setki osobnych adresów.
+ *
+ * Użycie (w <body>, raz na stronę):
+ *
+ *   <SpeedInsights />
+ */
+const params = JSON.stringify(Astro.params ?? {});
+---
+<span id="speed-insights" hidden data-params={params} data-pathname={Astro.url.pathname}></span>

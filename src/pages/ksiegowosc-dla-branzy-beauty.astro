@@ -1,0 +1,1873 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, setupFees, startsFrom, tables, wis } from '../data/pricing';
+import {
+  AMORT_NISKOCENNE,
+  KASA_LIMIT_ROCZNY,
+  KASA_ULGA_MAX,
+  KASA_ULGA_MIESIACE,
+  KASA_ULGA_RATE,
+  PIP_DECYZJE_OD,
+  PIP_INTERPRETACJA_DNI,
+  PIP_INTERPRETACJA_OPLATA,
+  PIP_KARENCJA_DO,
+  PIP_KARENCJA_MIESIACE,
+  PKD_AKTUALIZACJA_DO,
+  PKD_NOWA_OD,
+  RYCZALT_HANDEL,
+  RYCZALT_TIER_LIMITS,
+  RYCZALT_USLUGI,
+  VAT_BEAUTY_OBNIZKA_OD,
+  VAT_RATE,
+  VAT_RATE_OBNIZONA,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaUslugi = pct(RYCZALT_USLUGI);
+const stawkaHandel = pct(RYCZALT_HANDEL);
+const vatObnizony = pct(VAT_RATE_OBNIZONA);
+const vatPodstawowy = pct(VAT_RATE);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+const limitKasy = zl(KASA_LIMIT_ROCZNY);
+const ulgaKasa = pct(KASA_ULGA_RATE);
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * W salonie o kolumnie decyduje status w VAT, a nie liczba wizyt: sprzedaż dla
+ * klientek indywidualnych podsumowuje raport okresowy z kasy, więc dokumentów
+ * bywa niewiele nawet przy wysokim obrocie.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Stylistka albo kosmetyczka pracująca sama, jeszcze bez rejestracji do VAT'),
+  priceRow('ryczalt', 10, 'withVat', 'Salon będący czynnym podatnikiem VAT, kilka faktur kosztowych miesięcznie'),
+  priceRow('ryczalt', 30, 'withVat', 'Salon z zespołem i regularnymi dostawami preparatów'),
+  priceRow('kpir', 10, 'withVat', 'Gabinet rozliczający koszty najmu, urządzeń i wyposażenia'),
+  priceRow('fk', 10, 'withVat', 'Salon prowadzony w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt ${stawkaUslugi} od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'sparkle',
+    title: 'Kosmetyczka i kosmetolog',
+    description: 'Zabiegi pielęgnacyjne twarzy i ciała, oczyszczanie, peelingi, depilacja. Największym praktycznym problemem jest tu ustalenie, które pozycje z Twojego cennika objęte są obniżoną stawką VAT, a które nie.',
+    points: [
+      'Weryfikacja stawki VAT dla każdej pozycji z cennika gabinetu',
+      'Rozliczanie raportów z kasy fiskalnej i sprzedaży kosmetyków',
+      'Amortyzacja urządzeń zabiegowych i rozliczanie szkoleń',
+    ],
+  },
+  {
+    icon: 'star',
+    title: 'Fryzjer i barber',
+    description: `Strzyżenie, koloryzacja, stylizacja, pielęgnacja brody. Usługi fryzjerskie korzystają z obniżonej stawki VAT od dawna, ale salon zwykle sprzedaje też kosmetyki, a te rozlicza się inaczej i w VAT, i w ryczałcie.`,
+    points: [
+      'Rozdzielenie przychodów z usług i ze sprzedaży produktów',
+      'Rozliczanie zespołu na etacie, zleceniu i własnej działalności',
+      'Koszty najmu lokalu, wyposażenia i mediów',
+    ],
+  },
+  {
+    icon: 'award',
+    title: 'Stylistka paznokci, brwi i rzęs',
+    description: 'Manicure, pedicure, stylizacja i laminacja, przedłużanie rzęs, makijaż permanentny. Ta grupa najczęściej pracuje jednoosobowo, mobilnie albo w domowym studiu, i najczęściej pyta o kasę fiskalną.',
+    points: [
+      'Ustalenie momentu, od którego potrzebna jest kasa fiskalna',
+      'Rozliczanie pracy mobilnej i dojazdów do klientek',
+      'Weryfikacja limitu zwolnienia z VAT',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Salon z zespołem',
+    description: 'Kilka stanowisk, recepcja, grafik i zespół pracujący w różnych formach zatrudnienia. Do rozliczeń podatkowych dochodzi tu obsługa kadrowa oraz ryzyko związane z formą współpracy, o czym piszemy w osobnej sekcji.',
+    points: [
+      'Umowy o pracę, zlecenia i współpraca z osobami na własnej działalności',
+      'Wynajem stanowisk i prawidłowe fakturowanie najmu',
+      'Raporty pokazujące rentowność poszczególnych usług',
+    ],
+  },
+  {
+    icon: 'heart',
+    title: 'Gabinet z zabiegami na pograniczu medycyny',
+    description: 'Mezoterapia, zabiegi z użyciem urządzeń medycznych, medycyna estetyczna. Tutaj rozstrzygające jest to, kto wykonuje zabieg i w jakim celu, bo od tego zależy zarówno stawka VAT, jak i to, czy zabieg mieści się jeszcze w zakresie kosmetologii.',
+    points: [
+      'Podział sprzedaży objętej różnymi stawkami',
+      'Rozliczanie współpracy z lekarzem przyjmującym w gabinecie',
+      'Ewidencja preparatów i wyrobów medycznych',
+    ],
+  },
+];
+
+/**
+ * Dwie stawki ryczałtu, które w salonie występują obok siebie. Rozdzielenie ich
+ * jest warunkiem zastosowania niższej stawki do sprzedaży kosmetyków, więc stoi
+ * tu na pierwszym planie, a nie w przypisie.
+ */
+const rates = [
+  {
+    featured: true,
+    rate: stawkaUslugi,
+    title: 'Usługi fryzjerskie i kosmetyczne',
+    body: 'Zabiegi wykonywane w gabinecie mieszczą się w pozostałej działalności usługowej, czyli w stawce przewidzianej dla usług niewymienionych w innych pozycjach ustawy. Dotyczy to zarówno fryzjerstwa, jak i kosmetyki, stylizacji paznokci czy makijażu.',
+    note: `Nie ma tu progu przychodu, po którego przekroczeniu stawka rosłaby. Próg ${zl(RYCZALT_TIER_LIMITS.tier2)}, o którym czasem mowa w tym kontekście, dotyczy wysokości składki zdrowotnej, a nie stawki podatku.`,
+  },
+  {
+    rate: stawkaHandel,
+    title: 'Sprzedaż kosmetyków klientkom',
+    body: 'Jeżeli obok zabiegów sprzedajesz kosmetyki do pielęgnacji domowej, to jest to działalność handlowa, czyli odsprzedaż towarów w stanie nieprzetworzonym. Stawka jest wyraźnie niższa niż przy usługach.',
+    note: 'Warunkiem jej zastosowania jest ewidencja pozwalająca rozdzielić przychód z usług od przychodu ze sprzedaży towarów. Ustawiamy to na kasie i w ewidencji na początku współpracy.',
+  },
+];
+
+/**
+ * Tabela stawek VAT. Sedno tej podstrony: obniżka z 2024 r. objęła konkretne
+ * grupowania PKWiU, a poza nimi obowiązuje stawka podstawowa. Wiersze
+ * "warn" to właśnie te wyłączenia.
+ */
+const vatRows = [
+  { tone: 'good', what: 'Usługi fryzjerskie i barberskie', detail: 'strzyżenie, koloryzacja, stylizacja, pielęgnacja brody', rate: vatObnizony },
+  { tone: 'good', what: 'Usługi kosmetyczne, manicure i pedicure', detail: 'także wykonywane u klientki w domu', rate: vatObnizony },
+  { tone: 'good', what: 'Pozostałe usługi kosmetyczne z tego samego grupowania', detail: 'm.in. stylizacja rzęs i brwi, makijaż, peeling powierzchowny, depilacja', rate: vatObnizony },
+  { tone: 'warn', what: 'Solarium i zabiegi poprawiające kondycję fizyczną', detail: 'osobne grupowanie, nieobjęte obniżką', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Masaż nastawiony na poprawę kondycji fizycznej', detail: 'inaczej niż masaż twarzy wykonywany jako zabieg kosmetyczny', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Tatuaż i piercing', detail: 'poza prostym przekłuwaniem uszu w salonie kosmetycznym', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Zabiegi iniekcyjne i medycyna estetyczna', detail: 'klasyfikowane jako usługi w zakresie opieki zdrowotnej', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Zabiegi chirurgii plastycznej', detail: 'wprost wyłączone z obniżki', rate: vatPodstawowy },
+  { tone: 'warn', what: 'Sprzedaż kosmetyków i akcesoriów', detail: 'towar, a nie usługa', rate: vatPodstawowy },
+];
+
+/**
+ * Rozstrzygnięcia z wiążących informacji stawkowych wydanych w 2025 r.
+ *
+ * Sama lista wyłączeń z rozporządzenia nie rozstrzyga zabiegów aparaturowych
+ * i iniekcyjnych, a to o nie klienci pytają najczęściej. KIS podzieliła je
+ * według grupowania PKWiU: zabiegi pielęgnacyjne zostają w 96.02 (obniżona
+ * stawka), aparaturowe trafiają do usług związanych z poprawą kondycji
+ * fizycznej, a iniekcyjne do usług w zakresie opieki zdrowotnej.
+ */
+const wisRows = [
+  {
+    tone: 'good',
+    rate: vatObnizony,
+    title: 'Zabiegi pielęgnacyjne bez naruszania głębokich warstw skóry',
+    basis: 'usługi kosmetyczne, manicure i pedicure',
+    items: ['peeling chemiczny', 'makijaż permanentny ust', 'depilacja laserowa'],
+  },
+  {
+    tone: 'warn',
+    rate: vatPodstawowy,
+    title: 'Zabiegi aparaturowe i iniekcyjne',
+    basis: 'poprawa kondycji fizycznej albo opieka zdrowotna',
+    items: ['endermologia', 'radiofrekwencja mikroigłowa', 'laser frakcyjny CO2', 'mezoterapia igłowa', 'osocze bogatopłytkowe', 'modelowanie ust kwasem hialuronowym'],
+  },
+];
+
+const vatDoubts = [
+  {
+    icon: 'search',
+    title: 'Masaż twarzy kontra masaż ciała',
+    body: 'Masaż twarzy wykonywany jako zabieg kosmetyczny, na przykład kobido, jest kwalifikowany inaczej niż masaż ciała nastawiony na poprawę kondycji fizycznej. Pierwszy mieści się w grupowaniu objętym obniżoną stawką, drugi nie.',
+  },
+  {
+    icon: 'check-circle',
+    title: 'Przekłuwanie uszu kontra piercing',
+    body: 'Zwykłe przekłuwanie uszu w salonie kosmetycznym Ministerstwo Finansów wskazało wśród usług objętych obniżką. Piercing jako odrębna usługa już nie, bo należy do innego grupowania.',
+  },
+  {
+    icon: 'heart',
+    title: 'Zabiegi wymagające wiedzy medycznej',
+    body: 'Obniżka dotyczy zabiegów, które nie wymagają specjalistycznej wiedzy lekarskiej. Zabieg iniekcyjny bywa kwalifikowany jako usługa w zakresie opieki zdrowotnej, a to działa w obie strony: skoro nie służy celom leczniczym, nie ma też zwolnienia przedmiotowego. Zostaje więc stawka podstawowa.',
+    href: '/ksiegowosc-dla-lekarzy',
+    hrefLabel: 'Księgowość dla zawodów medycznych',
+  },
+];
+
+/**
+ * Dwa rodzaje bonów. Różnią się momentem rozliczenia podatku i tym, czy
+ * sprzedaż bonu w ogóle nabija się na kasę - stąd zestawienie obok siebie.
+ */
+const vouchers = [
+  {
+    icon: 'tag',
+    title: 'Bon na z góry określony zabieg',
+    kind: 'bon jednego przeznaczenia',
+    body: 'Jeżeli w chwili sprzedaży wiadomo, jakiej usługi bon dotyczy i jaka jest jej stawka podatku, podatek rozlicza się już przy sprzedaży bonu.',
+    points: [
+      'Sprzedaż bonu ewidencjonujesz na kasie fiskalnej',
+      'Późniejsze wykonanie zabiegu nie jest osobnym zdarzeniem podatkowym',
+      'Realizacji bonu nie nabijasz na kasę drugi raz',
+    ],
+  },
+  {
+    icon: 'clock',
+    title: 'Bon kwotowy na dowolne usługi',
+    kind: 'bon różnego przeznaczenia',
+    body: 'Jeżeli salon ma w ofercie usługi objęte różnymi stawkami, a bon opiewa na kwotę do wykorzystania na dowolny zabieg, to w chwili sprzedaży stawka nie jest jeszcze znana.',
+    points: [
+      'Podatek rozliczasz dopiero przy realizacji bonu',
+      'Samej sprzedaży bonu nie ewidencjonujesz na kasie',
+      'Na kasę trafia dopiero wykonany zabieg',
+    ],
+  },
+];
+
+const pipSteps = [
+  {
+    title: 'Kontrola i Twoje stanowisko',
+    description: 'Inspektor bada faktyczne warunki współpracy, a nie nazwę umowy. Zanim cokolwiek nakaże, obie strony mają prawo wypowiedzieć się co do charakteru łączącego je stosunku prawnego.',
+  },
+  {
+    title: 'Polecenie usunięcia naruszeń',
+    description: 'Jeżeli wyjaśnienia nie przekonają inspektora, wydaje polecenie. Można je wykonać na dwa sposoby: zawrzeć umowę o pracę albo przekształcić samą współpracę tak, żeby usunąć z niej cechy stosunku pracy.',
+  },
+  {
+    title: 'Decyzja albo pozew',
+    description: 'Dopiero gdy polecenie nie zostanie wykonane, okręgowy inspektor pracy może wydać decyzję o ustaleniu stosunku pracy albo skierować pozew do sądu. Wykonanie polecenia zamyka sprawę wcześniej.',
+  },
+  {
+    title: 'Odwołanie',
+    description: 'Od decyzji przysługuje odwołanie do rejonowego sądu pracy w terminie miesiąca od jej doręczenia. Sama decyzja wywołuje skutki od dnia wydania, a nie wstecz.',
+  },
+];
+
+const pipRisk = {
+  higher: [
+    'pracuje według grafiku ustalanego przez salon',
+    'nie ma wpływu na własny cennik',
+    'korzysta wyłącznie z preparatów i sprzętu salonu',
+    'rozlicza się z czasu pracy, a nie z wykonanych usług',
+    'nie może się nikim zastąpić ani obsługiwać innych salonów',
+  ],
+  lower: [
+    'przyjmuje własne klientki i sama je umawia',
+    'przyjmuje od nich zapłatę i wystawia własne dokumenty',
+    'ustala ceny swoich zabiegów',
+    'pracuje na własnych preparatach albo je kupuje',
+    'odpowiada za jakość swojej pracy i ponosi ryzyko',
+  ],
+};
+
+const pipHelp = [
+  'Przeglądamy umowy i faktyczny model współpracy z zespołem',
+  'Wskazujemy, które elementy podnoszą ryzyko przekwalifikowania',
+  'Ustawiamy prawidłowe fakturowanie wynajmu stanowiska',
+  'Prowadzimy dokumentację kadrową dla osób na etacie i zleceniu',
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów lub księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'zap',
+    title: 'Kasa fiskalna, VAT i KSeF',
+    description: 'Rozliczamy raporty okresowe z kasy, weryfikujemy stawki dla poszczególnych usług i obsługujemy KSeF po stronie faktur kosztowych oraz sprzedaży dla firm.',
+    points: [
+      'Rozliczanie raportów z kasy fiskalnej i ulgi na jej zakup',
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Podział sprzedaży objętej różnymi stawkami i proporcja odliczenia',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Kadry zespołu salonu',
+    description: 'W beauty zespół rzadko pracuje w jednej formie. Prowadzimy dokumentację dla wszystkich, niezależnie od rodzaju umowy.',
+    points: [
+      'Umowy o pracę, zlecenia i o dzieło wraz ze zgłoszeniami do ZUS',
+      'Rozliczanie współpracy z osobami na własnej działalności',
+      'Panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Koszty typowe dla branży',
+    description: 'Znamy strukturę kosztów salonu i wiemy, które wydatki bywają kwestionowane przy kontroli.',
+    points: [
+      'Urządzenia zabiegowe, fotele, sterylizacja i wyposażenie gabinetu',
+      'Preparaty, kosmetyki zabiegowe i materiały jednorazowe',
+      'Szkolenia podnoszące kwalifikacje, najem lokalu i media',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.' },
+  { icon: 'zap', title: 'Dokumenty zdjęciem, nie segregatorem', description: 'Raporty z kasy i faktury kosztowe przesyłasz przez portal klienta albo zdjęciem, które odczytujemy automatycznie. Nie musisz niczego drukować ani dowozić między wizytami.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twój cennik, zespół i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy wyłącznie przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Analiza oferty i wybór formy opodatkowania', description: 'Sprawdzamy strukturę Twoich przyszłych kosztów i porównujemy ryczałt z księgą przychodów i rozchodów, z uwzględnieniem składki zdrowotnej.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}. Salon łączący fryzjerstwo z kosmetyką potrzebuje dziś przynajmniej dwóch.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start lub preferencyjne składki.' },
+  { title: 'Kasa fiskalna', description: 'Podpowiadamy, jakie urządzenie ma sens przy Twoim modelu pracy, i pilnujemy terminów, od których zależy ulga na jego zakup.' },
+  { title: 'Decyzja w sprawie VAT', description: 'Ustalamy, czy zaczynasz jako podatnik zwolniony, i przygotowujemy się do momentu, w którym trzeba będzie to zmienić.' },
+  { title: 'Uprawnienia w KSeF, pełnomocnictwo UPL-1 i portal klienta', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury kosztowe od dostawców trafiały do nas bez Twojego udziału. UPL-1 to osobny dokument - dzięki niemu podpisujemy za Ciebie deklaracje i JPK. Dostęp do portalu klienta masz od pierwszego miesiąca.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Przechodzimy przez cennik Twojego gabinetu, formę współpracy z zespołem i sposób ewidencji sprzedaży. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i uzyskanie pełnomocnictw załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje w salonie kosmetycznym i fryzjerskim?',
+    a: `Przychody z usług fryzjerskich i kosmetycznych opodatkowane są stawką ${stawkaUslugi}, przewidzianą dla działalności usługowej niewymienionej w innych pozycjach ustawy. Nie ma progu, po którego przekroczeniu stawka rosłaby, a próg ${zl(RYCZALT_TIER_LIMITS.tier2)} dotyczy wysokości składki zdrowotnej, a nie stawki podatku. Jeżeli obok usług sprzedajesz kosmetyki, przychody ze sprzedaży towarów rozlicza się osobno, według stawki ${stawkaHandel} właściwej dla handlu.`,
+  },
+  {
+    q: 'Czy wszystkie usługi w moim gabinecie mają 8% VAT?',
+    a: `Nie. Obniżka z ${VAT_BEAUTY_OBNIZKA_OD} objęła konkretne grupowania usług kosmetycznych, a usługi fryzjerskie korzystały z niższej stawki już wcześniej. Poza obniżką pozostały między innymi solarium, tatuaż, piercing, masaże nastawione na poprawę kondycji fizycznej oraz zabiegi chirurgii plastycznej. Osobno traktowane są zabiegi uznawane za usługi z zakresu opieki zdrowotnej. Przechodzimy przez cennik gabinetu pozycja po pozycji.`,
+  },
+  {
+    q: 'Jaka stawka obowiązuje przy zabiegach aparaturowych i iniekcyjnych?',
+    a: `Rozstrzygnęły to wiążące informacje stawkowe wydane w 2025 roku, a kryterium jest jedno: czy zabieg narusza głębsze warstwy skóry. Peeling chemiczny, makijaż permanentny ust i depilacja laserowa zostały uznane za usługi kosmetyczne ze stawką ${vatObnizony}. Endermologia trafiła do usług związanych z poprawą kondycji fizycznej, a mezoterapia igłowa, osocze bogatopłytkowe, radiofrekwencja mikroigłowa, laser frakcyjny CO2 i modelowanie ust do usług w zakresie opieki zdrowotnej, więc obowiązuje przy nich ${vatPodstawowy}. Zwolnienia przedmiotowego też przy nich nie ma, bo nie służą celom leczniczym. Informacja stawkowa chroni jednak tylko tego, kto ją dostał, i tylko opisany w niej zabieg.`,
+  },
+  {
+    q: 'Kobido i masaż twarzy to 8% czy 23%?',
+    a: `Zależy od tego, jak usługa jest faktycznie klasyfikowana. Masaż twarzy wykonywany jako zabieg kosmetyczny mieści się w grupowaniu objętym obniżoną stawką. Masaż nastawiony na poprawę kondycji fizycznej należy do innego grupowania i obniżką nie został objęty. W razie wątpliwości można wystąpić o wiążącą informację stawkową do Krajowej Informacji Skarbowej.`,
+  },
+  {
+    q: 'Czy muszę mieć kasę fiskalną, jeśli dopiero zaczynam?',
+    a: `Tak. Usługi fryzjerskie, kosmetyczne i kosmetologiczne zostały wyłączone ze zwolnień z obowiązku ewidencjonowania, więc limit ${limitKasy} Cię nie dotyczy. Kasa musi być gotowa przed pierwszą płatną klientką. Obowiązek dotyczy również pracy mobilnej, domowego studia oraz działalności nierejestrowanej.`,
+  },
+  {
+    q: 'Czy mogę odliczyć coś przy zakupie kasy?',
+    a: `Tak. Ulga wynosi ${ulgaKasa} ceny netto kasy, nie więcej niż ${zl(KASA_ULGA_MAX)} na jedno urządzenie, a warunkiem jest fiskalizacja i rozpoczęcie ewidencjonowania w terminie. Sposób odzyskania pieniędzy zależy od statusu w VAT: czynny podatnik wykazuje ulgę w deklaracji, a podatnik zwolniony składa wniosek o zwrot do naczelnika urzędu skarbowego. Przy kilku stanowiskach ulga obejmuje każdą kasę, jeśli wszystkie uruchomisz w ciągu ${KASA_ULGA_MIESIACE} miesięcy od pierwszej. Pilnujemy terminów i przygotowujemy dokumenty.`,
+  },
+  {
+    q: 'Czy mogę korzystać ze zwolnienia z VAT?',
+    a: `Usługi kosmetyczne i fryzjerskie nie należą do kategorii wykluczonych ze zwolnienia ze względu na wysokość sprzedaży, więc do momentu przekroczenia limitu ${limitVat} jest to możliwe. Obowiązek posiadania kasy fiskalnej jest od tego całkowicie niezależny i istnieje także u podatnika zwolnionego.`,
+  },
+  {
+    q: 'Jak rozliczać vouchery i karty podarunkowe?',
+    a: 'Zależy od tego, na co opiewają. Bon na z góry określony zabieg o znanej stawce jest bonem jednego przeznaczenia, więc podatek rozlicza się przy jego sprzedaży, a sprzedaż ewidencjonuje na kasie. Bon kwotowy do wykorzystania na dowolne usługi objęte różnymi stawkami jest bonem różnego przeznaczenia, więc podatek rozlicza się dopiero przy realizacji, a samej sprzedaży bonu nie nabija się na kasę. Ustalamy, który wariant u Ciebie występuje.',
+  },
+  {
+    q: 'Co z voucherem, którego klientka nie wykorzystała?',
+    a: 'W podatku dochodowym organy podatkowe przyjmują, że przychód powstaje w momencie realizacji bonu, a przy braku realizacji z upływem terminu ważności. Warto więc mieć jasno określony termin ważności voucherów i ewidencję pozwalającą go kontrolować.',
+  },
+  {
+    q: 'Współpracuję ze stylistkami na własnych działalnościach. Czy to nadal legalne?',
+    a: `Tak, wynajem stanowiska i współpraca z niezależnymi stylistkami są legalne. Zmieniły się natomiast zasady weryfikacji. Od ${PIP_DECYZJE_OD} okręgowy inspektor pracy może ustalić istnienie stosunku pracy decyzją administracyjną, po uprzednim wydaniu polecenia usunięcia naruszeń. Badany jest faktyczny sposób współpracy, a nie nazwa umowy. Przeglądamy umowy i realny model współpracy, i mówimy wprost, gdzie widzimy ryzyko. Szczegóły opisujemy w artykule o <a href="/wiedza/nowe-uprawnienia-pip-2026">nowych uprawnieniach PIP</a>.`,
+  },
+  {
+    q: 'Słyszałam o okresie karencji po zmianach w inspekcji pracy. Na czym polega?',
+    a: `Ustawa przewiduje ${PIP_KARENCJA_MIESIACE}-miesięczny okres, czyli do ${PIP_KARENCJA_DO}, w którym dobrowolne zawarcie umowy o pracę tam, gdzie współpraca faktycznie ma cechy zatrudnienia, zwalnia z odpowiedzialności za wykroczenie przeciwko prawom pracownika. Nie obejmuje to jednak zaległych składek ani podatków, które ZUS i administracja skarbowa mogą rozliczać niezależnie.`,
+  },
+  {
+    q: 'Czy muszę zmienić kod PKD?',
+    a: `Jeżeli zarejestrowałaś działalność przed ${PKD_NOWA_OD}, tak. Dotychczasowy wspólny kod 96.02.Z został rozdzielony na 96.21.Z dla fryzjerstwa oraz 96.22.Z dla pielęgnacji urody i pozostałej działalności kosmetycznej. Termin na dostosowanie wpisu upływa z ${PKD_AKTUALIZACJA_DO}. Zmiana w CEIDG jest bezpłatna i natychmiastowa, a my zgłaszamy ją za Ciebie.`,
+  },
+  {
+    q: 'Czy zmiana kodu PKD wpłynie na moje podatki?',
+    a: 'Nie. Stawki ryczałtu i stawki VAT wyznacza klasyfikacja PKWiU, która się nie zmieniła. Kod PKD porządkuje wpis w rejestrze i sam w sobie nie przesądza o wysokości podatku, choć rozbieżność między kodem a rzeczywistą działalnością bywa punktem wyjścia do pytań ze strony urzędu.',
+  },
+  {
+    q: 'Zatrudniam kolejną osobę. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę, a umowa cywilnoprawna bez składek ZUS ${hrZlecenie} zł. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla salonu?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${priceRows[1].price} zł netto. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto. Sprzedaż dla klientek indywidualnych podsumowuje raport okresowy z kasy, więc liczba wizyt nie podnosi liczby dokumentów.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla branży beauty', href: '/ksiegowosc-dla-branzy-beauty' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-branzy-beauty#service`,
+  name: 'Księgowość dla branży beauty',
+  serviceType: 'Usługi księgowe dla salonów kosmetycznych i fryzjerskich',
+  description: 'Obsługa księgowa salonów kosmetycznych i fryzjerskich, stylistek paznokci, brwi i rzęs oraz gabinetów beauty. Ryczałt, KPiR i pełna księgowość, stawki VAT, rozliczanie kasy fiskalnej, voucherów i współpracy z zespołem.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-branzy-beauty`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Salony kosmetyczne i fryzjerskie, kosmetolodzy, barberzy, stylistki paznokci, brwi i rzęs, gabinety beauty',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla salonów i gabinetów beauty',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}${r.vatLabel ? `, ${r.vatLabel}` : ''}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla branży beauty - salony i gabinety"
+  description={`Księgowość dla salonów kosmetycznych, fryzjerskich i stylistek. Ryczałt ${stawkaUslugi}, VAT ${vatObnizony} i wyjątki, kasa fiskalna, vouchery. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla branży beauty"
+    description="Rozliczamy salony kosmetyczne i fryzjerskie, stylistki pracujące na własną rękę oraz gabinety z rozbudowaną ofertą zabiegową. Pilnujemy prawidłowych stawek VAT, rozliczeń z kasy fiskalnej i sposobu współpracy z zespołem. Ty zajmujesz się klientkami, a my formalnościami."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla branży beauty' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=beauty" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Rozliczenia dopasowane do tego, co robisz w gabinecie</h2>
+        <p>Beauty to kilkanaście różnych zawodów pod jednym hasłem, a przepisy podatkowe traktują je odmiennie. Stylistka paznokci, barber i gabinet oferujący zabiegi na pograniczu medycyny mają inne stawki VAT i inne obowiązki. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="beauty-segments">
+        {segments.map((s) => (
+          <article class="beauty-segment">
+            <div class="beauty-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ryczałt ───────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt {stawkaUslugi} za usługi i {stawkaHandel} za sprzedaż kosmetyków</h2>
+        <p>Ryczałt jest w tej branży najczęściej wybieraną formą opodatkowania, bo stawka jest niska, a rozliczenie proste. W salonie występują jednak obok siebie dwa rodzaje przychodu i każdy z nich ma własną stawkę.</p>
+      </div>
+
+      <div class="beauty-rates">
+        {rates.map((r) => (
+          <article class={`beauty-rate ${r.featured ? 'beauty-rate--featured' : ''}`}>
+            <span class={`beauty-rate__value ${r.featured ? 'beauty-rate__value--featured' : ''}`}>{r.rate}</span>
+            <h3>{r.title}</h3>
+            <p>{r.body}</p>
+            <p class="beauty-rate__note">{r.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="beauty-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Rozdzielenie przychodów nie jest formalnością: bez ewidencji pozwalającej oddzielić usługi od towarów całą sprzedaż trzeba rozliczyć według wyższej stawki. Ustawiamy to na kasie fiskalnej i w ewidencji na początku współpracy, żeby nie trzeba było niczego rekonstruować przy rocznym rozliczeniu. Pojęcia, które padają w tej sekcji, wyjaśniamy w <a href="/slownik">słowniku księgowym</a>.</span>
+      </p>
+
+      <div class="beauty-callout">
+        <div class="beauty-callout__icon"><Icon name="calculator" size={22}/></div>
+        <div>
+          <h3>Kiedy warto policzyć inne formy</h3>
+          <p>Ryczałt przestaje być oczywistym wyborem, gdy pojawiają się duże koszty. Najem lokalu w dobrej lokalizacji, wyposażenie gabinetu, urządzenia zabiegowe, wynagrodzenia zespołu i preparaty potrafią przechylić rachunek na stronę księgi przychodów i rozchodów. Przy otwieraniu salonu z zespołem różnica bywa znacząca.</p>
+          <p>Przed podjęciem decyzji przygotowujemy porównanie na Twoich liczbach, z uwzględnieniem składki zdrowotnej, która na każdej z form liczy się inaczej.</p>
+        </div>
+      </div>
+
+      <div class="beauty-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT w beauty</span>
+        <h2>Obniżony VAT nie objął wszystkiego, co robisz w gabinecie</h2>
+        <p>Od {VAT_BEAUTY_OBNIZKA_OD} część usług kosmetycznych korzysta ze stawki {vatObnizony} zamiast {vatPodstawowy}. Usługi fryzjerskie miały ją już wcześniej. Zmiana była dla branży dobra, ale w komunikacji uprościła się do hasła o obniżonym VAT dla beauty, co nie jest prawdą. Obniżka objęła konkretne grupowania usług, a poza nimi obowiązuje stawka podstawowa.</p>
+      </div>
+
+      <div class="beauty-vat">
+        <div class="beauty-vat__head">
+          <span>Rodzaj usługi</span>
+          <span class="beauty-vat__rate">Stawka</span>
+        </div>
+        {vatRows.map((r) => (
+          <div class="beauty-vat__row">
+            <div class="beauty-vat__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="beauty-vat__rate">
+              <span class={`beauty-pill beauty-pill--${r.tone}`}>{r.rate}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="beauty-wis">
+        <div class="beauty-wis__head">
+          <h3>Gdzie Krajowa Informacja Skarbowa postawiła granicę</h3>
+          <p>Samo rozporządzenie nie rozstrzyga zabiegów aparaturowych i iniekcyjnych, a to o nie klientki pytają najczęściej. Rozstrzygnęły to wiążące informacje stawkowe wydane w 2025 roku i widać w nich jedno kryterium: czy zabieg narusza głębsze warstwy skóry.</p>
+        </div>
+        <div class="beauty-wis__cols">
+          {wisRows.map((w) => (
+            <article class={`beauty-wis__col beauty-wis__col--${w.tone}`}>
+              <div class="beauty-wis__top">
+                <span class={`beauty-pill beauty-pill--${w.tone}`}>{w.rate}</span>
+                <span class="beauty-wis__basis">{w.basis}</span>
+              </div>
+              <h4>{w.title}</h4>
+              <ul>
+                {w.items.map((i) => <li>{i}</li>)}
+              </ul>
+            </article>
+          ))}
+        </div>
+        <p class="beauty-wis__foot">Wiążąca informacja stawkowa chroni tylko tego, kto ją dostał, i tylko ten zabieg, który opisał we wniosku. Rozstrzygnięcia z tej listy pokazują więc kierunek, a nie gotową odpowiedź dla każdego gabinetu. Jeżeli masz w ofercie zabieg z pogranicza, przygotowujemy wniosek o własną informację stawkową: {wis.first} zł netto za pierwszą usługę i {wis.next} zł za każdą kolejną, plus {zl(wis.fee)} opłaty urzędowej od każdej z nich. Decyzję wydaje Dyrektor Krajowej Informacji Skarbowej w ciągu {wis.months} miesięcy.</p>
+      </div>
+
+      <div class="beauty-doubts">
+        {vatDoubts.map((d) => (
+          <article class="beauty-doubt">
+            <div class="beauty-doubt__head">
+              <Icon name={d.icon} size={20}/>
+              <h3>{d.title}</h3>
+            </div>
+            <p>{d.body}</p>
+            {d.href && (
+              <a href={d.href} class="btn-arrow beauty-doubt__link">
+                <span>{d.hrefLabel}</span>
+                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+
+      <p class="beauty-note">
+        <Icon name="shield" size={16}/>
+        <span>Jeżeli w Twojej ofercie są usługi z obu grup, kasa fiskalna i ewidencja muszą je rozdzielać, a odliczanie podatku naliczonego może wymagać proporcji i rocznej korekty. Przechodzimy przez cennik Twojego gabinetu pozycja po pozycji i ustawiamy stawki, zanim pojawi się rozbieżność. Przy usłudze niejednoznacznej można zabezpieczyć klasyfikację wiążącą informacją stawkową, a stawkę za przygotowanie wniosku znajdziesz w <a href="/cennik#dodatkowe">katalogu usług dodatkowych</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Kasa fiskalna</span>
+        <h2>Kasa online od pierwszej klientki, bez żadnego limitu</h2>
+        <p>To pytanie wraca w tej branży najczęściej, a odpowiedź brzmi inaczej niż w większości zawodów. Usługi fryzjerskie, kosmetyczne i kosmetologiczne zostały wprost wyłączone ze zwolnień z obowiązku ewidencjonowania sprzedaży na kasie rejestrującej. Popularny limit {limitKasy} obrotu w ogóle Cię nie dotyczy.</p>
+      </div>
+
+      <div class="beauty-cash">
+        <article class="beauty-cash__main">
+          <div class="beauty-cash__icon"><Icon name="printer" size={22}/></div>
+          <h3>Kasa musi być gotowa przed pierwszą płatną wizytą</h3>
+          <p>Obowiązek jest niezależny od miejsca wykonywania usługi, więc dotyczy również pracy mobilnej z dojazdem do klientek i studia urządzonego w mieszkaniu. Dotyczy także osób działających w ramach działalności nierejestrowanej, bo przepisy o kasach nie odwołują się do wpisu do CEIDG, tylko do rodzaju wykonywanej usługi.</p>
+          <p>Obowiązek posiadania kasy jest przy tym całkowicie niezależny od statusu w VAT. Podatnik zwolniony ze względu na wysokość sprzedaży też ewidencjonuje sprzedaż na kasie.</p>
+        </article>
+        <div class="beauty-cash__side">
+          <article class="beauty-cash__card beauty-cash__card--accent">
+            <div class="beauty-cash__badge">ulga na zakup</div>
+            <h3>{ulgaKasa} ceny netto, nie więcej niż {zl(KASA_ULGA_MAX)} na kasę</h3>
+            <p>Ulga przysługuje po fiskalizacji i rozpoczęciu ewidencjonowania w terminie. Jeżeli otwierasz salon z kilkoma stanowiskami, obejmie każde urządzenie, o ile wszystkie uruchomisz w ciągu {KASA_ULGA_MIESIACE} miesięcy od pierwszego.</p>
+            <p>Czynny podatnik VAT odzyskuje ulgę w deklaracji za okres, w którym zaczął ewidencjonować sprzedaż. Jeżeli korzystasz ze zwolnienia z VAT, a kasę i tak musisz mieć, ulgi nie ma gdzie wykazać: składa się wniosek o zwrot do naczelnika urzędu skarbowego. Przygotowujemy go za Ciebie.</p>
+          </article>
+          <article class="beauty-cash__card">
+            <div class="beauty-cash__badge">kasa a KSeF</div>
+            <h3>To dwa różne obiegi dokumentów</h3>
+            <p>Sprzedaż dla klientek indywidualnych ewidencjonujesz na kasie i to się nie zmienia. Krajowy System e-Faktur dotyczy faktur, więc w salonie obejmie przede wszystkim faktury kosztowe od dostawców oraz faktury wystawiane firmom, na przykład przy rozliczaniu wynajmu stanowiska. Obsługę KSeF masz u nas w cenie abonamentu.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Vouchery ──────────────────────────────────────────────────────── -->
+  <section class="section" id="vouchery">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Vouchery i karnety</span>
+        <h2>Voucher na konkretny zabieg i voucher kwotowy to dwie różne rzeczy</h2>
+        <p>Karty podarunkowe są w beauty produktem sezonowym o dużym znaczeniu, a jednocześnie jednym z częstszych źródeł błędów. Przepisy rozróżniają dwa rodzaje bonów, a od tego, który sprzedajesz, zależy moment rozliczenia podatku i to, czy w ogóle nabijasz go na kasę.</p>
+      </div>
+
+      <div class="beauty-vouchers">
+        {vouchers.map((v) => (
+          <article class="beauty-voucher">
+            <div class="beauty-voucher__head">
+              <div class="beauty-voucher__icon"><Icon name={v.icon} size={20}/></div>
+              <span class="beauty-voucher__kind">{v.kind}</span>
+            </div>
+            <h3>{v.title}</h3>
+            <p>{v.body}</p>
+            <ul>
+              {v.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      <p class="beauty-note">
+        <Icon name="clock" size={16}/>
+        <span>Praktyczny skutek jest taki, że salon sprzedający vouchery kwotowe i nabijający je na kasę w momencie sprzedaży rozlicza podatek za wcześnie, a salon sprzedający vouchery na konkretne zabiegi i nabijający je dopiero przy realizacji rozlicza go za późno. Ustalamy, który wariant faktycznie u Ciebie występuje. Osobno omawiamy vouchery niewykorzystane do końca terminu ważności, bo w podatku dochodowym moment powstania przychodu jest wtedy ustalany inaczej.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zespół i wynajem stanowiska ───────────────────────────────────── -->
+  <section class="section section--alt" id="zespol">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zespół w salonie</span>
+        <h2>Współpracujesz ze stylistkami na własnych działalnościach? Zmieniły się zasady kontroli</h2>
+        <p>W beauty wynajem stanowiska i współpraca z niezależnymi stylistkami są modelem powszechnym i całkowicie legalnym. Zmieniło się natomiast to, jak państwo weryfikuje takie układy. Od {PIP_DECYZJE_OD} obowiązują przepisy pozwalające Państwowej Inspekcji Pracy ustalić istnienie stosunku pracy w drodze decyzji administracyjnej, a nie dopiero wyrokiem sądu, jak było wcześniej.</p>
+      </div>
+
+      <ol class="beauty-pip">
+        {pipSteps.map((s, i) => (
+          <li class="beauty-pip__step">
+            <span class="beauty-pip__num">{String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div class="beauty-risk">
+        <article class="beauty-risk__col beauty-risk__col--warn">
+          <div class="beauty-risk__head">
+            <Icon name="search" size={20}/>
+            <h3>Ryzyko rośnie, gdy stylistka</h3>
+          </div>
+          <ul>
+            {pipRisk.higher.map((p) => <li>{p}</li>)}
+          </ul>
+        </article>
+        <article class="beauty-risk__col beauty-risk__col--good">
+          <div class="beauty-risk__head">
+            <Icon name="check-circle" size={20}/>
+            <h3>Ryzyko maleje, gdy stylistka</h3>
+          </div>
+          <ul>
+            {pipRisk.lower.map((p) => <li>{p}</li>)}
+          </ul>
+        </article>
+      </div>
+
+      <aside class="beauty-warning">
+        <div class="beauty-warning__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Masz {PIP_KARENCJA_MIESIACE} miesięcy na uporządkowanie sytuacji</h3>
+          <p>Ustawa przewiduje okres do {PIP_KARENCJA_DO}, w którym dobrowolne zawarcie umowy o pracę tam, gdzie relacja faktycznie ma cechy zatrudnienia, zwalnia z odpowiedzialności za wykroczenie przeciwko prawom pracownika. Rozwiązanie to nie obejmuje jednak zaległych składek ani podatków, które ZUS i administracja skarbowa mogą rozliczać niezależnie.</p>
+          <p>Jeżeli chcesz mieć pewność co do konkretnej współpracy, można wystąpić do Głównego Inspektora Pracy o interpretację indywidualną. Kosztuje {zl(PIP_INTERPRETACJA_OPLATA)}, jest wydawana w ciągu {PIP_INTERPRETACJA_DNI} dni i wiąże organy inspekcji, ale tylko wtedy, gdy opisany we wniosku stan faktyczny odpowiada rzeczywistości. Szczegóły procedury opisujemy w artykule o <a href="/wiedza/nowe-uprawnienia-pip-2026">nowych uprawnieniach PIP</a>.</p>
+        </div>
+      </aside>
+
+      <div class="beauty-help">
+        <h3>Jak w tym pomagamy</h3>
+        <ul>
+          {pipHelp.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+        </ul>
+        <p class="beauty-help__foot">Nie doradzamy, jak ominąć te przepisy, bo nie da się tego zrobić bezpiecznie. Doradzamy, jak ułożyć współpracę tak, aby dokumenty odpowiadały rzeczywistości, a rzeczywistość nie miała cech ukrytego etatu. Jeżeli okaże się, że część współpracy powinna być etatem, mówimy to wprost i pomagamy to uporządkować, póki jest na to czas. Przy sprawach wymagających oceny prawnej podpowiadamy, kiedy warto sięgnąć po radcę prawnego. Ta sama zmiana dotyczy klubów fitness współpracujących z trenerami na własnych działalnościach, co opisujemy na podstronie <a href="/ksiegowosc-dla-trenerow-i-sportowcow#wspolpraca-z-klubem">dla trenerów i sportowców</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Kody PKD ──────────────────────────────────────────────────────── -->
+  <section class="section" id="pkd">
+    <div class="container">
+      <div class="beauty-pkd">
+        <div class="beauty-pkd__head">
+          <span class="eyebrow">Obowiązki formalne</span>
+          <h2>Twój kod PKD prawdopodobnie już nie istnieje</h2>
+          <p class="lede">Nowa klasyfikacja działalności obowiązuje od {PKD_NOWA_OD} i dotknęła tę branżę wyjątkowo wyraźnie. Dotychczasowy wspólny kod 96.02.Z, obejmujący fryzjerstwo i pozostałe zabiegi kosmetyczne, został rozdzielony na dwa odrębne.</p>
+        </div>
+        <div class="beauty-pkd__grid">
+          <article class="beauty-pkd__item">
+            <div class="beauty-pkd__code">96.21.Z</div>
+            <h3>Fryzjerstwo</h3>
+            <p>Strzyżenie, mycie, koloryzacja, trwała ondulacja i prostowanie włosów, stylizacja fryzur, a także golenie i przycinanie brody, czyli usługi barberskie.</p>
+          </article>
+          <article class="beauty-pkd__item">
+            <div class="beauty-pkd__code">96.22.Z</div>
+            <h3>Pielęgnacja urody i pozostała działalność kosmetyczna</h3>
+            <p>Zabiegi kosmetyczne, manicure i pedicure, stylizacja rzęs i brwi, makijaż okolicznościowy i permanentny, depilacja oraz opalanie natryskowe wykonywane przez personel niemedyczny.</p>
+          </article>
+          <article class="beauty-pkd__item">
+            <div class="beauty-pkd__code">termin</div>
+            <h3>Wpis dostosowujesz do {PKD_AKTUALIZACJA_DO}</h3>
+            <p>Dotyczy firm zarejestrowanych przed 2025 rokiem. Salon łączący fryzjerstwo z kosmetyką potrzebuje dziś obu kodów, a przy sprzedaży kosmetyków warto rozważyć trzeci. Weryfikujemy to u każdego klienta i zgłaszamy zmianę w CEIDG, co jest bezpłatne i natychmiastowe.</p>
+          </article>
+        </div>
+        <p class="beauty-note beauty-pkd__note">
+          <Icon name="search" size={16}/>
+          <span>Zmiana kodów PKD nie zmieniła ani stawek ryczałtu, ani stawek VAT. Wyznacza je klasyfikacja PKWiU, która pozostała bez zmian. Kod PKD porządkuje wpis w rejestrze i nie przesądza sam w sobie o wysokości podatku, ale rozbieżność między nim a rzeczywistą działalnością bywa punktem wyjścia do pytań ze strony urzędu.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <!-- ── Fryzjerzy ─────────────────────────────────────────────────────── -->
+  <section class="section" id="fryzjerzy">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Salon fryzjerski</span>
+        <h2>Księgowość dla fryzjerów</h2>
+        <p>Salon fryzjerski ma jedną cechę, która odróżnia go od reszty branży beauty: prawie zawsze prowadzi dwa różne rodzaje sprzedaży naraz - usługę na fotelu i kosmetyki z półki. W ryczałcie i w VAT rozlicza się je inaczej, więc rozdzielenie tych strumieni jest tu punktem wyjścia, a nie detalem.</p>
+      </div>
+
+      <div class="beauty-split">
+        <article class="beauty-split__card">
+          <h3>Forma opodatkowania i ryczałt</h3>
+          <p>Przychody z usług fryzjerskich - strzyżenia, koloryzacji, stylizacji, trwałej - opodatkowane są ryczałtem {stawkaUslugi}, jako działalność usługowa niewymieniona w innych pozycjach ustawy. Nie ma progu przychodu, po którym stawka by rosła.</p>
+          <p>Sprzedaż kosmetyków klientkom to już handel, czyli stawka {stawkaHandel}. Wymaga to rozdzielenia przychodów w ewidencji i na kasie fiskalnej, bo dwie stawki ryczałtu w jednym worku to prosta droga do korekty.</p>
+          <p>Ryczałt sprawdza się w salonie o niskich kosztach. Jeśli dopiero wyposażasz lokal albo płacisz wysoki czynsz, policz również podatek liniowy i skalę - przy dużych kosztach dochód potrafi być znacznie niższy od przychodu, a na ryczałcie ta różnica nie ma znaczenia. Robimy to porównanie przed startem.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>VAT w salonie fryzjerskim</h3>
+          <p>Usługi fryzjerskie objęte są obniżoną stawką {vatObnizony}. Sprzedaż kosmetyków pozostaje przy stawce {vatPodstawowy}, nawet jeżeli sprzedajesz je tej samej klientce zaraz po strzyżeniu.</p>
+          <p>Do limitu sprzedaży {limitVat} rocznie możesz pozostać podatnikiem zwolnionym z VAT - usługi fryzjerskie nie są na liście wykluczeń. Warto jednak pamiętać, że sprzedaż kosmetyków to dostawa towarów i przy niektórych asortymentach obowiązują odrębne wyłączenia, więc przy rozbudowanej półce sprawdzamy to osobno.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>Kasa fiskalna i wyposażenie</h3>
+          <p>Kasa online jest obowiązkowa od pierwszej płatnej klientki, bez żadnego limitu obrotu. Przy pierwszym zakupie przysługuje ulga w wysokości {ulgaKasa} ceny netto, nie więcej niż {zl(KASA_ULGA_MAX)} na kasę.</p>
+          <p>Fotele, myjki, suszarki, sterylizator i klimatyzacja powyżej {zl(AMORT_NISKOCENNE)} trafiają do ewidencji środków trwałych i są rozliczane przez amortyzację. Tańsze wyposażenie - nożyczki, maszynki, grzebienie, ręczniki - wrzucamy w koszty jednorazowo. Podobnie kosmetyki zużywane podczas zabiegu, które są czym innym niż kosmetyki wystawione na sprzedaż i księgujemy je osobno.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>Lokal, zespół i praca na fotelu</h3>
+          <p>Czynsz, media, przystosowanie lokalu, oprogramowanie do rezerwacji i szkolenia branżowe są kosztem przy podatku liniowym i skali; na ryczałcie nie wpływają na podatek. Wynajem stanowiska innej fryzjerce to z kolei przychód z najmu w Twojej działalności.</p>
+          <p>Zatrudnienie na etat prowadzimy od {hrMin} zł netto miesięcznie za osobę: listy płac, akta osobowe, ZUS i PIT-11. Jeśli współpracujesz ze stylistkami na ich własnych działalnościach, przeczytaj też <a href="#zespol">sekcję o zmianach w uprawnieniach Państwowej Inspekcji Pracy</a> - od {PIP_DECYZJE_OD} inspektor może przekwalifikować taką współpracę decyzją administracyjną.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Barberzy ──────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="barberzy">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Barbershop</span>
+        <h2>Księgowość dla barberów</h2>
+        <p>Barbershop rozlicza się w tych samych ramach co salon fryzjerski, ale w praktyce różni się modelem pracy: częściej opiera się na jednym operatorze, częściej korzysta z wynajętego stanowiska i częściej sprzedaje produkty do pielęgnacji zarostu. Te trzy rzeczy zmieniają rozliczenie bardziej niż sam rodzaj usługi.</p>
+      </div>
+
+      <div class="beauty-split">
+        <article class="beauty-split__card">
+          <h3>Ryczałt dla barbera</h3>
+          <p>Strzyżenie, modelowanie i golenie brody to usługi fryzjerskie, więc ryczałt wynosi {stawkaUslugi}, a od {PKD_NOWA_OD} mieszczą się w kodzie PKD 96.21.Z. Sprzedaż olejków, past i kosmetyków do brody rozliczasz stawką {stawkaHandel} właściwą dla handlu.</p>
+          <p>Przy jednoosobowym barbershopie z niewielkimi kosztami ryczałt zwykle wygrywa. Sytuacja odwraca się przy własnym lokalu w dobrej lokalizacji, gdzie sam czynsz potrafi zjeść znaczną część przychodu.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>B2B, wynajem fotela i praca w cudzym salonie</h3>
+          <p>Najczęstszy model w tej branży: barber prowadzi własną działalność i wynajmuje stanowisko w cudzym barbershopie albo fakturuje właściciela za wykonane usługi. Obie formy są legalne, ale rozliczają się inaczej i inaczej wyglądają przy kontroli.</p>
+          <p>Kluczowe jest to, kto pobiera pieniądze od klienta. Jeśli klient płaci Tobie, sprzedaż idzie przez Twoją kasę fiskalną, a wynajem stanowiska jest Twoim kosztem. Jeśli płaci właścicielowi salonu, Ty wystawiasz fakturę na salon i kasy nie potrzebujesz, bo nie sprzedajesz osobom fizycznym. Ustalamy to przy starcie, zanim powstanie obowiązek, którego nie da się cofnąć.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>Kasa fiskalna u barbera</h3>
+          <p>Jeżeli przyjmujesz płatności od klientów bezpośrednio, kasa online jest obowiązkowa od pierwszej wizyty - także wtedy, gdy pracujesz na wynajętym fotelu albo mobilnie. Wyłączenie ze zwolnień dotyczy usług fryzjerskich niezależnie od miejsca ich wykonywania.</p>
+          <p>Płatności BLIK-iem i przelewem też podlegają ewidencji na kasie, bo o obowiązku decyduje status nabywcy, a nie forma zapłaty. To najczęstszy błąd, który u nowych klientów prostujemy w pierwszym miesiącu.</p>
+        </article>
+
+        <article class="beauty-split__card">
+          <h3>Koszty i sprzęt barbera</h3>
+          <p>Maszynki, trymery, brzytwy, nożyczki, sterylizator, ręczniki i płyny do dezynfekcji to zwykle wydatki poniżej {zl(AMORT_NISKOCENNE)}, więc wchodzą w koszty jednorazowo. Fotel barberski, myjka i wyposażenie lokalu powyżej tej kwoty są amortyzowane.</p>
+          <p>Do tego dochodzą czynsz albo opłata za stanowisko, oprogramowanie do rezerwacji, materiały pielęgnacyjne zużywane przy kliencie oraz szkolenia. Wszystkie te pozycje obniżają podatek tylko przy KPiR - to zwykle argument przesądzający o wyborze formy przy własnym lokalu.</p>
+        </article>
+      </div>
+
+      <p class="beauty-note-inline">
+        <Icon name="search" size={16}/>
+        <span>Fryzjerzy i barberzy nie mają u nas osobnych podstron, bo większość obowiązków jest wspólna dla całej branży. Jeśli Twoja sytuacja nie mieści się w powyższych opisach, napisz - odpowiemy na konkret. Cały obieg dokumentów prowadzimy zdalnie, co przy pracy od klienta do klienta ma znaczenie: opisujemy to na stronie <a href="/ksiegowosc-online">księgowość online</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Całość prowadzimy zdalnie - <a href="/ksiegowosc-online">sprawdź, jak wygląda współpraca online</a>, jeśli nie chcesz wozić dokumentów między klientkami.</p>
+      </div>
+      <div class="beauty-scope">
+        {scope.map((s) => (
+          <article class="beauty-scope__item">
+            <div class="beauty-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="beauty-actions">
+        <a href="/ksiegowosc" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Pełny zakres księgowości</span>
+        </a>
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="beauty-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia prowadzone w tle, kiedy Ty jesteś przy&nbsp;fotelu</h2>
+          <p class="lede">Dzień w salonie jest wypełniony wizytami, a rozmowa z księgową rzadko się w nim mieści. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="beauty-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Procesy prowadzone w pełni online', value: 100, suffix: '%' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow beauty-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="beauty-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="beauty-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="beauty-startup">
+        <div class="beauty-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Otwierasz gabinet albo salon? Ustawmy to dobrze od pierwszego dnia</h2>
+          <p class="lede">W tej branży kolejność ma znaczenie, bo kasa fiskalna musi być gotowa przed pierwszą klientką, a nie po pierwszym miesiącu pracy. Reszta decyzji, czyli forma opodatkowania i status w VAT, wiąże Cię na dłużej.</p>
+        </div>
+
+        <ol class="beauty-steps">
+          {startupSteps.map((s, i) => (
+            <li class="beauty-step">
+              <span class="beauty-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="beauty-startup__cols">
+          <div class="beauty-startup__col beauty-startup__col--primary">
+            <span class="beauty-startup__pill beauty-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="beauty-startup__col">
+            <span class="beauty-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=beauty" class="btn btn--accent btn--lg beauty-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla salonu</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. W tej branży liczba dokumentów bywa niewielka nawet przy wysokich obrotach, bo sprzedaż dla klientek indywidualnych podsumowuje raport okresowy z kasy, a nie pojedyncze paragony.</p>
+      </div>
+
+      <div class="beauty-price">
+        <div class="beauty-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="beauty-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="beauty-price__row">
+            <span class="beauty-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów{r.vatLabel ? `, ${r.vatLabel}` : ''}</small>
+            </span>
+            <span class="beauty-price__situation">{r.situation}</span>
+            <span class="beauty-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="beauty-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy. Obsługa kadrowa zespołu zaczyna się od {hrZlecenie} zł netto miesięcznie za osobę przy umowie cywilnoprawnej bez składek ZUS i od {hrMin} zł przy umowie o pracę.</span>
+      </p>
+
+      <div class="beauty-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=beauty" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swój salon</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w branży beauty"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojego salonu"
+    description="Jeśli prowadzisz salon, pracujesz jako stylistka albo dopiero planujesz otworzyć gabinet, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twój cennik, sposób ewidencji sprzedaży i formę współpracy z zespołem, a potem powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=beauty"
+  />
+</BaseLayout>
+
+<style>
+/* Sekcje fryzjerzy / barberzy */
+.beauty-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) { .beauty-split { grid-template-columns: repeat(2, 1fr); } }
+.beauty-split__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.625rem 1.75rem;
+}
+.beauty-split__card h3 { font-size: 1.0625rem; margin-bottom: 0.5rem; }
+.beauty-split__card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.beauty-split__card p + p { margin-top: 0.75rem; }
+.beauty-split__card a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.beauty-note-inline {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 76ch;
+}
+.beauty-note-inline svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+.beauty-note-inline a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.beauty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.beauty-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.beauty-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.beauty-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+.beauty-callout {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.beauty-callout__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.beauty-callout h3 { font-size: 1.1875rem; margin-bottom: 0.5rem; }
+.beauty-callout p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.beauty-callout p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .beauty-callout { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.beauty-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa pięć kart po trzy w rzędzie, a dwie ostatnie
+     rozkładają się symetrycznie w drugim wierszu. */
+  .beauty-segments { grid-template-columns: repeat(6, 1fr); }
+  .beauty-segments > * { grid-column: span 2; }
+  .beauty-segments > :nth-child(4) { grid-column: 2 / span 2; }
+  .beauty-segments > :nth-child(5) { grid-column: 4 / span 2; }
+}
+.beauty-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.beauty-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.beauty-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.beauty-segment h3 { font-size: 1.125rem; }
+.beauty-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.beauty-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.beauty-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.beauty-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Ryczałt ──────────────────────────────────────────────────────────── */
+.beauty-rates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .beauty-rates { grid-template-columns: repeat(2, 1fr); } }
+.beauty-rate {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.beauty-rate--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.beauty-rate__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--ink-800);
+}
+.beauty-rate__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.beauty-rate h3 { font-size: 1.25rem; }
+.beauty-rate p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.beauty-rate p.beauty-rate__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── VAT ──────────────────────────────────────────────────────────────── */
+.beauty-vat {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.beauty-vat__head,
+.beauty-vat__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.beauty-vat__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.beauty-vat__row { border-bottom: 1px solid var(--border-subtle); }
+.beauty-vat__row:last-child { border-bottom: none; }
+.beauty-vat__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.beauty-vat__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.beauty-vat__rate { text-align: right; }
+.beauty-pill {
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.beauty-pill--good { background: var(--accent-100); color: var(--accent-700); }
+.beauty-pill--warn { background: #FEF3C7; color: #92400E; }
+
+/* Rozstrzygnięcia WIS - dwie kolumny stawek obok siebie. */
+.beauty-wis {
+  margin-top: 1.75rem;
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+}
+.beauty-wis__head { max-width: 75ch; }
+.beauty-wis__head h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.beauty-wis__head p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.beauty-wis__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+@media (min-width: 900px) { .beauty-wis__cols { grid-template-columns: repeat(2, 1fr); } }
+.beauty-wis__col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+.beauty-wis__col--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.beauty-wis__col--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.beauty-wis__top {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.beauty-wis__basis { font-size: 0.8125rem; color: var(--text-subtle); line-height: 1.4; }
+.beauty-wis__col h4 { font-size: 1.0625rem; margin-bottom: 0.75rem; }
+.beauty-wis__col ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.beauty-wis__col li {
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.7rem;
+}
+.beauty-wis__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.7;
+}
+
+.beauty-doubts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 980px) { .beauty-doubts { grid-template-columns: repeat(3, 1fr); } }
+.beauty-doubt {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.beauty-doubt__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.beauty-doubt__head h3 { font-size: 1.0625rem; }
+.beauty-doubt :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.beauty-doubt p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.beauty-doubt__link { margin-top: 1rem; align-self: flex-start; }
+
+/* ── Kasa fiskalna ────────────────────────────────────────────────────── */
+.beauty-cash {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .beauty-cash { grid-template-columns: 1.05fr 1fr; align-items: start; } }
+.beauty-cash__main {
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  color: var(--text-on-dark);
+  height: 100%;
+}
+.beauty-cash__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+  margin-bottom: 1.125rem;
+}
+.beauty-cash__main h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.75rem; }
+.beauty-cash__main p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.beauty-cash__main p + p { margin-top: 0.875rem; }
+.beauty-cash__side { display: grid; gap: 1.25rem; }
+.beauty-cash__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.beauty-cash__card--accent {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.beauty-cash__badge {
+  display: inline-flex;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+}
+.beauty-cash__card--accent .beauty-cash__badge { background: var(--accent-500); color: var(--ink-950); }
+.beauty-cash__card h3 { font-size: 1.125rem; margin-bottom: 0.5rem; }
+.beauty-cash__card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Vouchery ─────────────────────────────────────────────────────────── */
+.beauty-vouchers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .beauty-vouchers { grid-template-columns: repeat(2, 1fr); } }
+.beauty-voucher {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.beauty-voucher:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.beauty-voucher__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.beauty-voucher__icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.beauty-voucher__kind {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--text-muted);
+}
+.beauty-voucher h3 { font-size: 1.1875rem; }
+.beauty-voucher > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.beauty-voucher ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+.beauty-voucher li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.beauty-voucher li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Zespół i PIP ─────────────────────────────────────────────────────── */
+.beauty-pip {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 1100px) { .beauty-pip { grid-template-columns: repeat(4, 1fr); } }
+.beauty-pip__step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.375rem;
+}
+.beauty-pip__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.beauty-pip__step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.beauty-pip__step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.beauty-risk {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 900px) { .beauty-risk { grid-template-columns: repeat(2, 1fr); } }
+.beauty-risk__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.beauty-risk__col--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.beauty-risk__col--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.beauty-risk__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+.beauty-risk__head h3 { font-size: 1.0625rem; }
+.beauty-risk__col--warn :global(svg) { color: #B45309; flex-shrink: 0; }
+.beauty-risk__col--good :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.beauty-risk__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.beauty-risk__col li {
+  position: relative;
+  padding-left: 1.125rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.beauty-risk__col li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.55em;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.beauty-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.beauty-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.beauty-warning h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.beauty-warning p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.beauty-warning p + p { margin-top: 0.75rem; }
+.beauty-warning a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .beauty-warning { flex-direction: column; gap: 1rem; }
+}
+
+.beauty-help {
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.beauty-help h3 { font-size: 1.1875rem; margin-bottom: 1rem; }
+.beauty-help ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.5rem 1.25rem;
+}
+.beauty-help li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.beauty-help li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 5px; }
+.beauty-help__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.beauty-help__foot a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Kody PKD ─────────────────────────────────────────────────────────── */
+.beauty-pkd {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.beauty-pkd__head { max-width: 75ch; }
+.beauty-pkd__head .lede { margin-top: 1rem; }
+.beauty-pkd__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+@media (min-width: 900px) { .beauty-pkd__grid { grid-template-columns: repeat(3, 1fr); } }
+.beauty-pkd__item {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+.beauty-pkd__code {
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  margin-bottom: 0.875rem;
+}
+.beauty-pkd__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.beauty-pkd__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.beauty-pkd__note { margin-top: 1.5rem; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.beauty-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .beauty-scope { grid-template-columns: repeat(2, 1fr); } }
+.beauty-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.beauty-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.beauty-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.beauty-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.beauty-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.beauty-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.beauty-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.beauty-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.beauty-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .beauty-benefits { grid-template-columns: 1fr; } }
+.beauty-benefits .lede { margin-top: 1rem; }
+.beauty-benefits__stats { margin-top: 2rem; }
+.beauty-benefits__link { margin-top: 1.75rem; }
+.beauty-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.beauty-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.beauty-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.beauty-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.beauty-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.beauty-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.beauty-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.beauty-startup__head { max-width: 70ch; }
+.beauty-startup__head .lede { margin-top: 1rem; }
+.beauty-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .beauty-steps { grid-template-columns: repeat(3, 1fr); } }
+.beauty-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.beauty-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.beauty-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.beauty-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.beauty-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .beauty-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.beauty-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.beauty-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.beauty-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.beauty-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.beauty-startup__col h3 { font-size: 1.1875rem; }
+.beauty-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.beauty-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.beauty-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.beauty-price__head,
+.beauty-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.beauty-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.beauty-price__row { border-bottom: 1px solid var(--border-subtle); }
+.beauty-price__row:last-child { border-bottom: none; }
+.beauty-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.beauty-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.beauty-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.beauty-price__amount { text-align: right; }
+.beauty-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .beauty-price__head { display: none; }
+  .beauty-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .beauty-price__situation { grid-column: 1 / -1; }
+}
+</style>

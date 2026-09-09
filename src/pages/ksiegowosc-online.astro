@@ -1,0 +1,597 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+import { hrMin, includedInPlan, startsFrom } from '../data/pricing';
+import { KSEF_NAJMNIEJSI_OD, KSEF_ODBIOR_OD, KSEF_WYSTAWIANIE_OD } from '../lib/tax-constants';
+
+/*
+ * Landing dla intencji „jak to działa”: księgowość online, internetowe biuro
+ * rachunkowe, księgowość zdalna.
+ *
+ * Świadomie nie powtarza treści z /ksiegowosc. Tamta strona odpowiada na pytanie
+ * „jaką formę księgowości potrzebuję” (ryczałt, KPiR, księgi rachunkowe), ta na
+ * pytanie „jak wygląda współpraca, skoro nie przywożę dokumentów”. Jeżeli
+ * kiedyś zaczną mówić o tym samym, trzeba zdecydować, która strona zostaje -
+ * a nie utrzymywać obu.
+ */
+
+const dokumenty = [
+  {
+    icon: 'sparkle',
+    title: 'Zdjęcie z telefonu',
+    body: 'Fakturę z paragonem ze stacji benzynowej albo rachunek z restauracji fotografujesz w aplikacji. OCR odczytuje kontrahenta, numer, datę i kwoty, a my weryfikujemy odczyt przed zaksięgowaniem.',
+  },
+  {
+    icon: 'file',
+    title: 'Plik PDF z maila',
+    body: 'Faktury od dostawców przeciągasz do portalu albo przesyłasz na dedykowany adres. Nie trzeba ich drukować, opisywać ani układać w segregatorze.',
+  },
+  {
+    icon: 'zap',
+    title: 'Automatycznie z KSeF',
+    body: 'Faktury zakupowe wystawione dla Ciebie w Krajowym Systemie e-Faktur pobieramy bezpośrednio z systemu. Tych dokumentów nie musisz przekazywać w ogóle.',
+  },
+  {
+    icon: 'chart',
+    title: 'Wyciąg bankowy i raport z bramki',
+    body: 'Wyciąg za miesiąc albo raport z bramki płatniczej wgrywasz jednym plikiem. Rozliczamy z niego wpłaty i prowizje, zamiast prosić Cię o pojedyncze potwierdzenia.',
+  },
+];
+
+const zakres = [
+  { title: 'Bieżące księgowanie', body: 'Ryczałt, KPiR albo księgi rachunkowe - w zależności od formy prawnej i sposobu rozliczenia. Dokumenty księgujemy na bieżąco, nie w ostatnim tygodniu przed terminem.' },
+  { title: 'VAT i JPK_V7', body: 'Rejestry sprzedaży i zakupu, plik JPK_V7M lub JPK_V7K, rejestracja do VAT-UE i informacje podsumowujące. Wysyłka elektroniczna, w terminie urzędowym.' },
+  { title: 'ZUS i podatek dochodowy', body: 'Deklaracje ZUS, składka zdrowotna liczona według wybranej formy opodatkowania oraz zaliczki na PIT albo CIT. Kwoty do zapłaty dostajesz przed terminem.' },
+  { title: 'Rozliczenie roczne', body: 'Roczne zeznanie z działalności (PIT lub CIT) jest w cenie abonamentu. Przy księgach rachunkowych także sprawozdanie finansowe i e-sprawozdanie do KRS.' },
+  { title: 'Kadry i płace', body: `Listy płac, deklaracje ZUS, akta osobowe, PIT-11 i panel pracownika. Obsługa pracownika na umowie o pracę kosztuje od ${hrMin} zł netto miesięcznie za osobę.` },
+  { title: 'Bieżące konsultacje', body: 'Pytania o formę opodatkowania, koszty, planowane zatrudnienie czy rozliczenie kontraktu zagranicznego zadajesz opiekunowi na bieżąco, w ramach abonamentu.' },
+];
+
+const bezpieczenstwo = [
+  { icon: 'shield', title: 'Ubezpieczenie OC biura rachunkowego', body: `Mamy ${site.insurance.phrase} z sumą gwarancyjną ${site.insurance.coverage}. Za zobowiązania wobec urzędu odpowiada podatnik, ale za nasz błąd odpowiadamy my - i z tego jest polisa.` },
+  { icon: 'lock', title: 'Szyfrowana wymiana dokumentów', body: 'Dokumenty przekazujesz przez portal klienta, a nie załącznikiem w niezaszyfrowanej skrzynce. Połączenie jest szyfrowane, dostęp do konta chroniony hasłem.' },
+  { icon: 'file', title: 'Umowa powierzenia przetwarzania danych', body: 'Przetwarzanie danych Twoich klientów i pracowników opieramy na umowie powierzenia, wymaganej przez RODO. Wiesz, kto ma dostęp do danych i na jakiej podstawie.' },
+  { icon: 'check-circle', title: 'Kopie zapasowe i dostęp do ksiąg', body: 'Dane są kopiowane codziennie, a dokumenty zostają dostępne w portalu przez cały okres współpracy. Po jej zakończeniu przekazujemy komplet ksiąg w ciągu 7 dni roboczych.' },
+];
+
+const dlaKogo = [
+  { title: 'Firmy usługowe i jednoosobowe działalności', body: 'Kilka do kilkudziesięciu dokumentów miesięcznie, praca głównie zdalna albo u klienta. Wizyta w biurze rachunkowym jest tu czystym kosztem czasu.', good: true },
+  { title: 'Spółki z rozproszonym zespołem', body: 'Zarząd w jednym mieście, księgowość w drugim, faktury wpływają mailem. Wspólny portal jest jedynym miejscem, w którym wszyscy widzą ten sam komplet dokumentów.', good: true },
+  { title: 'Firmy z klientami zagranicznymi', body: 'Faktury walutowe, VAT-UE, import usług, podatek u źródła. Obieg jest i tak elektroniczny, więc papierowy pośrednik niczego nie wnosi.', good: true },
+  { title: 'Firmy z dużym obiegiem papieru', body: 'Sklep stacjonarny z ręcznie wypisywanymi dokumentami albo firma budowlana z papierowymi protokołami. Tu część dokumentów i tak trzeba zdigitalizować, więc warto najpierw policzyć, ile pracy to oznacza po Twojej stronie.', good: false },
+  { title: 'Osoby, które nie chcą pracować w przeglądarce', body: 'Jeżeli wolisz raz w miesiącu oddać teczkę i nie zaglądać do żadnego systemu, model zdalny będzie dla Ciebie uciążliwy. Mówimy o tym wprost na pierwszej rozmowie, zamiast przekonywać na siłę.', good: false },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja online', description: 'Trzydzieści minut rozmowy wideo o tym, jak działa Twoja firma, ile masz dokumentów i czego oczekujesz od księgowości.' },
+  { title: 'Wycena i umowa podpisana zdalnie', description: 'Kwotę wyliczamy z publicznego cennika. Umowę podpisujesz elektronicznie - nie musisz nic drukować ani wysyłać pocztą.' },
+  { title: 'Konfiguracja portalu i uprawnień', description: 'Zakładamy Ci konto w portalu, konfigurujemy uprawnienia w KSeF do faktur i pełnomocnictwo UPL-1 do deklaracji. Pokazujemy, gdzie co wrzucać.' },
+  { title: 'Pierwszy miesiąc obsługi', description: 'Księgujemy, wysyłamy deklaracje i podsumowujemy miesiąc. Od tego momentu Twoja rola sprowadza się do wrzucania dokumentów i odbierania podsumowań.' },
+];
+
+const faq = [
+  {
+    q: 'Czym różni się księgowość online od tradycyjnego biura rachunkowego?',
+    a: 'Zakresem pracy księgowego niczym - te same księgi, te same deklaracje, ta sama odpowiedzialność. Różni się obiegiem dokumentów i sposobem kontaktu: dokumenty przekazujesz elektronicznie o dowolnej porze, zamiast dowozić je w godzinach pracy biura, a rozmowy prowadzimy przez telefon i wideo zamiast przy biurku.',
+  },
+  {
+    q: 'Czy internetowe biuro rachunkowe może prowadzić pełną księgowość spółki?',
+    a: 'Tak. Forma prowadzenia ksiąg nie zależy od tego, czy dokumenty wpływają papierowo, czy elektronicznie. Prowadzimy księgi rachunkowe spółek zgodnie z ustawą o rachunkowości, razem z rocznym sprawozdaniem finansowym i e-sprawozdaniem do KRS.',
+  },
+  {
+    q: 'Co, jeśli nie mam faktury w wersji elektronicznej?',
+    a: 'Wystarczy zdjęcie z telefonu. Paragon, rachunek czy dokument wystawiony odręcznie fotografujesz w aplikacji, a OCR odczytuje z niego dane. Oryginał zostaje u Ciebie - przepisy nie wymagają przekazania go biuru.',
+  },
+  {
+    q: 'Czy księgowość online jest tańsza?',
+    a: `Zwykle tak, bo część pracy przejmuje automatyzacja. U nas ryczałt zaczyna się od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł, a pełna księgowość spółek od ${startsFrom('fk')} zł netto miesięcznie, przy czym KSeF, OCR, portal klienta i roczne zeznanie z działalności są w abonamencie. Cały <a href="/cennik">cennik</a> jest publiczny, więc możesz porównać go z ofertą, którą już masz.`,
+  },
+  {
+    q: 'Jak szybko dostanę odpowiedź na pytanie?',
+    a: 'Na maile odpowiadamy i oddzwaniamy standardowo w ciągu 4 godzin roboczych. Piszesz do konkretnej osoby, która zna Twoją firmę, a nie na ogólną skrzynkę biura.',
+  },
+  {
+    q: 'Czy mogę przejść na księgowość online w trakcie roku?',
+    a: 'Tak, zmiana biura rachunkowego jest możliwa w dowolnym miesiącu. Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentacji i pełnomocnictwa bierzemy na siebie - proces trwa zwykle od 7 do 14 dni i nie powoduje przerwy w rozliczeniach.',
+  },
+  {
+    q: 'Gdzie fizycznie są przechowywane moje księgi?',
+    a: 'W systemie księgowym, na certyfikowanej infrastrukturze chmurowej, z codziennymi kopiami zapasowymi. Masz do nich dostęp przez portal klienta przez całą dobę, a po zakończeniu współpracy przekazujemy komplet ksiąg w ciągu 7 dni roboczych.',
+  },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': 'https://taxun.pl/ksiegowosc-online#service',
+  name: 'Księgowość online',
+  serviceType: 'Księgowość online dla jednoosobowych działalności i spółek',
+  description: 'Zdalna obsługa księgowa: portal klienta z OCR, integracja z KSeF, dedykowany opiekun, deklaracje wysyłane elektronicznie. Bez wizyt w biurze.',
+  url: 'https://taxun.pl/ksiegowosc-online',
+  provider: { '@id': 'https://taxun.pl/#organization' },
+  areaServed: { '@type': 'Country', name: 'Polska' },
+  audience: { '@type': 'BusinessAudience', name: 'Jednoosobowe działalności gospodarcze i spółki' },
+};
+
+const breadcrumbs = [{ label: 'Księgowość online' }];
+---
+<BaseLayout
+  title="Księgowość online - internetowe biuro rachunkowe"
+  description="Jak działa internetowe biuro rachunkowe: obieg dokumentów, portal klienta, KSeF i jeden opiekun. Bez wizyt w biurze, w całej Polsce."
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Jak to działa"
+    title="Księgowość online dla JDG i spółek"
+    description="Dokumenty przekazujesz zdjęciem albo plikiem, deklaracje wysyłamy elektronicznie, a rozmowy prowadzimy przez telefon i wideo. Ta strona opisuje, jak wygląda taka współpraca w praktyce - krok po kroku, bez marketingowych skrótów."
+    breadcrumbs={breadcrumbs}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/ksiegowosc" class="btn btn--ghost-light btn--lg">
+        <Icon name="calculator" size={18}/>
+        <span>Formy księgowości</span>
+      </a>
+    </div>
+  </PageHero>
+
+  <section class="section" id="jak-dziala">
+    <div class="container">
+      <div class="on-intro">
+        <div>
+          <span class="eyebrow">Model pracy</span>
+          <h2>Jak działa internetowe biuro rachunkowe?</h2>
+          <p class="lede">Internetowe biuro rachunkowe robi dokładnie to samo, co biuro z poczekalnią: prowadzi księgi, liczy podatek i składki, wysyła deklaracje i odpowiada za swoją pracę. Zmienia się jedno - droga, którą dokumenty do niego trafiają.</p>
+          <p>W modelu tradycyjnym raz w miesiącu wozisz segregator, a księgowy przepisuje z niego dane. W modelu zdalnym dokument trafia do systemu w chwili, w której go dostajesz: zdjęciem, plikiem albo automatycznie z KSeF. Dane odczytuje OCR, człowiek je weryfikuje i księguje. Dzięki temu stan ksiąg jest aktualny w trakcie miesiąca, a nie dopiero po jego zamknięciu.</p>
+          <p>Praktyczna różnica jest taka, że przestajesz być kurierem własnych dokumentów, a zaczynasz mieć do nich wgląd. W portalu widzisz, co już zaksięgowaliśmy, ile wynosi bieżący podatek i czego nam jeszcze brakuje - bez dzwonienia z pytaniem „czy dotarło”.</p>
+        </div>
+        <aside class="on-compare">
+          <h3>Co się zmienia, a co zostaje</h3>
+          <dl>
+            <div><dt>Zostaje</dt><dd>Zakres ksiąg, terminy urzędowe, odpowiedzialność biura, ubezpieczenie OC</dd></div>
+            <div><dt>Zmienia się</dt><dd>Obieg dokumentów, dostęp do danych w trakcie miesiąca, forma spotkań</dd></div>
+            <div><dt>Znika</dt><dd>Dojazd z segregatorem, godziny otwarcia jako ograniczenie, przepisywanie danych z papieru</dd></div>
+          </dl>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="dokumenty">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obieg dokumentów</span>
+        <h2>Jak przekazujesz dokumenty?</h2>
+        <p>Czterema drogami, zależnie od tego, w jakiej postaci dokument do Ciebie trafił. Żadna z nich nie wymaga drukowania, kopertowania ani dojazdu.</p>
+      </div>
+      <div class="on-cards">
+        {dokumenty.map((d) => (
+          <article class="on-tile">
+            <div class="on-tile__icon"><Icon name={d.icon} size={20}/></div>
+            <h3>{d.title}</h3>
+            <p>{d.body}</p>
+          </article>
+        ))}
+      </div>
+      <p class="on-note">Oryginały dokumentów zostają u Ciebie. Przepisy nie wymagają przekazania ich biuru rachunkowemu - wystarczy czytelny obraz, na podstawie którego księgujemy.</p>
+    </div>
+  </section>
+
+  <section class="section" id="portal">
+    <div class="container">
+      <div class="on-intro">
+        <div>
+          <span class="eyebrow">Narzędzia</span>
+          <h2>Portal klienta i elektroniczny obieg dokumentów</h2>
+          <p>Portal klienta jest miejscem, w którym spotyka się Twoja strona pracy i nasza. Wrzucasz do niego dokumenty, a w drugą stronę dostajesz to, co zwykle trzeba wypraszać mailem: bieżący stan rozliczeń, kwoty do zapłaty, wysłane deklaracje i historię dokumentów.</p>
+          <p>Elektroniczny obieg dokumentów oznacza, że każda faktura ma swój ślad: kiedy trafiła do systemu, kto ją zweryfikował, w którym okresie została zaksięgowana. Gdy po roku pojawia się pytanie z urzędu, nie szukamy teczki - odtwarzamy historię konkretnego dokumentu.</p>
+          <ul class="on-list">
+            <li><Icon name="check-circle" size={16}/> Dostęp z przeglądarki na komputerze i telefonie, całą dobę</li>
+            <li><Icon name="check-circle" size={16}/> Podgląd zaksięgowanych dokumentów i bieżącego wyniku</li>
+            <li><Icon name="check-circle" size={16}/> Kwoty podatku i składek widoczne przed terminem płatności</li>
+            <li><Icon name="check-circle" size={16}/> Archiwum deklaracji wysłanych do urzędów</li>
+            <li><Icon name="check-circle" size={16}/> Panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi</li>
+          </ul>
+        </div>
+        <aside class="on-side">
+          <div class="on-side__icon"><Icon name="globe" size={20}/></div>
+          <h3>Bez instalowania programu</h3>
+          <p>Portal działa w przeglądarce. Nie musisz instalować oprogramowania księgowego, kupować licencji ani pilnować aktualizacji - to nasza część pracy.</p>
+          <p>Dostęp możesz nadać także osobie, która w Twojej firmie zajmuje się fakturami, bez dzielenia się własnym hasłem.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="ksef">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">KSeF</span>
+        <h2>KSeF i faktury online</h2>
+      </div>
+      <div class="on-ksef">
+        <div class="on-ksef__body">
+          <p>Krajowy System e-Faktur zmienia obieg faktur w całej Polsce, a nie tylko w biurach online. Od {KSEF_ODBIOR_OD} przez system przechodzą faktury zakupowe, od {KSEF_WYSTAWIANIE_OD} obowiązek wystawiania objął większość firm, w tym mikro i małe, a ostatni etap - podmioty o najniższej sprzedaży fakturowanej - zaczyna się {KSEF_NAJMNIEJSI_OD}. Faktury dla konsumentów przez system przechodzić nie muszą.</p>
+          <p>Dla Ciebie oznacza to tyle, że faktury kosztowe przestają być czymś, co trzeba nam przekazać: pobieramy je bezpośrednio z systemu, na podstawie uprawnień nadanych przy starcie współpracy. Zostają do przekazania tylko dokumenty spoza KSeF - paragony, rachunki, dokumenty zagraniczne, wyciągi.</p>
+          <p>Obsługa KSeF, razem z nadaniem uprawnień i konfiguracją, jest w cenie abonamentu. Nie pobieramy za nią dopłaty ani opłaty wdrożeniowej.</p>
+        </div>
+        <ul class="on-steps">
+          <li><strong>Uprawnienia</strong><span>Nadajesz nam uprawnienia w KSeF do faktur i pełnomocnictwo UPL-1 do deklaracji. Robimy to razem, przy starcie.</span></li>
+          <li><strong>Odbiór</strong><span>Faktury zakupowe pobieramy z systemu automatycznie, bez Twojego udziału.</span></li>
+          <li><strong>Wystawianie</strong><span>Faktury sprzedaży wystawiasz w portalu albo we własnym systemie - w obu przypadkach trafiają do KSeF.</span></li>
+          <li><strong>Kontrola</strong><span>Pilnujemy zgodności numeracji i kompletności dokumentów w okresie rozliczeniowym.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="kontakt-z-ksiegowym">
+    <div class="container">
+      <div class="on-intro">
+        <div>
+          <span class="eyebrow">Kontakt</span>
+          <h2>Kontakt z księgowym bez wizyt w biurze</h2>
+          <p class="lede">Najczęstsza obawa przed przejściem na obsługę zdalną nie dotyczy dokumentów, tylko kontaktu: „do kogo zadzwonię, gdy będę czegoś potrzebować”. Odpowiedź brzmi: do konkretnej osoby, która zna Twoją firmę.</p>
+          <p>Za Twoje rozliczenia odpowiada jeden opiekun, ten sam co miesiąc. Piszesz do niego mailem albo dzwonisz w godzinach {site.hours}. Standardowo odpowiadamy w ciągu 4 godzin roboczych.</p>
+          <p>Sprawy, których nie da się załatwić mailem, prowadzimy jako spotkanie wideo w umówionym terminie: wybór albo zmiana formy opodatkowania, podsumowanie roku, planowane zatrudnienie, wejście na rynek zagraniczny. Bieżące pytania podatkowe w ramach prowadzonej obsługi są w abonamencie.</p>
+        </div>
+        <aside class="on-side">
+          <div class="on-side__icon"><Icon name="headset" size={20}/></div>
+          <h3>Jak się z nami skontaktować</h3>
+          <p><a href={`tel:${site.phoneHref}`}>{site.phoneDisplay}</a><br/>{site.hours}</p>
+          <p><a href={`mailto:${site.email}`}>{site.email}</a><br/>Standardowo odpowiedź w 4 godziny robocze</p>
+          <a href="/kontakt" class="btn btn--ghost btn--block">
+            <Icon name="mail" size={14}/>
+            <span>Przejdź do kontaktu</span>
+          </a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres</span>
+        <h2>Co obejmuje księgowość online?</h2>
+        <p>Zakres jest taki sam jak przy obsłudze stacjonarnej. Poniżej to, co realizujemy w ramach stałej współpracy.</p>
+      </div>
+      <div class="on-cards on-cards--three">
+        {zakres.map((z) => (
+          <article class="on-tile">
+            <h3>{z.title}</h3>
+            <p>{z.body}</p>
+          </article>
+        ))}
+      </div>
+      <div class="on-included">
+        <h3>W abonamencie, bez dopłat</h3>
+        <ul>
+          {includedInPlan.map((i) => (
+            <li><Icon name={i.icon} size={16}/> {i.label}</li>
+          ))}
+        </ul>
+        <p>Pełne zestawienie tego, co jest w cenie, a co rozliczamy osobno, znajdziesz w <a href="/cennik#dodatkowe">cenniku</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="jdg">
+    <div class="container">
+      <div class="on-split">
+        <article>
+          <span class="eyebrow">JDG</span>
+          <h2>Księgowość online dla JDG</h2>
+          <p>Przy jednoosobowej działalności rozliczenie prowadzimy na ryczałcie albo w podatkowej księdze przychodów i rozchodów. O tym, która forma jest korzystniejsza, decyduje relacja przychodów do kosztów i stawka ryczałtu właściwa dla Twojego PKWiU - liczymy to przed startem, a nie po roku.</p>
+          <p>W abonamencie mieści się obsługa ZUS właściciela wraz ze składką zdrowotną liczoną według wybranej formy, JPK_V7, rejestracja do VAT-UE i roczne zeznanie z działalności. Prywatny PIT-37 stoi w usługach dodatkowych, bo dotyczy dochodów spoza firmy.</p>
+          <p>Ryczałt zaczyna się od {startsFrom('ryczalt')} zł, a KPiR od {startsFrom('kpir')} zł netto miesięcznie. Kwota zależy od miesięcznej liczby dokumentów i od tego, czy jesteś czynnym podatnikiem VAT.</p>
+          <a href="/ksiegowosc" class="btn-arrow">
+            <span>Porównaj formy rozliczenia JDG</span>
+            <Icon name="arrow-right" size={14}/>
+          </a>
+        </article>
+        <article>
+          <span class="eyebrow">Spółki</span>
+          <h2>Księgowość online dla spółek</h2>
+          <p>Spółki z o.o., komandytowe i akcyjne prowadzą pełne księgi rachunkowe zgodnie z ustawą o rachunkowości. Zdalny obieg dokumentów niczego w tym nie zmienia: plan kont, ewidencja środków trwałych, rozrachunki i zamknięcie roku wyglądają tak samo.</p>
+          <p>Roczne sprawozdanie finansowe i e-sprawozdanie do KRS są w cenie abonamentu. Obsługujemy także estoński CIT oraz rozliczenia wspólników - zarówno wynagrodzenie z powołania, jak i wypłatę dywidendy.</p>
+          <p>Pełna księgowość zaczyna się od {startsFrom('fk')} zł netto miesięcznie, przy prowadzeniu kont zespołu 5 (centra kosztów) dochodzi dopłata opisana w cenniku.</p>
+          <a href="/cennik#kalkulator" class="btn-arrow">
+            <span>Sprawdź cennik pełnej księgowości</span>
+            <Icon name="arrow-right" size={14}/>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="bezpieczenstwo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Bezpieczeństwo</span>
+        <h2>Czy księgowość online jest bezpieczna?</h2>
+        <p>Pytanie zwykle dotyczy dwóch różnych rzeczy: co się stanie z danymi i kto odpowiada za błąd w rozliczeniu. Odpowiadamy na oba.</p>
+      </div>
+      <div class="on-cards">
+        {bezpieczenstwo.map((b) => (
+          <article class="on-tile">
+            <div class="on-tile__icon"><Icon name={b.icon} size={20}/></div>
+            <h3>{b.title}</h3>
+            <p>{b.body}</p>
+          </article>
+        ))}
+      </div>
+      <p class="on-note">Warto przy tym zauważyć, że papierowy segregator wożony samochodem raz w miesiącu też jest formą przechowywania danych - tyle że bez kopii zapasowej i bez śladu, kto miał do niego dostęp.</p>
+    </div>
+  </section>
+
+  <section class="section" id="cena">
+    <div class="container">
+      <div class="on-intro">
+        <div>
+          <span class="eyebrow">Cena</span>
+          <h2>Ile kosztuje księgowość online?</h2>
+          <p>W Taxun ryczałt zaczyna się od {startsFrom('ryczalt')} zł, KPiR od {startsFrom('kpir')} zł, a pełna księgowość spółek od {startsFrom('fk')} zł netto miesięcznie. Kwota rośnie wraz z miesięczną liczbą dokumentów i zależy od tego, czy jesteś czynnym podatnikiem VAT - obie tabele są jawne i dostępne w cenniku.</p>
+          <p>Osobno rozliczamy tylko to, co uruchamia konkretna procedura: VAT OSS, IOSS, moduł VAT-UE u podatnika zwolnionego z VAT, kolejne kanały sprzedaży internetowej i ewidencję IP Box. To stałe dopłaty miesięczne, niezależne od wolumenu, opisane na osobnej liście modułów.</p>
+          <p>Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy, a faktura zawiera wyłącznie pozycje z cennika.</p>
+          <div class="on-cta-row">
+            <a href="/cennik" class="btn btn--accent"><span>Pełny cennik</span><Icon name="arrow-right" size={16}/></a>
+            <a href="/wycena" class="btn btn--ghost"><Icon name="calculator" size={16}/><span>Policz swoją cenę</span></a>
+          </div>
+        </div>
+        <aside class="on-side">
+          <div class="on-side__icon"><Icon name="tag" size={20}/></div>
+          <h3>Od czego zależy kwota</h3>
+          <ul class="on-side__list">
+            <li>Forma rozliczenia: ryczałt, KPiR albo księgi rachunkowe</li>
+            <li>Miesięczna liczba dokumentów księgowych</li>
+            <li>Status VAT: czynny podatnik albo zwolniony</li>
+            <li>Liczba zatrudnionych osób i rodzaj umów</li>
+            <li>Procedury szczególne: OSS, IOSS, VAT-UE, IP Box</li>
+          </ul>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dopasowanie</span>
+        <h2>Dla kogo księgowość online jest dobrym rozwiązaniem?</h2>
+        <p>Nie dla każdego i nie zamierzamy udawać, że jest inaczej. Poniżej sytuacje, w których model zdalny wygrywa, i takie, w których warto się zastanowić.</p>
+      </div>
+      <div class="on-fit">
+        {dlaKogo.map((d) => (
+          <article class={`on-fit__item ${d.good ? 'on-fit__item--yes' : 'on-fit__item--maybe'}`}>
+            <span class="on-fit__mark"><Icon name={d.good ? 'check-circle' : 'search'} size={18}/></span>
+            <div>
+              <h3>{d.title}</h3>
+              <p>{d.body}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <p class="on-note">Jeżeli nie masz pewności, do której grupy należysz, policzmy to na konsultacji. Powiemy wprost, jeżeli w Twojej sytuacji obsługa zdalna niewiele zmieni.</p>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Start współpracy"
+    title="Od pierwszej rozmowy do pierwszego zamkniętego miesiąca"
+    description="Cały proces przechodzisz zdalnie. Nie ma etapu, na którym trzeba coś podpisać na papierze albo gdzieś zawieźć."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęstsze pytania"
+    items={faq}
+  />
+
+  <CTA
+    title="Sprawdź, jak wygląda księgowość online w praktyce"
+    description="Bezpłatna 30-minutowa konsultacja online. Pokażemy portal klienta na żywo i policzymy cenę dla Twojej firmy - bez zobowiązań."
+  />
+</BaseLayout>
+
+<style>
+.on-intro {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.on-intro > div > p { margin-top: 1rem; line-height: 1.65; color: var(--text); }
+.on-intro .lede { margin-top: 1rem; }
+.on-intro a { color: var(--accent-700); }
+@media (max-width: 900px) { .on-intro { grid-template-columns: 1fr; } }
+
+.on-compare, .on-side {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+  position: sticky;
+  top: 100px;
+}
+@media (max-width: 900px) { .on-compare, .on-side { position: static; } }
+.on-compare h3, .on-side h3 { font-size: 1.0625rem; margin-bottom: 0.75rem; }
+.on-compare dl { display: flex; flex-direction: column; gap: 0.875rem; }
+.on-compare dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--accent-700);
+  margin-bottom: 0.25rem;
+}
+.on-compare dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.on-side__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-500);
+  color: var(--ink-950);
+  display: grid; place-items: center;
+  margin-bottom: 0.875rem;
+}
+.on-side p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 0.75rem; }
+.on-side a { color: var(--accent-700); }
+.on-side__list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.on-side__list li {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  padding-left: 0.875rem;
+  position: relative;
+}
+.on-side__list li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.55em;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent-500);
+}
+
+.on-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) {
+  .on-cards { grid-template-columns: repeat(2, 1fr); }
+  .on-cards--three { grid-template-columns: repeat(3, 1fr); }
+}
+.on-tile {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.on-tile__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.25rem;
+}
+.on-tile h3 { font-size: 1.0625rem; }
+.on-tile p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+
+.on-note {
+  margin-top: 1.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 70ch;
+}
+
+.on-list {
+  margin-top: 1.5rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.on-list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+.on-list svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+.on-ksef {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: clamp(2rem, 5vw, 3.5rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .on-ksef { grid-template-columns: 1fr; } }
+.on-ksef__body p { margin-bottom: 1rem; line-height: 1.65; color: var(--text); }
+.on-steps { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; counter-reset: ksef; }
+.on-steps li {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.on-steps strong { font-size: 0.9375rem; color: var(--text-strong); }
+.on-steps span { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+
+.on-included {
+  margin-top: 2rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+}
+.on-included h3 { font-size: 1.0625rem; margin-bottom: 1rem; }
+.on-included ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.625rem;
+}
+.on-included li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+.on-included svg { color: var(--accent-600); flex-shrink: 0; margin-top: 3px; }
+.on-included p { margin-top: 1rem; font-size: 0.9375rem; color: var(--text-muted); }
+.on-included a { color: var(--accent-700); }
+
+.on-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: clamp(2rem, 4vw, 3rem);
+}
+.on-split article > p { margin-top: 1rem; line-height: 1.65; color: var(--text); }
+.on-split h2 { margin-top: 0.25rem; }
+.on-split .btn-arrow { margin-top: 1.25rem; color: var(--accent-700); }
+
+.on-cta-row { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.on-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+.on-fit__item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+  padding: 1.375rem 1.5rem;
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+}
+.on-fit__item--maybe { border-left-color: var(--border-strong, #CBD5E1); }
+.on-fit__mark { color: var(--accent-700); flex-shrink: 0; margin-top: 2px; }
+.on-fit__item--maybe .on-fit__mark { color: var(--text-muted); }
+.on-fit h3 { font-size: 1rem; margin-bottom: 0.375rem; }
+.on-fit p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+</style>

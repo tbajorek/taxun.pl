@@ -1,0 +1,695 @@
+{
+  "version": 2,
+  "covers": {
+    "dzialalnosc-nierejestrowana.jpg": {
+      "hash": "d4dd3676",
+      "width": 2882,
+      "height": 5135,
+      "fallback": {
+        "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-fallback.jpg",
+        "width": 960,
+        "height": 1710
+      },
+      "og": {
+        "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/dzialalnosc-nierejestrowana.d4dd3676-1600.webp"
+          }
+        ]
+      }
+    },
+    "ip-box-dla-programistow.jpg": {
+      "hash": "4db39244",
+      "width": 4000,
+      "height": 6000,
+      "fallback": {
+        "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-fallback.jpg",
+        "width": 960,
+        "height": 1440
+      },
+      "og": {
+        "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ip-box-dla-programistow.4db39244-1600.webp"
+          }
+        ]
+      }
+    },
+    "jak-zalozyc-jdg-przewodnik.jpg": {
+      "hash": "e152e564",
+      "width": 4214,
+      "height": 6321,
+      "fallback": {
+        "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-fallback.jpg",
+        "width": 960,
+        "height": 1440
+      },
+      "og": {
+        "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/jak-zalozyc-jdg-przewodnik.e152e564-1600.webp"
+          }
+        ]
+      }
+    },
+    "jdg-i-najem-prywatny.jpg": {
+      "hash": "604869c6",
+      "width": 3469,
+      "height": 5203,
+      "fallback": {
+        "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-fallback.jpg",
+        "width": 960,
+        "height": 1440
+      },
+      "og": {
+        "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/jdg-i-najem-prywatny.604869c6-1600.webp"
+          }
+        ]
+      }
+    },
+    "ksef-praktyczny-przewodnik.jpg": {
+      "hash": "9c2dfa47",
+      "width": 6720,
+      "height": 4480,
+      "fallback": {
+        "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-fallback.jpg",
+        "width": 960,
+        "height": 640
+      },
+      "og": {
+        "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ksef-praktyczny-przewodnik.9c2dfa47-1600.webp"
+          }
+        ]
+      }
+    },
+    "nowe-uprawnienia-pip.jpg": {
+      "hash": "292eb0fe",
+      "width": 3991,
+      "height": 5986,
+      "fallback": {
+        "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-fallback.jpg",
+        "width": 960,
+        "height": 1440
+      },
+      "og": {
+        "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/nowe-uprawnienia-pip.292eb0fe-1600.webp"
+          }
+        ]
+      }
+    },
+    "przepisy-podatkowe-2026.jpg": {
+      "hash": "d208db5f",
+      "width": 4160,
+      "height": 6240,
+      "fallback": {
+        "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-fallback.jpg",
+        "width": 960,
+        "height": 1440
+      },
+      "og": {
+        "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/przepisy-podatkowe-2026.d208db5f-1600.webp"
+          }
+        ]
+      }
+    },
+    "ryczalt-12-vs-8-5-dla-it.jpg": {
+      "hash": "c4454638",
+      "width": 4016,
+      "height": 6016,
+      "fallback": {
+        "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-fallback.jpg",
+        "width": 960,
+        "height": 1438
+      },
+      "og": {
+        "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/ryczalt-12-vs-8-5-dla-it.c4454638-1600.webp"
+          }
+        ]
+      }
+    },
+    "spolka-z-oo-zalozenie.jpg": {
+      "hash": "0ce31379",
+      "width": 2160,
+      "height": 3840,
+      "fallback": {
+        "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-fallback.jpg",
+        "width": 960,
+        "height": 1707
+      },
+      "og": {
+        "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/spolka-z-oo-zalozenie.0ce31379-1600.webp"
+          }
+        ]
+      }
+    },
+    "zus-przedsiebiorcy.jpg": {
+      "hash": "95022c9a",
+      "width": 3080,
+      "height": 5472,
+      "fallback": {
+        "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-fallback.jpg",
+        "width": 960,
+        "height": 1706
+      },
+      "og": {
+        "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/zus-przedsiebiorcy.95022c9a-1600.webp"
+          }
+        ]
+      }
+    }
+  }
+}

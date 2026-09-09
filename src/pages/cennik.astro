@@ -1,0 +1,1214 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import { tables, includedInPlan, hrPricing, hrMin, additional, bundleDiscount, comparison, comparisonChecked, currentPricingNote, discountsNote, ecommerce, foreignTax, hiddenFeesPerYear, ipBox, ossFees, personalReturns, specialModules, surcharges, surchargeLabel, surchargeFreeUntilDay, discounts, setupFees, startsFrom, endsAt } from '../data/pricing';
+import { VAT_ZWOLNIENIE_LIMIT } from '../lib/tax-constants';
+import { num, zl } from '../lib/format';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const formatPrice = (v: number | 'custom' | undefined) =>
+  v === 'custom' ? 'wycena ind.' : v == null ? '-' : `${fmt.format(v)} zł`;
+
+/**
+ * Dopisek czytany wyłącznie przez czytnik ekranu przy przyciskach w tabelach.
+ * Widoczny tekst to samo "Wybierz" albo "Wycena indyw.", a przycisków jest 21 -
+ * bez tego dopisku wszystkie brzmią identycznie. Przyimek zależy od wariantu,
+ * żeby zdanie było poprawne w obu przypadkach.
+ */
+const bucketHint = (custom: boolean, name: string, range: string) =>
+  `${custom ? ' dla pakietu ' : ' pakiet '}${name}, ${range} dokumentów miesięcznie`;
+
+/** Stawka kadrowa po identyfikatorze umowy - żeby FAQ nie powtarzało kwot z tabeli. */
+const hrPrice = (id: string) => hrPricing.find((h) => h.id === id)?.price ?? hrMin;
+
+const freeAdds = additional.filter((a) => a.category === 'free');
+const paidAdds = additional.filter((a) => a.category === 'paid');
+
+const breadcrumbs = [{ label: 'Cennik', href: '/cennik' }];
+
+// Generate OfferCatalog from pricing tables
+const offerItems = tables.flatMap((t) =>
+  t.buckets
+    .filter((b) => b.upTo !== null)
+    .map((b) => {
+      const price = t.hasVat ? (b.withVat ?? b.noVat) : b.price;
+      if (price === 'custom' || price == null) return null;
+      return {
+        '@type': 'Offer',
+        name: `${t.shortName} - do ${b.upTo} dokumentów`,
+        description: `${t.tagline} Liczba dokumentów: ${b.range}.`,
+        price: String(price),
+        priceCurrency: 'PLN',
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price: String(price),
+          priceCurrency: 'PLN',
+          unitText: 'mies.',
+        },
+        url: `https://taxun.pl/cennik#${t.id}`,
+        availability: 'https://schema.org/InStock',
+        seller: { '@id': 'https://taxun.pl/#organization' },
+      };
+    })
+    .filter(Boolean)
+);
+
+const offerCatalogSchema = {
+  '@type': 'OfferCatalog',
+  '@id': 'https://taxun.pl/cennik#offers',
+  name: 'Cennik biura rachunkowego Taxun',
+  url: 'https://taxun.pl/cennik',
+  itemListElement: offerItems,
+};
+
+/*
+ * Pakiety opisujemy jako `Service`, tak samo jak podstrony usług. Typ `Product`
+ * uruchamiał w Google walidację fragmentów produktowych, która oczekuje pól
+ * `aggregateRating` i `review` - a opinii o własnej usłudze nie wystawiamy
+ * sobie sami. Księgowość nie jest towarem, więc `Service` jest tu i poprawny,
+ * i wolny od tego wymagania.
+ */
+const packageSchemas = tables.map((t) => ({
+  '@type': 'Service',
+  '@id': `https://taxun.pl/cennik#${t.id}-service`,
+  name: t.name,
+  serviceType: t.name,
+  description: t.tagline,
+  provider: { '@id': 'https://taxun.pl/#organization' },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: 'Kraków' }],
+  url: `https://taxun.pl/cennik#${t.id}`,
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'PLN',
+    lowPrice: String(t.startsFrom),
+    highPrice: String(endsAt(t.id)),
+    offerCount: t.buckets.filter((b) => b.upTo !== null).length,
+    url: `https://taxun.pl/cennik#${t.id}`,
+  },
+}));
+
+const faq = [
+  { q: 'Co dokładnie zawiera abonament?', a: 'Każdy pakiet to <strong>all-inclusive</strong> - w cenie masz prowadzenie ksiąg lub ewidencji, deklaracje VAT, ZUS właściciela, JPK_V7M/K, KSeF (wysyłkę i odbiór e-faktur), OCR dokumentów, portal klienta online, rejestrację do VAT-UE wraz z informacjami podsumowującymi oraz roczne zeznanie PIT/CIT w części dotyczącej działalności. Przy księgach handlowych dodatkowo wliczone jest sprawozdanie finansowe i e-sprawozdanie do KRS. Poza abonamentem zostają <a href="#moduly">moduły specjalne</a> - dopłaty, które włącza konkretna procedura, a nie liczba dokumentów - oraz czynności rozliczane od sztuki, na przykład prywatny PIT-37 właściciela.' },
+  { q: 'Czym są moduły specjalne i czym różnią się od pakietu?', a: `Pakiet księgowy wyceniamy liczbą dokumentów, bo to ona odpowiada za większość pracy. Moduł specjalny włącza natomiast konkretna procedura i kosztuje tyle samo przy dwudziestu dokumentach co przy dwustu. Najczęstszy przykład: jeśli jesteś <strong>zwolniony z VAT i kupisz reklamę albo subskrypcję od firmy zagranicznej</strong>, musisz zarejestrować się do VAT-UE jeszcze przed pierwszym takim zakupem i rozliczać import usług deklaracją VAT-9M - to ${foreignTax.vat9m} zł netto za miesiąc, w którym zakup wystąpił, mimo że Twoja księgowość nie urosła ani o jeden dokument. Tak samo działają procedury OSS (${ossFees.ossMonthly} zł netto/mies.) i IOSS (${ossFees.iossMonthly} zł netto/mies.), każdy kanał sprzedaży ponad pierwszy, czyli kolejna platforma typu Amazon, Etsy czy eBay (${ecommerce.channelRate} zł netto/mies.), oraz ewidencja IP Box (${ipBox.monthly} zł netto/mies.). Moduł płacisz tylko wtedy, gdy dana procedura faktycznie u Ciebie występuje, i wyłączasz go razem z nią. Pełna lista jest w sekcji <a href="#moduly">modułów specjalnych</a>.` },
+  { q: 'Czym różni się cena „bez VAT” od ceny „z VAT”?', a: `Stawka „bez VAT” dotyczy podatników zwolnionych z VAT. Zwolnienie podmiotowe obowiązuje do limitu sprzedaży ${zl(VAT_ZWOLNIENIE_LIMIT)} rocznie, a zwolnienie przedmiotowe, na przykład dla usług medycznych czy edukacyjnych, nie jest limitowane obrotem. Stawka „z VAT” obejmuje pełną obsługę rejestrów VAT, JPK i KSeF dla czynnych podatników VAT. Płacisz za zakres pracy, którą faktycznie wykonujemy.` },
+  { q: 'Fakturuję wyłącznie firmy z zagranicy. Którą stawkę u Was płacę?', a: 'Stawkę "bez VAT". Usługi, których miejsce opodatkowania znajduje się poza Polską, nie są sprzedażą krajową, więc nie wliczają się do limitu zwolnienia podmiotowego i możesz pozostać podatnikiem zwolnionym mimo wysokich przychodów. Rejestracja do VAT-UE, informacje podsumowujące oraz faktury z odwrotnym obciążeniem mieszczą się w abonamencie i nie zmieniają stawki. Szczegóły opisujemy na stronie <a href="/ksiegowosc-dla-programistow#vat">księgowości dla programistów</a>.' },
+  { q: 'Kupuję reklamy i subskrypcje od firm zagranicznych. Czy to zmienia cenę?', a: `Zależy od tego, czy jesteś czynnym podatnikiem VAT. Weryfikacja obowiązków, rejestracja do VAT-UE, informacje podsumowujące oraz rozliczenie importu usług u czynnego podatnika VAT mieszczą się w abonamencie. Jeśli jesteś <strong>zwolniony z VAT</strong>, ten sam zakup uruchamia odrębny obieg: deklarację VAT-9M, przelew do urzędu i informację podsumowującą, więc za miesiące, w których import usług wystąpił, doliczamy ${foreignTax.vat9m} zł netto. Nie doliczamy nic za miesiące bez takich zakupów. Roczna informacja IFT-2R kosztuje ${foreignTax.ift2rFirst} zł za pierwszego zagranicznego kontrahenta i ${foreignTax.ift2rNext} zł za każdego kolejnego, wraz z weryfikacją obowiązku i skompletowaniem certyfikatu rezydencji. Przy zawarciu umowy bezpłatnie sprawdzamy też, czy w dotychczasowych rozliczeniach nie ma zaległości w tym obszarze. Szczegóły opisujemy na stronie <a href="/ksiegowosc-dla-marketingu-i-branz-kreatywnych#zakupy-zagraniczne">księgowości dla marketingu</a>.` },
+  { q: 'Jak liczona jest liczba dokumentów?', a: `Dokument to każdy wpis księgowy: faktura sprzedaży, faktura kosztowa, ewidencja środka trwałego, lista płac, wyciąg bankowy, naliczenie amortyzacji. <strong>Deklaracje wysyłane do urzędów</strong> (JPK_V7, ZUS, PIT) <strong>nie wliczają</strong> się do tego limitu. Wyciąg bankowy i raport z bramki płatniczej liczymy po ${ecommerce.linesPerDoc} pozycji na dokument. Przy sprzedaży internetowej dochodzi przelicznik zestawień sprzedaży, opisany w pytaniu poniżej.` },
+  { q: 'Prowadzę sklep internetowy. Jak liczycie sprzedaż z platform?', a: `Sprzedaż ze sklepu i z platform nie trafia do ksiąg pojedynczo, tylko zbiorczym zestawieniem za okres. Zestawienie z jednego kanału obejmujące <strong>do ${ecommerce.txPerDoc} transakcji liczymy jako jeden dokument</strong>, a każde rozpoczęte kolejne ${ecommerce.txPerDoc} transakcji jako kolejny. Do transakcji wliczamy sprzedaż razem ze zwrotami i korektami. Bez tego przelicznika sklep z trzema tysiącami zamówień płaciłby tyle samo co sprzedawca z dwudziestoma, a taka cena skończyłaby się dopłatą po pierwszym miesiącu. Osobno rozliczamy kanały sprzedaży: pierwszy jest w cenie pakietu, każdy kolejny to ${ecommerce.channelRate} zł netto miesięcznie, bo ma własny format raportu, strukturę prowizji i cykl wypłat. Trzy policzone przykłady podajemy na stronie <a href="/ksiegowosc-dla-e-commerce#cennik">księgowości dla e-commerce</a>.` },
+  { q: 'Sprzedaję do konsumentów w Unii Europejskiej. Ile kosztuje procedura OSS?', a: `Rejestracja do procedury VAT OSS to ${ossFees.ossSetup} zł jednorazowo, a obsługa ${ossFees.ossMonthly} zł netto miesięcznie: monitorowanie progu, przypisanie stawek obowiązujących w kraju nabywcy, deklaracja kwartalna i pilnowanie terminu płatności. Procedura IOSS, dla towarów sprowadzanych spoza Unii, kosztuje ${ossFees.iossSetup} zł za rejestrację i ${ossFees.iossMonthly} zł miesięcznie, ponieważ deklaracje składa się tam co miesiąc, a nie co kwartał. <strong>Rejestracja do VAT-UE, informacje podsumowujące oraz sprzedaż firmom z Unii pozostają w abonamencie</strong>, bez dopłat. Rejestracji do VAT w innych krajach nie prowadzimy samodzielnie - wskazujemy wyspecjalizowanego partnera.` },
+  { q: 'Co jeśli przekroczę limit dokumentów w danym miesiącu?', a: 'Automatycznie naliczamy stawkę odpowiednią do liczby dokumentów w danym miesiącu. Płacisz dokładnie za to, co rzeczywiście księgujemy. Niewykorzystane dokumenty nie przechodzą na kolejny miesiąc.' },
+  { q: 'Czy są rabaty za dłuższą współpracę albo za płatność z góry?', a: `Nagradzamy staż współpracy, ale zawsze za okresy już przepracowane. Umowa jest na czas nieokreślony i niczego nie podpisujesz na 12 czy 24 miesiące z góry. Po <strong>12 pełnych miesiącach współpracy</strong> naliczamy -5% od stawki abonamentu, począwszy od 13. miesiąca, a po <strong>24 miesiącach</strong> -10%, począwszy od 25. miesiąca. Rabat obowiązuje dalej, dopóki trwa umowa, a przy jej zakończeniu nie żądamy zwrotu tego, co już odliczyliśmy. Niezależnie od stażu działają dwa pozostałe rabaty: -5% po 6 miesiącach dostarczania dokumentów do 7. dnia miesiąca oraz -${bundleDiscount.rate * 100}% za pakiet księgowość + kadry od ${bundleDiscount.minEmployees} pracowników. Osobnego rabatu za opłacenie roku z góry nie prowadzimy - rozliczamy się miesięcznie.` },
+  { q: 'Dlaczego naliczacie dopłatę za spóźnione dokumenty?', a: `Dopłata odzwierciedla realny koszt pracy w napiętym terminie i premiuje klientów terminowych. <strong>Do ${surchargeFreeUntilDay}. dnia miesiąca nie ma żadnych dodatkowych kosztów</strong>. Po ${surchargeFreeUntilDay}. dniu mogą one wynieść od +${surcharges[1].pct}% do +${surcharges[surcharges.length - 1].pct}% abonamentu. Pełną tabelę znajdziesz w sekcji "Promujemy terminowość".` },
+  { q: 'Ile kosztuje obsługa ulgi IP Box?', a: `Ewidencję IP Box prowadzimy za <strong>${ipBox.monthly} zł netto miesięcznie</strong> dla jednego kwalifikowanego prawa przy KPiR, a każde kolejne prawo to ${ipBox.nextRight} zł. Przy księgach rachunkowych, czyli IP Box w CIT, stawka wynosi ${ipBox.monthlyFk} zł. W tej cenie jest wyliczenie wskaźnika nexus oraz załącznik PIT/IP do rocznego zeznania, więc <strong>nie doliczamy osobnej opłaty za rozliczenie ulgi na koniec roku</strong>. To osobna pozycja, bo ustawa wymaga prowadzenia tej ewidencji na bieżąco przez cały rok, a nie jednorazowo przy zeznaniu. Jeśli potrzebujesz ochrony prawnej, przygotowanie wniosku o interpretację indywidualną kosztuje ${ipBox.interpretation} zł plus ${ipBox.interpretationFee} zł opłaty urzędowej od każdego stanu faktycznego. Szczegóły opisujemy na stronie <a href="/ksiegowosc-dla-programistow#ip-box">księgowości dla programistów</a>.` },
+  { q: 'Czy obsługa ZUS właściciela JDG jest dodatkowo płatna?', a: 'Nie. <strong>Jest ona wliczona w abonament</strong> dla każdej formy księgowości: ryczałtu, KPiR i ksiąg handlowych. W wielu innych biurach jest to osobna pozycja na fakturze.' },
+  { q: 'Pomagacie założyć firmę? Ile to kosztuje?', a: `Tak, ale w formie konsultacji, a nie rejestracji wykonanej za Ciebie. Spotykamy się online i przechodzimy przez formularz razem: policzone warianty opodatkowania, kod tytułu ubezpieczenia w ZUS, kody PKD, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF. Kosztuje to <strong>${setupFees.jdg} zł</strong> przy jednoosobowej działalności i <strong>${setupFees.s24} zł</strong> przy spółce z o.o., jawnej lub komandytowej, gdzie dochodzi kapitał, udziały, zarząd i wybór CIT. Jeżeli w ciągu ${setupFees.creditWithinDays} dni podpiszesz umowę o obsługę księgową, <strong>zaliczamy tę kwotę na poczet pierwszej faktury</strong>. <strong>Wniosek podpisujesz i składasz sam</strong> i nie jest to nasza ostrożność: wniosku o pierwszy wpis do CEIDG pełnomocnik nie złoży przez internet, a przy spółce umowę podpisują wszyscy wspólnicy, wniosek o wpis wszyscy członkowie zarządu, a przed sądem rejestrowym reprezentować może wyłącznie adwokat albo radca prawny. W rejestracji świadomie nie występujemy jako pełnomocnik. Aport, nietypowa umowa i formy bez wzorca w S24 wymagają notariusza. Szczegóły są dostępne na stronie <a href="/ksiegowosc#zakladanie-firmy">zakładania firmy</a>.` },
+  { q: 'Co z roczną deklaracją PIT lub CIT?', a: `Rozliczenie z działalności gospodarczej jest <strong>wliczone w abonament</strong>. Dodatkowo płatne pozostaje osobiste rozliczenie PIT-37/PIT-36 właściciela z dochodów spoza firmy (${personalReturns.personal} zł). PIT-28 z najmu prywatnego kosztuje ${personalReturns.rent} zł, ale <strong>tylko wtedy, gdy jest osobnym drukiem</strong>: najem prywatny rozlicza się ryczałtem, więc u klienta na ryczałcie wchodzi do tego samego PIT-28, który i tak za niego składamy - osobną rubryką, bez dopłaty. Przy skali, liniówce, karcie i w spółce roczne zeznanie z firmy to inny formularz, więc PIT-28 od najmu jest dokumentem dodatkowym.` },
+  { q: 'Jak wygląda przeniesienie księgowości z innego biura?', a: 'Przejęcie dokumentacji w trakcie roku jest <strong>bezpłatne</strong>, jeśli dokumenty są uporządkowane. Cały proces formalny (wypowiedzenie, pełnomocnictwa, odbiór ksiąg) bierzemy na siebie. Przeniesienie trwa standardowo od 7 do 14 dni i nie powoduje przerw w rozliczeniach.' },
+  { q: 'Ile kosztuje obsługa pracownika?', a: `Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę to <strong>${hrPrice('uop')} zł netto / mies. / osobę</strong>. Umowa zlecenie lub o dzieło z ZUS to ${hrPrice('zlecenie-zus')} zł, a bez ZUS ${hrPrice('zlecenie')} zł. W tej cenie otrzymujesz listy płac, deklaracje ZUS DRA/RCA/RSA, akta osobowe, ewidencję czasu pracy, PIT-11 i PIT-4R.` },
+  { q: 'Czy mogę zmienić pakiet w trakcie współpracy?', a: 'Tak, w dowolnym momencie. Zmiana wchodzi w życie od następnego miesiąca rozliczeniowego i nie wymaga aneksu do umowy. Pakiet zmienia się też sam: jeżeli przez <strong>trzy kolejne miesiące</strong> Twoja liczba dokumentów mieści się w innym progu, przechodzimy do niego automatycznie - tak samo w górę, jak i w dół - i zawiadamiamy Cię o tym przed pierwszą fakturą w nowej stawce.' },
+  { q: 'Czy są ukryte koszty?', a: `Nie. Cały cennik jest publikowany na stronie oraz stanowi załącznik do umowy. Wiąże Cię wersja z tego załącznika, przez okres w nim wskazany - cennik na stronie jest ofertą dla nowych umów, więc jego późniejsze zmiany nie przenoszą się automatycznie na trwającą współpracę. Dodatkowe opłaty mogą wystąpić wyłącznie za usługi spoza abonamentu, czyli z katalogu usług dodatkowych lub z powodu zaległości w dostarczeniu dokumentów po ${surchargeFreeUntilDay}. dniu miesiąca.` },
+];
+
+const year = new Date().getFullYear();
+---
+<BaseLayout
+  title={`Cennik biura rachunkowego ${year} - ceny od ${startsFrom('ryczalt')} zł`}
+  description={`Cennik biura rachunkowego Taxun: ryczałt od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł, spółki od ${startsFrom('fk')} zł. KSeF, OCR i portal klienta w cenie. Pełne tabele na stronie.`}
+  schema={[offerCatalogSchema, ...packageSchemas]}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow={`Cennik ${year}`}
+    title="Cennik bez niespodzianek"
+    description="Wybierz formę księgowości i sprawdź cenę dla swojego wolumenu dokumentów. KSeF, OCR, JPK_V7, VAT-UE, portal klienta i ZUS właściciela JDG masz zawsze w cenie."
+    breadcrumbs={[{ label: 'Cennik' }]}
+    align="center"
+  />
+
+  <!-- All-inclusive bundle highlight -->
+  <section class="section section--tight">
+    <div class="container">
+      <div class="bundle reveal">
+        <div class="bundle__head">
+          <span class="eyebrow">W każdym pakiecie</span>
+          <h2>Abonament all-inclusive to koniec z dopłatami za standardy</h2>
+          <p>KSeF, portal z OCR, ZUS właściciela i roczne zeznanie w typowym biurze bywają osobnymi pozycjami na fakturze - razem <strong>{num(hiddenFeesPerYear.min)}&nbsp;-&nbsp;{zl(hiddenFeesPerYear.max)} rocznie</strong> ponad abonament. U nas mieszczą się w cenie pakietu. Widełki i ich źródło pokazujemy w <a href="#porownanie">zestawieniu z rynkiem</a>.</p>
+        </div>
+        <ul class="bundle__list">
+          {includedInPlan.map((b) => (
+            <li>
+              <span class="bundle__icon"><Icon name={b.icon} size={18}/></span>
+              <span>{b.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing tables -->
+  <section class="section section--alt" id="kalkulator">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Pakiet księgowy</span>
+        <h2>Pakiet oparty o dokumenty - wybierz formę opodatkowania i wolumen</h2>
+        <p>Cena pakietu zależy od tego, ile dokumentów miesięcznie przechodzi przez księgi, a przy ryczałcie i KPiR dodatkowo od statusu VAT. Księgi handlowe mają jedną stawkę dla danego wolumenu. Obowiązki, które nie biorą się z liczby dokumentów, tylko z procedury, stoją osobno w <a href="#moduly">modułach specjalnych</a>.</p>
+      </div>
+
+      <div class="pricing-controls">
+        <div class="pricing-type" role="tablist" aria-label="Forma księgowości">
+          {tables.map((t, i) => (
+            <button class={`pricing-type__btn ${i === 0 ? 'is-active' : ''}`} data-form={t.id} role="tab" aria-selected={i === 0}>
+              <Icon name={t.icon} size={18}/>
+              <span>{t.shortName}</span>
+              {t.badge && <span class="pricing-type__badge">{t.badge}</span>}
+            </button>
+          ))}
+        </div>
+
+        <div class="pricing-vat" id="pricing-vat" role="group" aria-label="Status VAT">
+          <button class="pricing-vat__btn" data-vat="off">Bez VAT</button>
+          <button class="pricing-vat__btn is-active" data-vat="on">Z VAT</button>
+          <span class="pricing-vat__indicator" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      {tables.map((t, i) => (
+        <div class={`pricing-table-wrap ${i === 0 ? '' : 'is-hidden'}`} data-form={t.id}>
+          <div class="pricing-table-card">
+            <header class="pricing-table-card__head">
+              <div>
+                <h3>{t.name}</h3>
+                <p>{t.tagline}</p>
+              </div>
+              <div class="pricing-table-card__from">
+                <span>od</span>
+                <strong>{fmt.format(t.startsFrom)} zł</strong>
+                <small>netto / mies.</small>
+              </div>
+            </header>
+
+            {t.hasVat ? (
+              <div class="pricing-table" role="table">
+                <div class="pricing-table__row pricing-table__row--head" role="row">
+                  <div role="columnheader">Liczba dokumentów / mies.</div>
+                  <div role="columnheader" class="pricing-col pricing-col--novat">Bez VAT</div>
+                  <div role="columnheader" class="pricing-col pricing-col--withvat is-active">Z VAT</div>
+                  <div role="columnheader"><span class="sr-only">Wybór</span></div>
+                </div>
+                {t.buckets.map((b) => (
+                  <div class="pricing-table__row" role="row">
+                    <div class="pricing-table__range" role="cell">{b.range}</div>
+                    <div class="pricing-table__price pricing-col pricing-col--novat" role="cell">{formatPrice(b.noVat)}</div>
+                    <div class="pricing-table__price pricing-col pricing-col--withvat is-active" role="cell">{formatPrice(b.withVat)}</div>
+                    <div class="pricing-table__cta" role="cell">
+                      <a href={`/wycena?plan=${t.id}-${b.upTo ?? 'custom'}&vat=on`} data-plan-vat={`${t.id}-${b.upTo ?? 'custom'}`} class="btn btn--primary btn--sm">
+                        {b.noVat === 'custom' ? 'Wycena indyw.' : 'Wybierz'}<span class="sr-only">{bucketHint(b.noVat === 'custom', t.shortName, b.range)}</span>
+                        <Icon name="arrow-right" size={14}/>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="pricing-table" role="table">
+                <div class="pricing-table__row pricing-table__row--head pricing-table__row--fk" role="row">
+                  <div role="columnheader">Liczba dokumentów / mies.</div>
+                  <div role="columnheader">Cena netto / mies.</div>
+                  <div role="columnheader"><span class="sr-only">Wybór</span></div>
+                </div>
+                {t.buckets.map((b) => (
+                  <div class="pricing-table__row pricing-table__row--fk" role="row">
+                    <div class="pricing-table__range" role="cell">{b.range}</div>
+                    <div class="pricing-table__price is-active" role="cell">{formatPrice(b.price)}</div>
+                    <div class="pricing-table__cta" role="cell">
+                      <a href={`/wycena?plan=${t.id}-${b.upTo ?? 'custom'}`} class="btn btn--primary btn--sm">
+                        {b.price === 'custom' ? 'Wycena indyw.' : 'Wybierz'}<span class="sr-only">{bucketHint(b.price === 'custom', t.shortName, b.range)}</span>
+                        <Icon name="arrow-right" size={14}/>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {t.notes && (
+              <ul class="pricing-table__notes">
+                {t.notes.map((n) => (
+                  <li><Icon name="sparkle" size={14}/>{n}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <p class="pricing-note">
+        <Icon name="file" size={14}/>
+        <span>{currentPricingNote}</span>
+      </p>
+
+      <div class="pricing-custom">
+        <div>
+          <h3>Potrzebujesz wyceny indywidualnej?</h3>
+          <p>Obsługujemy również spółki o bardziej złożonej strukturze, takie jak holdingi, firmy międzynarodowe oraz organizacje pożytku publicznego. W tych przypadkach przygotowujemy ofertę dopasowaną do specyfiki Twojego podmiotu.</p>
+        </div>
+        <a href="/wycena" class="btn btn--primary btn--lg">
+          <Icon name="sparkle" size={18}/>
+          <span>Wycena indywidualna</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Moduły specjalne -->
+  <section class="section" id="moduly">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Moduły specjalne</span>
+        <h2>Dopłaty, które włącza procedura, a&nbsp;nie&nbsp;liczba dokumentów</h2>
+        <p>Część obowiązków kosztuje tyle samo przy dwudziestu dokumentach co przy dwustu, bo bierze się z tego, w jakiej procedurze jesteś. Jeśli jesteś zwolniony z VAT i kupisz reklamę w serwisie zagranicznym, musisz zarejestrować się do VAT-UE i rozliczać import usług, choć Twoja księgowość nie urosła ani o jeden dokument. Takie rzeczy wyceniamy modułami: płacisz za nie tylko wtedy, gdy dana procedura faktycznie u Ciebie występuje, a cena pakietu zostaje przewidywalna.</p>
+      </div>
+
+      <ul class="modules">
+        {specialModules.map((m) => (
+          <li class="modules__item">
+            <span class="modules__icon"><Icon name={m.icon} size={18}/></span>
+            <div class="modules__body">
+              <h3>{m.name}</h3>
+              <p class="modules__when">{m.when}</p>
+              {m.note && <p class="modules__note">{m.note}</p>}
+            </div>
+            <div class="modules__price">
+              <strong>{m.price}</strong>
+              {m.setup && <small>+ {m.setup}</small>}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <p class="modules__foot">Moduł można włączyć i wyłączyć w trakcie współpracy - razem z procedurą, której dotyczy. Czynności rozliczane od sztuki albo jednorazowo, jak faktury walutowe czy roczna informacja IFT-2R, znajdziesz w <a href="#dodatkowe">usługach dodatkowych</a>.</p>
+    </div>
+  </section>
+
+  <!-- Kadry i płace pricing -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Kadry i płace</span>
+        <h2>Obsługa pracownika w jednej stałej cenie</h2>
+        <p>W ramach opłaty za pracownika masz wszystko, co jest potrzebne: listy płac, deklaracje ZUS, akta osobowe, ewidencję czasu pracy, PIT-11 i PIT-4R oraz zgłoszenia i wyrejestrowania pracowników.</p>
+      </div>
+
+      <div class="hr-grid">
+        <div class="hr-table">
+          {hrPricing.map((h) => (
+            <div class="hr-row">
+              <div class="hr-row__name">
+                <strong>{h.name}</strong>
+                {h.note && <small>{h.note}</small>}
+              </div>
+              <div class="hr-row__price">
+                <strong>{fmt.format(h.price)} zł</strong>
+                <small>netto / mies. / osobę</small>
+              </div>
+            </div>
+          ))}
+        </div>
+        <aside class="hr-perks">
+          <h3>Co dostajesz w cenie</h3>
+          <ul>
+            <li><Icon name="check" size={16}/>Pełną dokumentację pracowniczą zgodną z Kodeksem Pracy</li>
+            <li><Icon name="check" size={16}/>Panel pracownika z dostępem do pasków wynagrodzeń i wniosków urlopowych online</li>
+            <li><Icon name="check" size={16}/>Miesięczne przelewy wynagrodzeń i składek ZUS gotowe do zatwierdzenia</li>
+            <li><Icon name="check" size={16}/>Wsparcie przy zatrudnianiu cudzoziemców (UA, BY, IN)</li>
+            <li><Icon name="check" size={16}/>Konfigurację i obsługa PPK</li>
+            <li><Icon name="check" size={16}/>Przygotowanie do kontroli PIP / ZUS</li>
+          </ul>
+          <a href="/kadry-place" class="btn-arrow">
+            <span>Pełna oferta kadr i płac</span>
+            <svg class="arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- Additional services -->
+  <section class="section" id="dodatkowe">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Usługi dodatkowe</span>
+        <h2>Co wchodzi w abonament, a&nbsp;co&nbsp;rozliczamy osobno</h2>
+        <p>Czynności rozliczane od sztuki albo jednorazowo. Stałe dopłaty miesięczne opisujemy wyżej, w <a href="#moduly">modułach specjalnych</a>. Razem z tabelami i modułami to cała lista opłat, jakie możemy doliczyć - żadnych niespodzianek na fakturze.</p>
+      </div>
+
+      <div class="adds">
+        <div class="adds__col adds__col--free">
+          <h3><span class="adds__pill adds__pill--free">w cenie abonamentu</span></h3>
+          <ul>
+            {freeAdds.map((a) => (
+              <li>
+                <span class="adds__icon adds__icon--free"><Icon name={a.icon} size={16}/></span>
+                <span class="adds__name">
+                  {a.name}
+                  {a.note && <small>{a.note}</small>}
+                </span>
+                <span class="adds__price adds__price--free">{a.price}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="adds__col adds__col--paid">
+          <h3><span class="adds__pill">płatne dodatkowo</span></h3>
+          <ul>
+            {paidAdds.map((a) => (
+              <li>
+                <span class="adds__icon"><Icon name={a.icon} size={16}/></span>
+                <span class="adds__name">
+                  {a.name}
+                  {a.note && <small>{a.note}</small>}
+                </span>
+                <span class="adds__price">{a.price}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Late delivery surcharges -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section-header text-left">
+        <span class="eyebrow">Terminy</span>
+        <h2>Promujemy terminowość</h2>
+        <p>Wiemy, że prowadzenie firmy to ciągły natłok obowiązków. Dlatego sami przypominamy o zbliżających się terminach dostarczenia dokumentów i korzystamy z KSeF, aby maksymalnie zoptymalizować współpracę z klientami.</p>
+        <p>Zależy nam na dobrej współpracy, dlatego nagradzamy klientów, którzy dostarczają dokumenty przed terminem. Informację na ten temat znajdziesz w sekcji rabatów.</p>
+        <p>Jeśli dokumenty docierają do nas po {surchargeFreeUntilDay}. dniu miesiąca, doliczamy dopłatę, która odzwierciedla realny koszt pracy w napiętym terminie. Jesteśmy przekonani, że takie rozwiązanie jest uczciwe dla obu stron.</p>
+      </div>
+      <ul class="surcharges">
+        {surcharges.map((s) => (
+          <li class={`surcharge surcharge--${s.tone}`}>
+            <div class="surcharge__range">{s.range}</div>
+            <div class="surcharge__value">{surchargeLabel(s)}</div>
+            <div class="surcharge__note">{s.note}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Loyalty / discounts -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Rabaty</span>
+        <h2>Programy lojalnościowe i rabaty</h2>
+        <p>Nagradzamy długoterminową współpracę, terminowość i polecenia nowych klientów.</p>
+      </div>
+      <div class="discounts">
+        {discounts.map((d) => (
+          <article class="discount reveal">
+            <div class="discount__icon"><Icon name={d.icon} size={20}/></div>
+            <div class="discount__value">{d.value}</div>
+            <h3>{d.condition}</h3>
+            {d.note && <p>{d.note}</p>}
+          </article>
+        ))}
+      </div>
+      <p class="discounts__note">{discountsNote}</p>
+    </div>
+  </section>
+
+  <!-- Comparison: Taxun vs typowe biuro -->
+  <section class="section section--alt" id="porownanie">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Porównanie</span>
+        <h2>Taxun vs. typowe biuro rachunkowe</h2>
+        <p>To, co u nas jest w cenie, w innych biurach bywa osobną pozycją na fakturze. Poniżej konkretne kwoty, a nie ogólniki.</p>
+      </div>
+      <div class="compare">
+        <div class="compare__row compare__row--head">
+          <div>Funkcja</div>
+          <div>Taxun</div>
+          <div>Typowe biuro</div>
+        </div>
+        {comparison.map((row) => (
+          <div class="compare__row">
+            <div class="compare__label">{row.feature}</div>
+            <div class={row.paid ? 'compare__own' : 'compare__yes'}>
+              {!row.paid && <Icon name="check-circle" size={18}/>}
+              {row.taxun}
+            </div>
+            <div class="compare__no">{row.typical}</div>
+          </div>
+        ))}
+      </div>
+      <p class="compare__summary">Same dopłaty za KSeF, portal z OCR, ZUS właściciela i roczne zeznanie to przy jednoosobowej działalności <strong>{num(hiddenFeesPerYear.min)} - {zl(hiddenFeesPerYear.max)} rocznie</strong> ponad abonament. U nas mieszczą się w cenie pakietu.</p>
+      <p class="compare__source">Kolumna „typowe biuro” to widełki z publicznie dostępnych cenników biur rachunkowych; stan na {comparisonChecked}, kwoty netto. Nie podajemy nazw - chodzi o to, za co rynek dolicza osobno, a nie o wytykanie konkretnego biura. Jeśli Twoje biuro ma to w cenie, porównaj same stawki abonamentu.</p>
+    </div>
+  </section>
+
+  <!--
+    Sekcja odpowiada na pytania cenowe zadawane w wyszukiwarce („ile kosztuje
+    biuro rachunkowe”, „ile kosztuje księgowość spółki”). Kwoty biorą się
+    z pricing.ts, więc nie rozjadą się z tabelami powyżej.
+  -->
+  <section class="section" id="ile-kosztuje">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Pytania o ceny</span>
+        <h2>Ile kosztuje księgowość - odpowiedzi na konkretne pytania</h2>
+        <p>Poniżej odpowiadamy liczbami z tego samego cennika, który widzisz wyżej. Bez widełek „od - do” rozciągniętych na cały rynek.</p>
+      </div>
+
+      <div class="pricefaq">
+        <article class="pricefaq__item">
+          <h3>Ile kosztuje biuro rachunkowe?</h3>
+          <p>W Polsce stała obsługa księgowa jednoosobowej działalności kosztuje najczęściej od około dwustu do kilkuset złotych netto miesięcznie, a pełna księgowość spółki zaczyna się zwykle od kilkuset złotych i rośnie razem z liczbą dokumentów. Rozrzut bierze się z trzech rzeczy: formy rozliczenia, wolumenu dokumentów i tego, ile pozycji biuro liczy osobno poza abonamentem.</p>
+          <p>Ta trzecia rzecz decyduje najczęściej. Same dopłaty za KSeF, portal z OCR, obsługę ZUS właściciela i roczne zeznanie to w typowym biurze <strong>{num(hiddenFeesPerYear.min)} - {zl(hiddenFeesPerYear.max)} rocznie</strong> ponad abonament. U nas wszystkie cztery mieszczą się w cenie pakietu, więc porównując oferty, warto zestawiać nie stawkę bazową, tylko roczny koszt całości. Widełki i ich źródło pokazujemy w <a href="#porownanie">zestawieniu z rynkiem</a>.</p>
+        </article>
+
+        <article class="pricefaq__item">
+          <h3>Ile kosztuje księgowość online?</h3>
+          <p>U nas dokładnie tyle, ile księgowość w każdej innej formie - nie mamy osobnego, droższego cennika za obsługę zdalną. Ryczałt zaczyna się od {startsFrom('ryczalt')} zł, KPiR od {startsFrom('kpir')} zł, a pełna księgowość spółek od {startsFrom('fk')} zł netto miesięcznie.</p>
+          <p>Obsługa zdalna zwykle jest tańsza od stacjonarnej, bo część pracy przejmuje automatyzacja: dokumenty nie są przepisywane z papieru, tylko odczytywane przez OCR i pobierane z KSeF. Oszczędność nie polega więc na tym, że biuro robi mniej, tylko na tym, że ta sama praca zajmuje mniej czasu. Jak to wygląda w praktyce, opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+        </article>
+
+        <article class="pricefaq__item">
+          <h3>Ile kosztuje księgowość JDG?</h3>
+          <p>Przy jednoosobowej działalności o cenie decyduje forma rozliczenia i liczba dokumentów. <strong>Ryczałt</strong> zaczyna się od {startsFrom('ryczalt')} zł netto miesięcznie przy dziesięciu dokumentach, <strong>KPiR</strong> od {startsFrom('kpir')} zł. Czynny podatnik VAT ma osobną, wyższą kolumnę, bo dochodzą rejestry VAT i JPK_V7.</p>
+          <p>W tej kwocie mieści się obsługa ZUS właściciela, JPK_V7, rejestracja do VAT-UE z informacjami podsumowującymi oraz roczne zeznanie z działalności. Prywatny PIT-37 z dochodów spoza firmy jest usługą dodatkową, bo nie dotyczy działalności. Dokładną kwotę dla swojej sytuacji policzysz w <a href="#kalkulator">kalkulatorze abonamentu</a>.</p>
+        </article>
+
+        <article class="pricefaq__item">
+          <h3>Ile kosztuje księgowość spółki?</h3>
+          <p>Spółki prowadzące pełne księgi rachunkowe zaczynają u nas od {startsFrom('fk')} zł netto miesięcznie przy dziesięciu dokumentach. Stawka rośnie wraz z wolumenem, a przy prowadzeniu kont zespołu 5, czyli centrów kosztów, dochodzi dopłata opisana pod tabelą.</p>
+          <p>Roczne sprawozdanie finansowe i e-sprawozdanie do KRS są w cenie abonamentu, mimo że w wielu biurach bywają osobną, jednorazową pozycją na koniec roku. Wynagrodzenia zarządu, rozliczenia wspólników i estoński CIT prowadzimy w ramach standardowej obsługi.</p>
+        </article>
+
+        <article class="pricefaq__item pricefaq__item--wide">
+          <h3>Od czego zależy cena księgowości?</h3>
+          <p>Od pięciu rzeczy, w tej kolejności:</p>
+          <ol class="pricefaq__list">
+            <li><strong>Forma rozliczenia.</strong> Ryczałt to sama ewidencja przychodów, KPiR wymaga także kosztów, a księgi rachunkowe pełnej rachunkowości z planem kont i sprawozdaniem finansowym. To trzy różne nakłady pracy.</li>
+            <li><strong>Liczba dokumentów w miesiącu.</strong> Podstawowy przelicznik naszego cennika. Dokument to każdy wpis księgowy: faktura, wyciąg, lista płac, ewidencja środka trwałego. Deklaracje wysyłane do urzędów nie wliczają się do limitu.</li>
+            <li><strong>Status VAT.</strong> Czynny podatnik VAT ma rejestry sprzedaży i zakupu oraz plik JPK_V7 co miesiąc, więc pracy jest więcej niż u podatnika zwolnionego.</li>
+            <li><strong>Zatrudnienie.</strong> Każda zatrudniona osoba to lista płac, deklaracje i dokumentacja kadrowa. Rozliczamy to od osoby, od {hrMin} zł netto miesięcznie przy umowie o pracę.</li>
+            <li><strong>Procedury szczególne.</strong> VAT OSS, IOSS, moduł VAT-UE u podatnika zwolnionego, kolejne kanały sprzedaży internetowej i ewidencja IP Box. To stałe dopłaty miesięczne, niezależne od wolumenu - opisujemy je w sekcji <a href="#moduly">modułów specjalnych</a>.</li>
+          </ol>
+          <p>Terminowość też ma znaczenie, ale w drugą stronę: do {surchargeFreeUntilDay}. dnia miesiąca nie doliczamy nic, a po sześciu miesiącach dokumentów dostarczanych do 7. dnia obniżamy abonament o 5%.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Pytania o cennik - wszystko, co warto wiedzieć"
+    items={faq}
+  />
+
+  <CTA
+    title="Zastanawiasz się, który pakiet wybrać?"
+    description="W trakcie rozmowy pomożemy dobrać optymalną formę księgowości i pakiet. Bez zobowiązań czy sprzedażowego nacisku."
+    primaryLabel="Pomóż mi wybrać pakiet"
+    primaryHref="/wycena"
+  />
+</BaseLayout>
+
+<style>
+/* ── Pytania o ceny ───────────────────────────────────────────────── */
+.pricefaq {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) { .pricefaq { grid-template-columns: repeat(2, 1fr); } }
+.pricefaq__item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.625rem 1.75rem;
+}
+.pricefaq__item--wide { grid-column: 1 / -1; }
+.pricefaq__item h3 { font-size: 1.125rem; margin-bottom: 0.625rem; }
+.pricefaq__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.pricefaq__item p + p { margin-top: 0.75rem; }
+.pricefaq__item a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.pricefaq__item strong { color: var(--text-strong); }
+.pricefaq__list {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pricefaq__list li { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── All-inclusive bundle ─────────────────────────────────────────── */
+.bundle {
+  background: linear-gradient(160deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  position: relative;
+  overflow: hidden;
+}
+.bundle::before {
+  content: '';
+  position: absolute;
+  top: -40%; right: -20%;
+  width: 60%; aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.18), transparent 60%);
+  z-index: 0;
+}
+.bundle > * { position: relative; z-index: 1; }
+.bundle__head h2 { letter-spacing: -0.025em; }
+.bundle__head p { margin-top: 1rem; color: var(--text); }
+.bundle__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+.bundle__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-strong);
+  padding: 0.5rem 0;
+}
+.bundle__icon {
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--accent-700);
+  border: 1px solid var(--accent-200);
+  flex-shrink: 0;
+}
+@media (max-width: 800px) {
+  .bundle { grid-template-columns: 1fr; }
+  .bundle__list { grid-template-columns: 1fr; }
+}
+
+/* ── Pricing controls ─────────────────────────────────────────────── */
+.pricing-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.pricing-type {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pricing-type__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.125rem;
+  border-radius: var(--radius-full);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+.pricing-type__btn.is-active {
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.pricing-type__badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: var(--accent-500);
+  color: var(--ink-950);
+  padding: 0.125rem 0.4rem;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: 0.25rem;
+}
+.pricing-type__btn.is-active .pricing-type__badge { background: var(--accent-400); }
+
+.pricing-vat {
+  position: relative;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  background: var(--ink-50);
+  border-radius: var(--radius-full);
+  transition: opacity var(--transition-base);
+}
+.pricing-vat.is-disabled { opacity: 0.4; pointer-events: none; }
+.pricing-vat__btn {
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+.pricing-vat__btn.is-active { color: var(--white); }
+.pricing-vat__indicator {
+  position: absolute;
+  top: 6px; bottom: 6px;
+  left: calc(50% + 3px);
+  width: calc(50% - 9px);
+  background: var(--ink-900);
+  border-radius: var(--radius-full);
+  transition: transform var(--transition-base), left var(--transition-base);
+  z-index: 0;
+}
+.pricing-vat[data-vat="off"] .pricing-vat__indicator {
+  left: 6px;
+}
+
+/* ── Pricing tables ─────────────────────────────────────────────── */
+.pricing-table-wrap.is-hidden { display: none; }
+
+.pricing-table-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.pricing-table-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  background: linear-gradient(180deg, var(--ink-950), var(--ink-900));
+  color: var(--white);
+}
+.pricing-table-card__head h3 { color: var(--white); font-size: 1.5rem; }
+.pricing-table-card__head p { color: rgba(255,255,255,0.7); margin-top: 0.5rem; max-width: 60ch; }
+.pricing-table-card__from {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+}
+.pricing-table-card__from span { color: rgba(255,255,255,0.55); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.pricing-table-card__from strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.875rem, 3.5vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--accent-400);
+  line-height: 1;
+}
+.pricing-table-card__from small { color: rgba(255,255,255,0.5); font-size: 0.75rem; }
+
+.pricing-table { width: 100%; }
+.pricing-table__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 140px;
+  align-items: center;
+  padding: 0.875rem clamp(1rem, 2.5vw, 1.75rem);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+.pricing-table__row--fk { grid-template-columns: 1.4fr 1fr 140px; }
+.pricing-table__row:not(.pricing-table__row--head):hover { background: var(--ink-50); }
+.pricing-table__row:last-child { border-bottom: none; }
+.pricing-table__row--head {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  background: var(--surface-alt);
+}
+.pricing-table__range { font-weight: 600; color: var(--text-strong); }
+.pricing-table__price {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.pricing-table__price.is-active { color: var(--ink-900); }
+
+.pricing-col { transition: color var(--transition-fast), opacity var(--transition-fast); }
+/* Active column (VAT toggle) is rendered in the strong ink colour, the
+   inactive one is dimmed to a light grey so the choice is unambiguous. */
+.pricing-table__price.pricing-col:not(.is-active) { color: var(--text-faint); }
+.pricing-table__row--head .pricing-col {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pricing-table__row--head .pricing-col:not(.is-active) { color: var(--text-faint); }
+.pricing-table__row--head .pricing-col.is-active { color: var(--ink-900); }
+.pricing-table__row--head .pricing-col.is-active::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-500);
+}
+
+.pricing-table__cta { text-align: right; }
+.pricing-table__cta .btn { padding: 0.5rem 0.875rem; }
+
+.pricing-table__notes {
+  list-style: none;
+  padding: 1rem clamp(1rem, 2.5vw, 1.75rem);
+  background: var(--accent-50);
+  border-top: 1px solid var(--accent-200);
+}
+.pricing-table__notes li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--ink-900);
+}
+.pricing-table__notes svg { color: var(--accent-700); flex-shrink: 0; }
+
+@media (max-width: 720px) {
+  .pricing-table__row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "range cta" "novat withvat";
+    row-gap: 0.5rem;
+  }
+  .pricing-table__row--fk {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "range price" "cta cta";
+    row-gap: 0.625rem;
+  }
+  .pricing-table__row--head { display: none; }
+  .pricing-table__range { grid-area: range; }
+  .pricing-table__cta { grid-area: cta; }
+  .pricing-table__price.pricing-col--novat { grid-area: novat; }
+  .pricing-table__price.pricing-col--withvat { grid-area: withvat; }
+  .pricing-table__price::before {
+    content: attr(data-label) " ";
+    color: var(--text-subtle);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .pricing-table__row--fk .pricing-table__price::before { content: 'cena netto / mies.'; }
+  .pricing-table__price.pricing-col--novat::before { content: 'bez VAT'; }
+  .pricing-table__price.pricing-col--withvat::before { content: 'z VAT'; }
+  .pricing-table__cta .btn { width: 100%; }
+}
+
+.pricing-note {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 80ch;
+}
+.pricing-note svg { color: var(--accent-700); flex-shrink: 0; margin-top: 0.2em; }
+
+.pricing-custom {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+  border: 1px dashed var(--accent-400);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+.pricing-custom h3 { color: var(--ink-900); }
+.pricing-custom p { color: var(--text-muted); max-width: 60ch; margin-top: 0.5rem; }
+
+/* ── HR pricing ────────────────────────────────────────────────── */
+.hr-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .hr-grid { grid-template-columns: 1fr; } }
+
+.hr-table {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.hr-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
+}
+.hr-row:last-of-type { border-bottom: none; }
+.hr-row__name strong { display: block; font-weight: 600; color: var(--text-strong); }
+.hr-row__name small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.hr-row__price { text-align: right; }
+.hr-row__price strong {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+}
+.hr-row__price small { display: block; font-size: 0.75rem; color: var(--text-subtle); margin-top: 2px; }
+
+.hr-perks {
+  background: var(--ink-900);
+  color: var(--white);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+.hr-perks::before {
+  content: '';
+  position: absolute;
+  inset: -50% -30% auto auto;
+  width: 80%; aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.25), transparent 60%);
+}
+.hr-perks > * { position: relative; }
+.hr-perks h3 { color: var(--white); font-size: 1.125rem; margin-bottom: 1rem; }
+.hr-perks ul { list-style: none; display: flex; flex-direction: column; gap: 0.625rem; margin-bottom: 1.5rem; }
+.hr-perks li { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.9375rem; color: rgba(255,255,255,0.85); }
+.hr-perks li svg { color: var(--accent-400); flex-shrink: 0; margin-top: 4px; }
+.hr-perks .btn-arrow { color: var(--accent-400); }
+
+/* ── Moduły specjalne ─────────────────────────────────────────── */
+.modules {
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+.modules__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--white);
+}
+.modules__icon {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  flex-shrink: 0;
+}
+.modules__body h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.modules__when { font-size: 0.9375rem; color: var(--text); }
+.modules__note { font-size: 0.875rem; color: var(--text-subtle); line-height: 1.5; margin-top: 0.375rem; }
+.modules__price {
+  text-align: right;
+  white-space: nowrap;
+}
+.modules__price strong { display: block; font-size: 1.0625rem; color: var(--ink-950); }
+.modules__price small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.modules__foot {
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--text-subtle);
+}
+@media (max-width: 640px) {
+  .modules__item { grid-template-columns: auto 1fr; }
+  .modules__price { grid-column: 2; text-align: left; white-space: normal; }
+  .modules__price strong { font-size: 1rem; }
+}
+
+/* ── Additional services (free vs paid) ───────────────────────── */
+.adds {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 900px) { .adds { grid-template-columns: 1fr; } }
+
+.adds__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 1.5rem;
+}
+.adds__col--free { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.adds__col h3 { margin-bottom: 1rem; }
+
+.adds__pill {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--text-muted);
+}
+.adds__pill--free { background: var(--accent-500); color: var(--ink-950); }
+
+.adds__col ul { list-style: none; display: flex; flex-direction: column; gap: 0.25rem; }
+.adds__col li {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem;
+  border-radius: var(--radius-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.adds__col li:last-child { border-bottom: none; }
+.adds__col li:hover { background: var(--ink-50); }
+.adds__col--free li:hover { background: rgba(255,255,255,0.6); }
+
+.adds__icon {
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--ink-50);
+  color: var(--ink-700);
+}
+.adds__icon--free { background: var(--accent-500); color: var(--ink-950); }
+.adds__name { font-size: 0.9375rem; color: var(--text); }
+/* Doprecyzowanie pozycji, np. co obejmuje ewidencja IP Box. */
+.adds__name small { display: block; font-size: 0.8125rem; color: var(--text-subtle); line-height: 1.45; margin-top: 2px; }
+.adds__price {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.adds__price--free { color: var(--accent-700); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; }
+
+/* ── Surcharges ─────────────────────────────────────────────── */
+.surcharges {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.surcharge {
+  display: grid;
+  grid-template-columns: 1fr auto 1.6fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  border-left-width: 4px;
+}
+.surcharge--good { border-left-color: var(--accent-500); }
+.surcharge--neutral { border-left-color: var(--text-subtle); }
+.surcharge--warn { border-left-color: var(--warning); background: #FFFBEB; }
+.surcharge--bad { border-left-color: var(--error); background: #FEF2F2; }
+.surcharge__range { font-weight: 600; color: var(--text-strong); }
+.surcharge__value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.surcharge--good .surcharge__value { color: var(--accent-700); }
+.surcharge--neutral .surcharge__value { color: var(--ink-900); }
+.surcharge--warn .surcharge__value { color: #B45309; }
+.surcharge--bad .surcharge__value { color: #B91C1C; }
+.surcharge__note { font-size: 0.875rem; color: var(--text-muted); line-height: 1.45; }
+@media (max-width: 720px) {
+  .surcharge { grid-template-columns: 1fr; gap: 0.5rem; }
+}
+
+/* ── Comparison ────────────────────────────────────────── */
+.compare {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+.compare__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
+}
+.compare__row:last-child { border-bottom: none; }
+.compare__row--head {
+  background: var(--ink-950);
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.compare__label { font-weight: 600; color: var(--text-strong); }
+.compare__yes {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  color: var(--accent-700);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.compare__yes svg { color: var(--accent-600); flex-shrink: 0; }
+.compare__own {
+  color: var(--text-strong);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.compare__no { color: var(--text-muted); font-size: 0.9375rem; }
+.compare__summary {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding: 1rem 1.5rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+}
+.compare__summary strong { color: var(--accent-700); }
+.compare__source {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 46rem;
+  margin-inline: auto;
+}
+@media (max-width: 720px) {
+  .compare__row { grid-template-columns: 1fr; gap: 0.25rem; padding: 0.875rem 1rem; }
+  .compare__row--head { display: none; }
+  .compare__yes::before,
+  .compare__own::before { content: 'Taxun: '; color: var(--text-muted); font-weight: 500; }
+  .compare__no::before { content: 'Typowe biuro: '; color: var(--text-subtle); }
+}
+
+/* ── Discounts ────────────────────────────────────────────── */
+.discounts__note {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 80ch;
+}
+.discounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.discount {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.discount:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent-200); }
+.discount__icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.discount__value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.625rem;
+  letter-spacing: -0.03em;
+  color: var(--accent-700);
+  margin-top: 0.25rem;
+}
+.discount h3 { font-size: 1rem; line-height: 1.35; }
+.discount p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+</style>
+
+<script>
+  const formBtns = document.querySelectorAll<HTMLButtonElement>('.pricing-type__btn');
+  const wraps = document.querySelectorAll<HTMLElement>('.pricing-table-wrap');
+  const vatGroup = document.getElementById('pricing-vat') as HTMLElement | null;
+  const vatBtns = document.querySelectorAll<HTMLButtonElement>('.pricing-vat__btn');
+
+  function applyForm(form: string) {
+    formBtns.forEach((b) => {
+      const active = b.dataset.form === form;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-selected', String(active));
+    });
+    wraps.forEach((w) => w.classList.toggle('is-hidden', w.dataset.form !== form));
+    // VAT toggle disabled for KH
+    if (vatGroup) vatGroup.classList.toggle('is-disabled', form === 'fk');
+  }
+
+  const planLinks = document.querySelectorAll<HTMLAnchorElement>('a[data-plan-vat]');
+
+  function applyVat(mode: 'on' | 'off') {
+    vatBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.vat === mode));
+    vatGroup?.setAttribute('data-vat', mode);
+    document.querySelectorAll<HTMLElement>('.pricing-col--withvat').forEach((el) =>
+      el.classList.toggle('is-active', mode === 'on')
+    );
+    document.querySelectorAll<HTMLElement>('.pricing-col--novat').forEach((el) =>
+      el.classList.toggle('is-active', mode === 'off')
+    );
+    // Carry the selected VAT status over to the contact form.
+    planLinks.forEach((a) => {
+      a.href = `/wycena?plan=${a.dataset.planVat}&vat=${mode}`;
+    });
+  }
+
+  formBtns.forEach((b) => b.addEventListener('click', () => applyForm(b.dataset.form!)));
+  vatBtns.forEach((b) => b.addEventListener('click', () => applyVat(b.dataset.vat as 'on' | 'off')));
+</script>

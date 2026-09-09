@@ -1,0 +1,97 @@
+---
+interface Item { q: string; a: string }
+interface Props { items: Item[]; eyebrow?: string; title?: string; description?: string; emitSchema?: boolean }
+const { items, eyebrow, title, description, emitSchema = true } = Astro.props;
+
+// Strip HTML tags from answers for schema (Google requires plain text)
+const stripHtml = (s: string) => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+
+const faqSchema = emitSchema ? {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: stripHtml(item.a) },
+  })),
+} : null;
+---
+{faqSchema && (
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+)}
+<section class="section faq" id="faq">
+  <div class="container">
+    {(eyebrow || title) && (
+      <div class="section-header">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+        {description && <p>{description}</p>}
+      </div>
+    )}
+    <div class="faq__list" data-faq>
+      {items.map((item, i) => (
+        <details class="faq__item" data-faq-item>
+          <summary class="faq__question">
+            <span>{item.q}</span>
+            <svg class="faq__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </summary>
+          <div class="faq__answer">
+            <p set:html={item.a} />
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+.faq__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.faq__item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.faq__item:hover { border-color: var(--ink-100); }
+.faq__item[open] {
+  border-color: var(--accent-200);
+  box-shadow: var(--shadow-sm);
+}
+.faq__question {
+  list-style: none;
+  cursor: pointer;
+  padding: 1.125rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.faq__question::-webkit-details-marker { display: none; }
+.faq__icon {
+  flex-shrink: 0;
+  color: var(--accent-600);
+  transition: transform var(--transition-base);
+}
+.faq__item[open] .faq__icon { transform: rotate(45deg); }
+.faq__answer {
+  padding: 0 1.25rem 1.25rem;
+  font-size: 0.9375rem;
+}
+.faq__answer p { color: var(--text-muted); line-height: var(--leading-relaxed); }
+/* Odpowiedzi bywają wzbogacone o odnośniki (set:html), a domyślne `a`
+   dziedziczy kolor i nie ma podkreślenia - bez tej reguły link w odpowiedzi
+   niczym nie różniłby się od zwykłego tekstu. */
+.faq__answer :global(a) { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+</style>

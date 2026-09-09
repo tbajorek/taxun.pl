@@ -1,0 +1,1673 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { currencyInvoices, ecommerce, hrMin, hrPricing, ossFees, startsFrom, surchargeFreeUntilDay, tables } from '../data/pricing';
+import {
+  DAC7_OD,
+  DAC7_PROG_EUR,
+  DAC7_PROG_TRANSAKCJE,
+  DAC7_RAPORT_DO,
+  IOSS_LIMIT_EUR,
+  KASA_ECOMMERCE_WYJATKI,
+  KASA_LIMIT_ROCZNY,
+  KASA_WYSYLKA_WARUNKI,
+  KASA_ZWOLNIENIA_DO,
+  KSEF_NAJMNIEJSI_OD,
+  KSEF_ODBIOR_OD,
+  KSEF_WYSTAWIANIE_OD,
+  OSS_DOKUMENTACJA_LATA,
+  OSS_LIMIT,
+  OSS_LIMIT_EUR,
+  PIT_RATE_LINIOWY,
+  RYCZALT_HANDEL,
+  RYCZALT_LIMIT,
+  RYCZALT_LIMIT_EUR,
+  RYCZALT_POSREDNICTWO_DETAL,
+  RYCZALT_POSREDNICTWO_HURT,
+  VAT_WYLACZENIA_NA_ODLEGLOSC,
+  VAT_WYLACZENIE_CZESCI_POJAZDY,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { num, pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const ryczaltVat = tables.find((t) => t.id === 'ryczalt')?.buckets[0].withVat ?? ryczalt;
+const stawkaHandel = pct(RYCZALT_HANDEL);
+const stawkaPosrednictwo = pct(RYCZALT_POSREDNICTWO_DETAL);
+const stawkaHurt = pct(RYCZALT_POSREDNICTWO_HURT);
+const stawkaLiniowa = pct(PIT_RATE_LINIOWY);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+const progOss = `${num(OSS_LIMIT_EUR)} euro`;
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+const hrEtat = hrPricing.find((h) => h.id === 'uop')?.price ?? hrMin;
+
+/**
+ * Pozycje do katalogu ofert w danych strukturalnych, składane z tabel
+ * cennikowych - dzięki temu znaczniki dla wyszukiwarek nie mogą rozjechać się
+ * z cennikiem po zmianie stawek.
+ *
+ * W e-commerce prawie każdy klient jest czynnym podatnikiem VAT, albo przez
+ * skalę sprzedaży, albo przez wyłączenia asortymentowe opisane niżej, więc
+ * bierzemy kolumnę "z VAT". Wyjątkiem jest sam start sprzedaży, stąd jedna
+ * pozycja ze stawką dla zwolnionych.
+ */
+const priceRow = (id: 'ryczalt' | 'kpir' | 'fk', upTo: number, vat: 'noVat' | 'withVat') => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat'),
+  priceRow('ryczalt', 10, 'withVat'),
+  priceRow('ryczalt', 30, 'withVat'),
+  priceRow('kpir', 30, 'withVat'),
+  priceRow('kpir', 70, 'withVat'),
+  priceRow('fk', 30, 'noVat'),
+];
+
+/** Zasady przeliczania zestawień sprzedaży i wyciągów na dokumenty księgowe. */
+const conversionRows = [
+  { rule: `Zestawienie sprzedaży z jednego kanału, do ${ecommerce.txPerDoc} transakcji`, equals: '1 dokument' },
+  { rule: `Każde rozpoczęte kolejne ${ecommerce.txPerDoc} transakcji w tym samym zestawieniu`, equals: 'kolejny dokument' },
+  { rule: `Wyciąg bankowy albo raport z bramki płatniczej, do ${ecommerce.linesPerDoc} pozycji`, equals: '1 dokument' },
+  { rule: `Każde rozpoczęte kolejne ${ecommerce.linesPerDoc} pozycji`, equals: 'kolejny dokument' },
+];
+
+/** Pozycje cennika dotyczące wyłącznie sprzedaży do konsumentów za granicą. */
+const foreignRows = [
+  { name: 'Rejestracja do procedury VAT OSS', price: `${ossFees.ossSetup} zł`, unit: 'jednorazowo' },
+  { name: 'Obsługa procedury VAT OSS', price: `${ossFees.ossMonthly} zł`, unit: '/ mies.' },
+  { name: 'Rejestracja do procedury IOSS', price: `${ossFees.iossSetup} zł`, unit: 'jednorazowo' },
+  { name: 'Obsługa procedury IOSS', price: `${ossFees.iossMonthly} zł`, unit: '/ mies.' },
+  { name: 'Rejestracja do VAT w innym kraju Unii Europejskiej', price: 'partner', unit: 'wskazujemy wyspecjalizowanego partnera' },
+];
+
+/**
+ * Przykłady liczone, a nie przepisane. Wejściem są liczby, jakie klient zna o
+ * własnym sklepie; dokumenty i stawka powstają z przelicznika i z tabel
+ * cennikowych, więc zmiana ceny w pricing.ts przenosi się tutaj sama.
+ *
+ * Wszystkie trzy profile są czynnymi podatnikami VAT - w e-commerce to reguła,
+ * bo albo przesądza o tym skala sprzedaży, albo asortyment.
+ */
+const perDocs = (count: number, per: number) => Math.ceil(count / per);
+
+const buildExample = (e: {
+  title: string;
+  intro: string;
+  tx: number;
+  channels: number;
+  lines: number;
+  costDocs: number;
+  oss: boolean;
+}) => {
+  const salesDocs = perDocs(e.tx, ecommerce.txPerDoc);
+  const lineDocs = perDocs(e.lines, ecommerce.linesPerDoc);
+  const totalDocs = salesDocs + lineDocs + e.costDocs;
+  const table = tables.find((t) => t.id === 'ryczalt');
+  const bucket = table?.buckets.find((b) => b.upTo !== null && b.upTo >= totalDocs);
+  const base = typeof bucket?.withVat === 'number' ? bucket.withVat : null;
+  const channelFee = Math.max(0, e.channels - ecommerce.freeChannels) * ecommerce.channelRate;
+  const ossFee = e.oss ? ossFees.ossMonthly : 0;
+  return {
+    ...e,
+    salesDocs,
+    lineDocs,
+    totalDocs,
+    bucketRange: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    base,
+    channelFee,
+    ossFee,
+    total: base === null ? null : base + channelFee + ossFee,
+  };
+};
+
+const examples = [
+  buildExample({
+    title: 'Sprzedawca na Allegro, bez sprzedaży zagranicznej',
+    intro: 'Jeden kanał, sprzedaż wyłącznie krajowa.',
+    tx: 120,
+    channels: 1,
+    lines: 25,
+    costDocs: 5,
+    oss: false,
+  }),
+  buildExample({
+    title: 'Własny sklep i Allegro, sprzedaż do Unii Europejskiej',
+    intro: '900 zamówień i 50 zwrotów, dwa kanały, procedura OSS.',
+    tx: 950,
+    channels: 2,
+    lines: 60,
+    costDocs: 15,
+    oss: true,
+  }),
+  buildExample({
+    title: 'Sklep, Allegro i Amazon, sprzedaż do Unii Europejskiej',
+    intro: 'Trzy kanały, wysoki wolumen, procedura OSS.',
+    tx: 2500,
+    channels: 3,
+    lines: 90,
+    costDocs: 25,
+    oss: true,
+  }),
+];
+
+const notCharged = [
+  'Sprzedaży w walucie ujętej w zestawieniu nie liczymy jako faktur walutowych. Dopłata dotyczy wyłącznie faktur wystawianych pojedynczo.',
+  'Nie doliczamy za pobieranie danych z platform ani za obsługę KSeF.',
+  'Nie doliczamy za deklaracje wysyłane do urzędów.',
+  'Nie doliczamy za pierwszy kanał sprzedaży.',
+];
+
+const heroBadges = [
+  { icon: 'tag', label: 'Jawny cennik zamiast formularza wyceny' },
+  { icon: 'globe', label: 'VAT OSS, faktury walutowe i KSeF w obsłudze' },
+  { icon: 'sparkle', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'briefcase',
+    title: 'Własny sklep internetowy',
+    description: 'Sprzedaż przez własną platformę, płatności przez bramkę, wysyłka kurierem. Pytania wracają tu zawsze te same: czy potrzebna jest kasa fiskalna, kiedy przepada zwolnienie z VAT i jak wprowadzić sprzedaż do ksiąg, żeby nie księgować każdego zamówienia osobno.',
+    points: [
+      'Ujmowanie sprzedaży na podstawie zestawień okresowych',
+      'Uzgadnianie wpływów z bramek płatniczych i płatności za pobraniem',
+      'Rozliczanie zwrotów, reklamacji i korekt',
+    ],
+  },
+  {
+    icon: 'tag',
+    title: 'Sprzedawca na marketplace',
+    description: 'Allegro, Amazon, eBay, Etsy. Do rozliczeń dochodzą prowizje potrącane jeszcze przed wypłatą, kilka cykli rozliczeniowych naraz oraz dane, które platformy przekazują administracji skarbowej.',
+    points: [
+      'Rozliczanie prowizji i opłat potrącanych z wypłat',
+      'Sprzedaż w kilku kanałach jednocześnie i jej uzgadnianie',
+      'Przygotowanie do pytań wynikających z raportów platform',
+    ],
+  },
+  {
+    icon: 'trending-up',
+    title: 'Dropshipping',
+    description: `Model, w którym najłatwiej o kosztowny błąd, bo o stawce podatku decyduje treść umowy z dostawcą, a nie nazwa modelu. Różnica między ${stawkaHandel} a ${stawkaPosrednictwo} liczy się tu od zupełnie innej podstawy, więc realny podatek potrafi się różnić wielokrotnie.`,
+    points: [
+      'Ustalenie, czy sprzedajesz we własnym imieniu, czy pośredniczysz',
+      'Dobór właściwej stawki ryczałtu albo formy kosztowej',
+      'Rozliczanie zakupów od dostawców spoza Unii Europejskiej',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'Sprzedaż do konsumentów w Unii Europejskiej',
+    description: `Po przekroczeniu progu sprzedaży transgranicznej podatek rozlicza się według stawek kraju kupującego. Prowadzimy procedurę OSS i pilnujemy momentu, w którym próg zostanie przekroczony, bo liczy się go łącznie dla całej Unii, a nie osobno dla każdego kraju.`,
+    points: [
+      `Monitorowanie progu ${progOss} liczonego łącznie dla całej Unii`,
+      'Rejestracja do OSS i deklaracje kwartalne',
+      'Ustalenie, kiedy OSS nie wystarcza i potrzebna jest rejestracja lokalna',
+    ],
+  },
+  {
+    icon: 'zap',
+    title: 'Produkty cyfrowe i subskrypcje',
+    description: 'Kursy, pliki, licencje, dostęp do aplikacji. Miejsce opodatkowania ustala się tu według innych zasad niż przy towarach, a przy sprzedaży konsumentom z Unii obowiązuje ten sam próg co przy sprzedaży wysyłkowej towarów.',
+    points: [
+      'Sprzedaż usług elektronicznych konsumentom z Unii Europejskiej',
+      'Rozliczanie płatności cyklicznych, przedłużeń i zwrotów',
+      'Sprzedaż poza Unię Europejską i obowiązki lokalne',
+    ],
+  },
+];
+
+/**
+ * Dwa modele dropshippingu postawione obok siebie. Z zewnątrz wyglądają
+ * identycznie, a różni je to, kto zawiera umowę sprzedaży z kupującym - i to
+ * właśnie ta różnica wyznacza podstawę opodatkowania.
+ */
+const models = [
+  {
+    tone: 'good',
+    badge: `ryczałt ${stawkaHandel}`,
+    icon: 'briefcase',
+    title: 'Sprzedajesz we własnym imieniu',
+    body: 'Kupujesz towar od dostawcy i odsprzedajesz go klientowi. To Ty jesteś stroną umowy sprzedaży, odpowiadasz za reklamacje i zwroty. Przychodem jest pełna kwota zapłacona przez kupującego, a faktura od dostawcy jest kosztem.',
+    note: `Na ryczałcie właściwa jest stawka ${stawkaHandel} przewidziana dla działalności usługowej w zakresie handlu.`,
+  },
+  {
+    tone: 'neutral',
+    badge: `ryczałt ${stawkaPosrednictwo}`,
+    icon: 'link',
+    title: 'Pośredniczysz w sprzedaży',
+    body: 'Klient zawiera umowę sprzedaży bezpośrednio z dostawcą, a Ty kojarzysz strony i obsługujesz zamówienie. Twoim przychodem jest wyłącznie prowizja, a nie kwota, która przez Twoje konto jedynie przepływa.',
+    note: `Właściwa jest wtedy stawka dla pośrednictwa w sprzedaży detalicznej, czyli ${stawkaPosrednictwo}. Przy pośrednictwie w sprzedaży hurtowej ustawa przewiduje ${stawkaHurt}.`,
+  },
+];
+
+const ossPoints = [
+  'Pilnujemy progu sprzedaży do konsumentów z Unii Europejskiej',
+  'Rejestrujemy do procedury OSS i składamy deklaracje kwartalne',
+  'Sprawdzamy, czy magazyn za granicą nie wymusza rejestracji lokalnej',
+  'Rozliczamy wpływy z platform sprzedażowych i bramek płatniczych',
+];
+
+const kasaTraps = [
+  {
+    icon: 'pin',
+    title: 'Odbiór osobisty',
+    description: 'Wystarczy udostępnić klientom możliwość odbioru zamówienia w punkcie albo w siedzibie firmy, żeby przestała to być sprzedaż w systemie wysyłkowym. Zwolnienie przepada wtedy dla tej sprzedaży niezależnie od tego, jak niewielka jej część jest odbierana osobiście.',
+  },
+  {
+    icon: 'clock',
+    title: 'Płatność gotówką',
+    description: 'Warunek mówi o całości zapłaty na rachunek bankowy. Gotówka przy odbiorze, także w paczkomacie czy u kuriera rozliczającego się gotówką z kupującym, ten warunek łamie. Płatność za pobraniem trafiająca na rachunek go nie narusza.',
+  },
+  {
+    icon: 'search',
+    title: 'Nieczytelna ewidencja wpłat',
+    description: 'Trzeci warunek bywa lekceważony, bo brzmi jak formalność. Wpłata opisana ogólnie, bez możliwości powiązania jej z konkretnym zamówieniem i konkretnym towarem, nie spełnia wymogu przejrzystej ewidencji, nawet jeśli pieniądze faktycznie wpłynęły na konto.',
+  },
+];
+
+const scope = [
+  {
+    icon: 'chart',
+    title: 'Sprzedaż i uzgodnienia',
+    description: 'Nie oczekujemy, że przygotujesz zestawienia ręcznie. Pracujemy na danych pobieranych z Twojego sklepu i platform sprzedażowych, także za pośrednictwem popularnych integratorów sprzedaży wielokanałowej. Sposób przekazywania ustalamy na etapie wdrożenia.',
+    points: [
+      'Ujmowanie sprzedaży na podstawie zestawień okresowych',
+      'Uzgadnianie wpływów z bramek płatniczych, prowizji i potrąceń',
+      'Rozliczanie zwrotów, reklamacji i korekt sprzedaży',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'VAT krajowy i zagraniczny',
+    description: 'Prowadzimy rozliczenia VAT w kraju i procedury unijne. Faktury walutowe przeliczamy po kursie z dnia poprzedzającego powstanie obowiązku podatkowego, bez dopłat do ustalonego limitu.',
+    points: [
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Rejestracja i deklaracje w procedurze OSS oraz IOSS',
+      `Faktury walutowe w cenie do ${currencyInvoices.freeLimit} sztuk miesięcznie`,
+    ],
+  },
+  {
+    icon: 'file',
+    title: 'Podatek dochodowy i ZUS',
+    description: 'Prowadzimy ewidencję przychodów, księgę przychodów i rozchodów albo pełne księgi, zależnie od formy prawnej i skali sprzedaży. Zaliczki i deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'shield',
+    title: 'Doradztwo, którego e-commerce potrzebuje najczęściej',
+    description: 'Najwięcej pieniędzy da się w tej branży zaoszczędzić przed transakcją, a nie po niej. Dlatego pytania o asortyment, model współpracy z dostawcą i magazyn zadajemy na starcie współpracy.',
+    points: [
+      'Weryfikacja asortymentu pod kątem wyłączeń ze zwolnienia z VAT',
+      'Ustalenie modelu dropshippingu i właściwej stawki ryczałtu',
+      'Ocena skutków wejścia w magazyn za granicą, wnioski o interpretację',
+    ],
+  },
+];
+
+const benefits = [
+  {
+    icon: 'tag',
+    title: 'Cena, którą znasz przed rozmową',
+    description: 'W tej branży niemal wszyscy ukrywają cennik za formularzem kontaktowym. My publikujemy pełne stawki razem z przelicznikiem, według którego liczymy dokumenty w e-commerce, i z trzema policzonymi przykładami. Wiesz, ile zapłacisz, zanim się do nas odezwiesz.',
+  },
+  {
+    icon: 'zap',
+    title: 'Zaplecze techniczne',
+    description: 'Taxun powstał z inicjatywy programisty prowadzącego software house, a integrację z KSeF napisaliśmy samodzielnie. Rozmowa o formatach eksportu, API platformy i uzgadnianiu danych nie wymaga u nas tłumaczenia podstaw.',
+  },
+  {
+    icon: 'users',
+    title: 'Jeden opiekun kadrowo-księgowy',
+    description: 'Masz jedną osobę, która zna Twoje kanały sprzedaży i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.',
+  },
+  {
+    icon: 'lock',
+    title: 'Bezpieczeństwo danych',
+    description: 'Dokumenty wymieniamy przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.',
+  },
+];
+
+const process = [
+  {
+    title: 'Bezpłatna konsultacja na start',
+    description: 'Przechodzimy przez Twoje kanały sprzedaży, asortyment, umowy z dostawcami i sprzedaż zagraniczną. Bez zobowiązań i sprzedażowego nacisku.',
+  },
+  {
+    title: 'Wycena i umowa',
+    description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Ustalamy w niej wprost, jak księgujemy sprzedaż z platform, żeby nie było niespodzianki na pierwszej fakturze.',
+  },
+  {
+    title: 'Przejęcie dokumentacji i danych',
+    description: 'Wypowiedzenie umowy z poprzednim biurem i pełnomocnictwa załatwiamy za Ciebie. Ustalamy sposób przekazywania raportów z platform i bramek płatniczych, żeby nie robić tego ręcznie.',
+  },
+  {
+    title: 'Stała obsługa',
+    description: 'Pilnujemy terminów i progów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.',
+  },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje w sprzedaży internetowej?',
+    a: `Sprzedaż towarów we własnym imieniu jest opodatkowana stawką ${stawkaHandel}, właściwą dla działalności usługowej w zakresie handlu. Pośrednictwo w sprzedaży detalicznej to ${stawkaPosrednictwo}, a w sprzedaży hurtowej ${stawkaHurt}. O tym, który model faktycznie prowadzisz, decyduje treść umów z dostawcami i sposób fakturowania, a nie nazwa modelu biznesowego ani kod PKD.`,
+  },
+  {
+    q: 'Prowadzę dropshipping. Która stawka jest dla mnie właściwa?',
+    a: `To zależy od tego, czy kupujesz towar i odsprzedajesz go we własnym imieniu, czy tylko pośredniczysz, a umowa sprzedaży zawierana jest bezpośrednio między klientem a dostawcą. W pierwszym przypadku przychodem jest pełna kwota od klienta i właściwa jest stawka ${stawkaHandel}. W drugim przychodem jest wyłącznie prowizja, więc stawka ${stawkaPosrednictwo} liczy się od znacznie mniejszej podstawy. Organy podatkowe oceniają dokumenty, a nie deklaracje, dlatego przeglądamy Twoje umowy i regulamin sklepu przed wyborem formy opodatkowania.`,
+  },
+  {
+    q: 'Czy mogę korzystać ze zwolnienia z VAT, sprzedając przez internet?',
+    a: `Zależy od asortymentu. Przy sprzedaży na odległość wyłączono ze zwolnienia między innymi preparaty kosmetyczne i toaletowe, komputery, wyroby elektroniczne i optyczne, urządzenia elektryczne wraz ze sprzętem gospodarstwa domowego oraz maszyny i urządzenia gdzie indziej niesklasyfikowane. Osobno wyłączona jest sprzedaż części i akcesoriów do pojazdów silnikowych oraz motocykli. Wyłączenie działa od pierwszej transakcji i nie zależy od tego, czy zbliżasz się do limitu ${limitVat}.`,
+  },
+  {
+    q: 'Sprzedaję kosmetyki online i nie jestem podatnikiem VAT. Czy to problem?',
+    a: 'Prawdopodobnie tak. Sprzedaż preparatów kosmetycznych i toaletowych na odległość jest wyłączona ze zwolnienia ze względu na wartość sprzedaży, więc obowiązek rejestracji do VAT powstaje przy pierwszej takiej transakcji. Im wcześniej to uporządkujesz, tym mniejsze konsekwencje, bo zaległość rośnie z każdym miesiącem, a podatku od sprzedaży konsumenckiej nie da się już przerzucić na klienta. Umów się na bezpłatną konsultację, przejdziemy przez Twój asortyment pozycja po pozycji.',
+  },
+  {
+    q: 'Czy potrzebuję kasy fiskalnej w sklepie internetowym?',
+    a: `Często nie, ale wszystkie warunki muszą być spełnione jednocześnie: towar wysyłany przesyłką bez możliwości odbioru osobistego, całość zapłaty na rachunek bankowy oraz ewidencja pozwalająca powiązać wpłatę z konkretnym zamówieniem. Niezależnie od tego kasa jest wymagana przy sprzedaży niektórych towarów, między innymi perfum, alkoholu, elektroniki i części samochodowych. Warto też pilnować limitu sprzedaży na rzecz osób prywatnych, wynoszącego ${zl(KASA_LIMIT_ROCZNY)} rocznie. Policzysz go w naszym <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.`,
+  },
+  {
+    q: 'Sprzedaję do Niemiec i Czech. Od kiedy muszę rozliczać zagraniczny VAT?',
+    a: `Po przekroczeniu progu ${progOss} netto, liczonego łącznie dla całej Unii Europejskiej, czyli ${zl(OSS_LIMIT)}. Do progu wlicza się zarówno sprzedaż wysyłkową towarów, jak i usługi elektroniczne świadczone konsumentom, a bierze się pod uwagę rok bieżący i poprzedni. Do momentu przekroczenia rozliczasz sprzedaż w Polsce. Po przekroczeniu stosujesz stawki kraju kupującego, a procedura OSS pozwala rozliczyć to jedną deklaracją kwartalną składaną w Polsce.`,
+  },
+  {
+    q: 'Czy OSS wystarczy, jeśli korzystam z magazynu Amazona za granicą?',
+    a: 'Nie. Procedura OSS obejmuje sprzedaż wysyłaną z Polski do konsumentów w innych krajach Unii, ale nie zastępuje rejestracji do VAT w kraju, w którym przechowujesz towar. Przechowywanie towaru za granicą, w tym w magazynie operatora logistycznego lub platformy sprzedażowej, rodzi obowiązek rejestracji w tym kraju. Dotyczy to również przesunięć towaru między magazynami w różnych krajach. Ustalamy to, zanim wejdziesz w taki model, ponieważ rejestracja wsteczna bywa kosztowna.',
+  },
+  {
+    q: 'Co z towarami sprowadzanymi z Chin?',
+    a: `Przy sprzedaży konsumentom towarów importowanych o wartości nieprzekraczającej ${num(IOSS_LIMIT_EUR)} euro można korzystać z procedury IOSS, w której deklaracje składa się miesięcznie, a nie kwartalnie jak w OSS. Poza tą procedurą obowiązują ogólne zasady importu, z odprawą celną i podatkiem rozliczanym przy przywozie. Który wariant będzie dla Ciebie tańszy, zależy od wartości przesyłek i tego, kto formalnie jest importerem.`,
+  },
+  {
+    q: 'Dostałem raport DAC7 z Allegro. Co to znaczy?',
+    a: `Że platforma przekazała Krajowej Administracji Skarbowej dane o Twojej sprzedaży. Obowiązek dotyczy sprzedawców, którym platforma umożliwiła w ciągu roku co najmniej ${DAC7_PROG_TRANSAKCJE} transakcji sprzedaży towarów albo wypłaciła wynagrodzenie przekraczające równowartość ${num(DAC7_PROG_EUR)} euro. Sam raport nie oznacza jeszcze podatku, ale pozwala urzędowi porównać sprzedaż z Twoimi deklaracjami. Jeśli nie masz pewności, czy się zgadzają, sprawdzimy to na bezpłatnej konsultacji.`,
+  },
+  {
+    q: 'Czy muszę ręcznie przygotowywać zestawienia sprzedaży?',
+    a: 'Nie. Pracujemy na danych pobieranych z Twojego sklepu i platform sprzedażowych, także za pośrednictwem popularnych integratorów sprzedaży wielokanałowej. Sposób przekazywania ustalamy na etapie wdrożenia, jeszcze przed pierwszym miesiącem obsługi.',
+  },
+  {
+    q: 'Jak liczycie dokumenty przy sprzedaży internetowej?',
+    a: `Zestawienie sprzedaży z jednego kanału obejmujące do ${ecommerce.txPerDoc} transakcji liczymy jako jeden dokument, a każde rozpoczęte kolejne ${ecommerce.txPerDoc} transakcji jako kolejny. Wyciąg bankowy i raport z bramki płatniczej liczymy standardowo, czyli do ${ecommerce.linesPerDoc} pozycji jako jeden dokument. Do transakcji wliczamy sprzedaż razem ze zwrotami i korektami, bo jedno i drugie wymaga ujęcia w rozliczeniu. W sekcji cennika podajemy trzy policzone przykłady.`,
+  },
+  {
+    q: 'Dlaczego zestawienie sprzedaży nie jest jednym dokumentem?',
+    a: 'Ponieważ wtedy sklep z trzema tysiącami zamówień płaciłby tyle samo co sprzedawca z dwudziestoma. Taka cena nie utrzymałaby się dłużej niż kilka miesięcy i skończyłaby się dopłatą albo wypowiedzeniem umowy, czyli dokładnie tym, czego chcemy uniknąć. Wolimy podać przelicznik od razu, niż obiecać niską cenę i wracać do rozmowy o niej po pierwszym miesiącu.',
+  },
+  {
+    q: 'Dlaczego doliczacie za kanał sprzedaży, skoro wolumen już liczycie osobno?',
+    a: `Bo to dwie różne rzeczy. Wolumen rozliczamy przelicznikiem transakcji. Dopłata ${ecommerce.channelRate} zł netto miesięcznie za każdy kanał ponad pierwszy pokrywa pracę, która nie zależy od liczby zamówień: każda platforma ma własny format raportu, własną strukturę prowizji i własny cykl wypłat, więc wymaga osobnego uzgodnienia niezależnie od tego, ile przez nią przechodzi sprzedaży. Pierwszy kanał jest w cenie pakietu.`,
+  },
+  {
+    q: 'Ile kosztuje obsługa sprzedaży do konsumentów w Unii Europejskiej?',
+    a: `Rejestracja do procedury OSS kosztuje ${ossFees.ossSetup} zł jednorazowo, a obsługa procedury ${ossFees.ossMonthly} zł netto miesięcznie. W tej kwocie jest monitorowanie progu, przypisanie stawek obowiązujących w kraju nabywcy, deklaracja kwartalna i pilnowanie terminu płatności. Procedura IOSS to ${ossFees.iossSetup} zł za rejestrację i ${ossFees.iossMonthly} zł miesięcznie, bo deklaracje składa się tam co miesiąc, a nie co kwartał. Rejestracja do VAT-UE, informacje podsumowujące i sprzedaż firmom z Unii pozostają w abonamencie, bez dopłat.`,
+  },
+  {
+    q: 'Do jakiego przychodu mogę rozliczać się ryczałtem?',
+    a: `Ryczałt przysługuje przedsiębiorcom, których przychody w roku poprzednim nie przekroczyły równowartości ${num(RYCZALT_LIMIT_EUR)} euro, czyli ${zl(RYCZALT_LIMIT)} na 2026 rok. W handlu ten próg osiąga się szybciej niż w usługach, bo liczy się go od przychodu, a nie od marży. Pilnujemy go za Ciebie i sygnalizujemy zawczasu, gdyby zbliżał się moment przejścia na KPiR.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla sklepu internetowego?',
+    a: `Tyle, ile wynika z liczby dokumentów w Twoim miesiącu, powiększone o dopłatę za dodatkowe kanały sprzedaży i ewentualną obsługę procedur zagranicznych. Sprzedawca z jednego kanału i około stu zamówieniami miesięcznie mieści się zwykle w pakiecie do 10 dokumentów, czyli ${ryczaltVat} zł netto na ryczałcie dla czynnego podatnika VAT albo ${ryczalt} zł przy zwolnieniu z VAT. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł. W sekcji cennika podajemy przelicznik i trzy policzone przykłady, żebyś mógł oszacować koszt samodzielnie. Cały <a href="/cennik">cennik</a> jest publiczny, bez widełek i bez prośby o kontakt w celu poznania ceny.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const path = '/ksiegowosc-dla-e-commerce';
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla e-commerce', href: path },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}${path}#service`,
+  name: 'Księgowość dla e-commerce',
+  serviceType: 'Usługi księgowe dla sklepów internetowych i sprzedawców online',
+  description: 'Obsługa księgowa sklepów internetowych, sprzedawców marketplace, dropshipperów i firm sprzedających konsumentom w Unii Europejskiej. Ryczałt, KPiR i pełna księgowość, VAT OSS i IOSS, uzgadnianie sprzedaży z platform i bramek płatniczych, kasa fiskalna, DAC7 i KSeF.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}${path}`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Sklepy internetowe, sprzedawcy marketplace, dropshipperzy, twórcy produktów cyfrowych, firmy sprzedające do Unii Europejskiej',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla e-commerce',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: [r.form, r.vatLabel, `${r.docs} dokumentów / mies.`].filter(Boolean).join(', '),
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla e-commerce - sklepy i marketplace"
+  description={`Księgowość dla sklepów internetowych i sprzedawców marketplace. Ryczałt ${stawkaHandel}, dropshipping, VAT OSS, DAC7 i KSeF. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla e-commerce i sprzedaży internetowej"
+    description="Rozliczamy sklepy internetowe, sprzedawców działających na marketplace'ach oraz firmy sprzedające konsumentom w Unii Europejskiej. Uzgadniamy sprzedaż z bramkami płatniczymi, sprawdzamy asortyment pod kątem wyłączeń z VAT i prowadzimy procedurę OSS. Ty rozwijasz sprzedaż, a my pilnujemy rozliczeń."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla e-commerce' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=ecommerce" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Ten sam produkt, zupełnie inna księgowość</h2>
+        <p>W e-commerce o rozliczeniach decyduje nie to, co sprzedajesz, tylko jak. Ten sam towar sprzedawany we własnym imieniu i w modelu pośrednictwa daje inny przychód, inną podstawę opodatkowania i inny podatek. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="ecom-segments">
+        {segments.map((s) => (
+          <article class="ecom-segment">
+            <div class="ecom-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Forma opodatkowania ───────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>{stawkaHandel} czy {stawkaPosrednictwo}, czyli pytanie warte kilkanaście tysięcy rocznie</h2>
+        <p>Handel towarami na ryczałcie jest opodatkowany stawką {stawkaHandel} od przychodu. Usługi pośrednictwa w sprzedaży detalicznej stawką {stawkaPosrednictwo}, a w sprzedaży hurtowej {stawkaHurt}. Różnica wydaje się prosta, dopóki nie pojawia się dropshipping, w którym oba modele wyglądają z zewnątrz identycznie.</p>
+      </div>
+
+      <div class="ecom-compare">
+        {models.map((m) => (
+          <article class={`ecom-compare__col ecom-compare__col--${m.tone}`}>
+            <div class="ecom-compare__head">
+              <span class="ecom-compare__icon"><Icon name={m.icon} size={20}/></span>
+              <span class={`ecom-pill ecom-pill--${m.tone}`}>{m.badge}</span>
+            </div>
+            <h3>{m.title}</h3>
+            <p>{m.body}</p>
+            <p class="ecom-compare__note">{m.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="ecom-warning">
+        <div class="ecom-warning__icon"><Icon name="search" size={22}/></div>
+        <div>
+          <h3>Dlaczego to jest ryzykowne</h3>
+          <p>Organy podatkowe oceniają nie deklarację przedsiębiorcy, tylko treść umów z dostawcami, sposób fakturowania, zapisy regulaminu sklepu i to, kto faktycznie odpowiada wobec klienta za reklamacje i zwroty. Jeżeli z dokumentów wynika, że kupujesz i odsprzedajesz, a rozliczasz się jak pośrednik, stawka zostanie zakwestionowana, a podatek dopłacisz od pełnej kwoty sprzedaży, nie od prowizji.</p>
+          <p>Zdarza się też sytuacja odwrotna, w której przedsiębiorca przez lata płaci wyższy podatek, niż powinien, bo rozlicza jako przychód całą wpłatę klienta, choć jest wyłącznie pośrednikiem. Dlatego przechodzimy przez Twoje umowy z dostawcami i regulamin sklepu, zanim ustalimy formę opodatkowania. Przy modelach nietypowych przygotowujemy wniosek o interpretację indywidualną, bo to jedyny sposób na uzyskanie ochrony prawnej.</p>
+        </div>
+      </div>
+
+      <p class="ecom-note">
+        <Icon name="chart" size={16}/>
+        <span>Ryczałt nie zawsze jest w handlu najlepszym wyborem. Przy niskiej marży zakup towaru stanowi główny koszt, a podatek liczony od przychodu potrafi być wtedy wyraźnie wyższy niż podatek liniowy {stawkaLiniowa} albo skala, gdzie towar jest kosztem. Porównanie robimy na Twoich liczbach przed wyborem formy, z uwzględnieniem składki zdrowotnej.</span>
+      </p>
+
+      <div class="ecom-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zwolnienie z VAT ──────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT</span>
+        <h2>Przy niektórych towarach zwolnienie z VAT nie przysługuje wcale</h2>
+        <p>To najkosztowniejsza pułapka w polskim e-commerce i jednocześnie najsłabiej znana. Zwolnienie ze względu na wartość sprzedaży, obejmujące sprzedaż do {limitVat} rocznie, nie przysługuje przy sprzedaży na odległość niektórych kategorii towarów. Wyłączenie działa od pierwszej transakcji i nie zależy od obrotu.</p>
+      </div>
+
+      <ul class="ecom-exclusions">
+        {VAT_WYLACZENIA_NA_ODLEGLOSC.map((w) => (
+          <li class="ecom-exclusion">
+            <span class="ecom-exclusion__icon"><Icon name="close" size={16}/></span>
+            <span class="ecom-exclusion__body">
+              <strong>{w.name}</strong>
+              <small>{w.pkwiu}</small>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="ecom-note">
+        <Icon name="file" size={16}/>
+        <span>Osobno, poza tą listą, wyłączona jest sprzedaż z kategorii „{VAT_WYLACZENIE_CZESCI_POJAZDY}”. To wyłączenie obowiązuje niezależnie od kanału sprzedaży, więc dotyczy również sklepu stacjonarnego.</span>
+      </p>
+
+      <div class="ecom-warning ecom-warning--danger">
+        <div class="ecom-warning__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Dlaczego to jest groźne</h3>
+          <p>Wystarczy jedna sprzedaż towaru z wyłączonej kategorii, żeby prawo do zwolnienia przepadło. Nie ma tu okresu przejściowego ani progu, poniżej którego można to zignorować. W praktyce opisywane są przypadki przedsiębiorców, którzy przez kilka lat prowadzili sprzedaż w dobrej wierze, a po kontroli otrzymywali decyzję obejmującą zaległy podatek za poprzednie lata wraz z odsetkami.</p>
+          <p>Ponieważ sprzedaż była kierowana do konsumentów, podatku nie da się już przerzucić na klienta. Zapłacisz go z marży, którą dawno rozliczyłeś. Ta sama kategoria towaru sprzedawana wyłącznie w sklepie stacjonarnym problemu nie tworzy, bo o wyłączeniu rozstrzyga sposób zawarcia umowy, a nie sam towar.</p>
+        </div>
+      </div>
+
+      <aside class="ecom-approach">
+        <div class="ecom-approach__icon"><Icon name="check-circle" size={22}/></div>
+        <div>
+          <h3>Jak do tego podchodzimy</h3>
+          <p>Przechodzimy przez Twój asortyment przed rozpoczęciem sprzedaży albo zaraz po przejęciu księgowości. Jeżeli w katalogu jest choćby jedna pozycja z wyłączonej kategorii, mówimy o tym od razu i rejestrujemy Cię do VAT, zanim powstanie zaległość. Rejestracja jest w cenie abonamentu.</p>
+          <p>Jeśli sprzedaż już się odbyła, oceniamy skalę problemu i proponujemy sposób jego uporządkowania, razem z korektami za okresy, które jeszcze się nie przedawniły. Pojęcia, które padają w tej sekcji, wyjaśniamy w <a href="/slownik">słowniku księgowym</a>.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Sprzedaż zagraniczna ──────────────────────────────────────────── -->
+  <section class="section section--alt" id="sprzedaz-zagraniczna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Sprzedaż do Unii Europejskiej</span>
+        <h2>Próg {progOss}, procedura OSS i moment, w którym przestaje ona wystarczać</h2>
+        <p>Dopóki sprzedaż do konsumentów w innych krajach Unii jest niewielka, rozliczasz ją w Polsce. Po przekroczeniu progu miejscem opodatkowania staje się kraj kupującego, a to oznacza obowiązek stosowania jego stawek VAT.</p>
+      </div>
+
+      <div class="ecom-oss">
+        <div class="ecom-oss__head">
+          <h3>Jak liczy się próg</h3>
+          <p>Próg wynosi {progOss} liczone od wartości netto, czyli {zl(OSS_LIMIT)}, i obejmuje łącznie wszystkie kraje Unii, a nie każdy osobno. Wlicza się do niego zarówno sprzedaż wysyłkowa towarów, jak i usługi elektroniczne świadczone konsumentom, a pod uwagę bierze się rok bieżący i poprzedni. W praktyce sklep prowadzący kampanie reklamowe za granicą albo sprzedający produkty o wyższej wartości osiąga ten próg szybciej, niż się spodziewa.</p>
+          <p>Po przekroczeniu progu nie musisz rejestrować się do VAT w każdym kraju osobno. Procedura OSS pozwala rozliczyć całą sprzedaż do konsumentów w Unii jedną deklaracją składaną kwartalnie w Polsce. Rejestracja odbywa się elektronicznie i wymaga podpisu kwalifikowanego, a dokumentację transakcji objętych procedurą trzeba przechowywać przez {OSS_DOKUMENTACJA_LATA} lat.</p>
+        </div>
+        <ul class="ecom-oss__list">
+          {ossPoints.map((p) => <li><Icon name="check-circle" size={16}/><span>{p}</span></li>)}
+        </ul>
+        <p class="ecom-oss__foot">Rejestracja do VAT-UE i informacje podsumowujące są w cenie abonamentu, podobnie jak sprzedaż towarów firmom z innych krajów Unii, którą rozliczamy jako wewnątrzwspólnotową dostawę. Procedura OSS ma własne pozycje w cenniku, bo jest odrębnym obiegiem: {ossFees.ossSetup} zł jednorazowo za rejestrację i {ossFees.ossMonthly} zł netto miesięcznie za obsługę wraz z deklaracją kwartalną.</p>
+      </div>
+
+      <div class="ecom-warning ecom-warning--danger">
+        <div class="ecom-warning__icon"><Icon name="pin" size={22}/></div>
+        <div>
+          <h3>Kiedy OSS nie wystarcza</h3>
+          <p>To moment, który zaskakuje najwięcej sprzedawców. Procedura OSS obejmuje sprzedaż wysyłaną z Polski do konsumentów w innych krajach. Nie zastępuje natomiast rejestracji do VAT w kraju, w którym przechowujesz towar.</p>
+          <p>Jeżeli korzystasz z magazynu za granicą, w tym z magazynów operatorów logistycznych i platform sprzedażowych, powstaje obowiązek rejestracji do VAT w kraju magazynu. Dotyczy to również sytuacji, w której towar jest tylko przesuwany między magazynami w różnych krajach, bez sprzedaży. Ustalamy to, zanim wejdziesz w taki model, ponieważ rejestracja wsteczna bywa kosztowna, a przy większej skali wymaga współpracy z doradcą w kraju magazynu.</p>
+        </div>
+      </div>
+
+      <p class="ecom-note">
+        <Icon name="globe" size={16}/>
+        <span>Przy sprzedaży konsumentom towarów importowanych o wartości do {num(IOSS_LIMIT_EUR)} euro można korzystać z procedury IOSS, w której deklaracje składa się miesięcznie. Dotyczy to przede wszystkim towarów sprowadzanych z Azji. Jeśli obok towarów sprzedajesz kursy albo inne produkty cyfrowe, znajdziesz więcej na podstronie dla <a href="/ksiegowosc-dla-branzy-edukacyjnej">branży edukacyjnej</a>, a przy współpracy z markami i twórcami na podstronie dla <a href="/ksiegowosc-dla-marketingu-i-branz-kreatywnych">marketingu i branż kreatywnych</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Kasa fiskalna</span>
+        <h2>Sklep internetowy często nie potrzebuje kasy, ale warunki trzeba spełnić wszystkie</h2>
+        <p>Sprzedaż wysyłkowa do konsumentów może korzystać ze zwolnienia z obowiązku ewidencjonowania na kasie rejestrującej. Zwolnienie nie jest jednak automatyczne, warunki działają łącznie, a jedna transakcja poza nimi wystarczy, żeby je stracić.</p>
+      </div>
+
+      <ol class="ecom-conditions">
+        {KASA_WYSYLKA_WARUNKI.map((w, i) => (
+          <li class="ecom-condition">
+            <span class="ecom-condition__num">{String(i + 1).padStart(2, '0')}</span>
+            <span>{w}</span>
+          </li>
+        ))}
+      </ol>
+
+      <h3 class="ecom-subhead">Co niweczy zwolnienie</h3>
+      <div class="ecom-cards">
+        {kasaTraps.map((t) => (
+          <article class="ecom-card">
+            <div class="ecom-card__icon"><Icon name={t.icon} size={22}/></div>
+            <h4>{t.title}</h4>
+            <p>{t.description}</p>
+          </article>
+        ))}
+      </div>
+
+      <h3 class="ecom-subhead">Towary, przy których kasa jest wymagana zawsze</h3>
+      <ul class="ecom-goods">
+        {KASA_ECOMMERCE_WYJATKI.map((g) => (
+          <li><Icon name="close" size={14}/><span>{g}</span></li>
+        ))}
+      </ul>
+
+      <p class="ecom-note">
+        <Icon name="search" size={16}/>
+        <span>Zwróć uwagę, że lista towarów wyłączonych z kasy fiskalnej częściowo pokrywa się z listą towarów wyłączonych ze zwolnienia z VAT, ale nie jest z nią tożsama. Sprawdzamy obie osobno, bo skutki są różne, a przepisy inne. Aktualne rozporządzenie o zwolnieniach z kas obowiązuje do {KASA_ZWOLNIENIA_DO}. Jeśli sprzedajesz również poza siecią, sprawdź limit sprzedaży na rzecz osób prywatnych, wynoszący {zl(KASA_LIMIT_ROCZNY)} rocznie, w <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── DAC7 i KSeF ───────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="raportowanie">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Raportowanie i e-faktury</span>
+        <h2>Co administracja skarbowa już o Twojej sprzedaży wie</h2>
+        <p>Dwie zmiany z ostatnich lat sprawiły, że sprzedaż internetowa jest dziś dużo lepiej widoczna dla urzędów niż wcześniej. Warto wiedzieć, czego dokładnie dotyczą, zanim zobaczysz je w piśmie z urzędu.</p>
+      </div>
+
+      <div class="ecom-duo">
+        <article class="ecom-duo__col">
+          <div class="ecom-duo__icon"><Icon name="share" size={22}/></div>
+          <h3>Raportowanie przez platformy</h3>
+          <p>Od {DAC7_OD} operatorzy platform sprzedażowych przekazują Krajowej Administracji Skarbowej dane o sprzedawcach. Raportowanie obejmuje sprzedawców, którym platforma umożliwiła w ciągu roku co najmniej {DAC7_PROG_TRANSAKCJE} transakcji sprzedaży towarów albo wypłaciła wynagrodzenie przekraczające równowartość {num(DAC7_PROG_EUR)} euro.</p>
+          <p>Przy usługach oraz najmie nieruchomości i środków transportu próg nie obowiązuje, raportowana jest każda transakcja. Raporty trafiają do urzędu do {DAC7_RAPORT_DO} za rok poprzedni, a kopię zestawienia otrzymuje również sprzedawca.</p>
+          <p class="ecom-duo__note">Same dane nie oznaczają jeszcze podatku, ale pozwalają urzędowi porównać sprzedaż z deklaracjami. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy Twoje rozliczenia się z nim zgadzają, sprawdzamy to na bezpłatnej konsultacji.</p>
+        </article>
+        <article class="ecom-duo__col">
+          <div class="ecom-duo__icon"><Icon name="zap" size={22}/></div>
+          <h3>KSeF w sprzedaży internetowej</h3>
+          <p>Od {KSEF_ODBIOR_OD} wszyscy przedsiębiorcy odbierają faktury zakupowe przez Krajowy System e-Faktur. Obowiązek wystawiania faktur w systemie objął większość firm od {KSEF_WYSTAWIANIE_OD}, a podmioty o najniższej sprzedaży fakturowanej mają czas do {KSEF_NAJMNIEJSI_OD}.</p>
+          <p>Dla sklepu oznacza to przede wszystkim faktury kosztowe od dostawców, operatorów logistycznych i platform oraz faktury wystawiane klientom biznesowym. Faktury dla konsumentów nie muszą przechodzić przez system.</p>
+          <p class="ecom-duo__note">Obsługa KSeF jest u nas elementem abonamentu, bez dopłat. Pracujemy na własnej integracji z systemem, napisanej w oparciu o dokumentację Ministerstwa Finansów. Praktyczne szczegóły opisujemy w artykule o <a href="/wiedza/ksef-praktyczny-przewodnik">wdrożeniu KSeF</a>.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Wszystko dzieje się zdalnie, tak jak reszta Twojej sprzedaży - zobacz, jak działa <a href="/ksiegowosc-online">biuro rachunkowe online</a>.</p>
+      </div>
+      <div class="ecom-scope">
+        {scope.map((s) => (
+          <article class="ecom-scope__item">
+            <div class="ecom-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <p class="ecom-note">
+        <Icon name="users" size={16}/>
+        <span>Obsługa kadrowa jest rozliczana za osobę, więc koszt rośnie razem z zespołem, a nie skokowo. Umowa zlecenie lub o dzieło bez składek ZUS to {hrZlecenie} zł netto miesięcznie za osobę, umowa o pracę {hrEtat} zł. Minimalny abonament kadrowy wynosi {hrMin} zł niezależnie od liczby zatrudnionych. Pełny zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="ecom-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Biuro, które nie zaczyna rozmowy od formularza&nbsp;wyceny</h2>
+          <p class="lede">W tej branży niemal wszyscy ukrywają ceny. My publikujemy je w całości i mówimy wprost, od czego zależy koszt obsługi sklepu, zamiast prosić Cię o dane kontaktowe w zamian za rząd wielkości.</p>
+          <div class="ecom-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Procesy prowadzone w pełni online', value: 100, suffix: '%' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow ecom-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="ecom-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="ecom-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla sklepu internetowego</h2>
+        <p>Rozliczamy e-commerce według tych samych zasad co pozostałe branże, czyli według liczby dokumentów księgowych w miesiącu. Dochodzą tylko dwie rzeczy, których gdzie indziej nie ma: sposób przeliczania zestawień sprzedaży na dokumenty oraz dopłata za każdy dodatkowy kanał sprzedaży. Obie podajemy wprost, żeby dało się policzyć koszt samodzielnie, jeszcze zanim się z nami skontaktujesz.</p>
+      </div>
+
+      <h3 class="ecom-subhead ecom-subhead--first">Jak przeliczamy zestawienie sprzedaży na dokumenty</h3>
+      <p class="ecom-lede">Sprzedaż w sklepie internetowym nie trafia do ksiąg pojedynczo, tylko zbiorczym zestawieniem za okres. Gdybyśmy liczyli takie zestawienie jako jeden dokument niezależnie od jego wielkości, sklep z trzema tysiącami zamówień płaciłby tyle samo co sprzedawca z dwudziestoma. Byłoby to nieuczciwe wobec pozostałych klientów i nie do utrzymania po naszej stronie, więc prędzej czy później skończyłoby się dopłatą albo wypowiedzeniem umowy. Wolimy powiedzieć od razu, jak to liczymy.</p>
+
+      <ul class="ecom-conversion">
+        {conversionRows.map((r) => (
+          <li class="ecom-conversion__row">
+            <span class="ecom-conversion__rule">{r.rule}</span>
+            <span class="ecom-conversion__eq"><Icon name="arrow-right" size={16}/></span>
+            <span class="ecom-conversion__value">{r.equals}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="ecom-note">
+        <Icon name="search" size={16}/>
+        <span>Do liczby transakcji wliczamy sprzedaż razem ze zwrotami i korektami, ponieważ jedno i drugie wymaga ujęcia w rozliczeniu. Przelicznik nie jest przypadkowy: pozycja na wyciągu bankowym wymaga indywidualnej oceny i przypisania, a transakcja w zestawieniu sprzedaży przychodzi w formie ustrukturyzowanej i jednorodnej, więc kosztuje nas około dziesięć razy mniej pracy. Stąd relacja {ecommerce.linesPerDoc} pozycji wyciągu do {ecommerce.txPerDoc} transakcji sprzedaży.</span>
+      </p>
+
+      <h3 class="ecom-subhead">Dopłata za kanał sprzedaży</h3>
+      <div class="ecom-channel">
+        <div class="ecom-channel__figure">
+          <span class="ecom-channel__amount">{ecommerce.channelRate} zł</span>
+          <span class="ecom-channel__unit">netto / mies. za każdy kanał ponad pierwszy</span>
+        </div>
+        <div class="ecom-channel__body">
+          <p>Pierwszy kanał sprzedaży jest w cenie pakietu. Dopłata nie zależy od wolumenu, ponieważ nie za wolumen jest pobierana. Każdy kanał ma własny format raportu, własną strukturę prowizji i własny cykl wypłat, więc wymaga osobnego uzgodnienia niezależnie od tego, czy przechodzi przez niego dziesięć zamówień, czy tysiąc. Sam wolumen rozliczamy już przelicznikiem opisanym wyżej.</p>
+          <p>Przez kanał sprzedaży rozumiemy własny sklep oraz każdą platformę, z której wpływa sprzedaż, na przykład Allegro, Amazon, eBay czy Etsy.</p>
+        </div>
+      </div>
+
+      <h3 class="ecom-subhead">Sprzedaż zagraniczna</h3>
+      <div class="ecom-price">
+        <div class="ecom-price__head ecom-price__head--two">
+          <span>Pozycja</span>
+          <span class="ecom-price__amount">Cena netto</span>
+        </div>
+        {foreignRows.map((r) => (
+          <div class="ecom-price__row ecom-price__row--two">
+            <span class="ecom-price__form"><strong>{r.name}</strong></span>
+            <span class="ecom-price__amount">
+              {r.price === 'partner'
+                ? <em class="ecom-price__partner">{r.unit}</em>
+                : <><strong>{r.price}</strong><small>{r.unit}</small></>}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p class="ecom-note">
+        <Icon name="globe" size={16}/>
+        <span>Obsługa procedury OSS obejmuje monitorowanie progu, przypisanie stawek obowiązujących w kraju nabywcy, deklarację kwartalną i pilnowanie terminu płatności. W procedurze IOSS deklaracje składa się co miesiąc, stąd wyższa stawka. Rejestracja do VAT-UE i informacje podsumowujące zostają w abonamencie i nie zmieniają ceny.</span>
+      </p>
+
+      <h3 class="ecom-subhead">Trzy policzone przykłady</h3>
+      <div class="ecom-examples">
+        {examples.map((e) => (
+          <article class="ecom-example">
+            <h4>{e.title}</h4>
+            <p class="ecom-example__intro">{e.intro}</p>
+            <ul class="ecom-example__calc">
+              <li><span>{fmt.format(e.tx)} transakcji</span><strong>{e.salesDocs} dok.</strong></li>
+              <li><span>{e.lines} pozycji na wyciągach</span><strong>{e.lineDocs} dok.</strong></li>
+              <li><span>{e.costDocs} faktur kosztowych</span><strong>{e.costDocs} dok.</strong></li>
+              <li class="ecom-example__sum"><span>Razem</span><strong>{e.totalDocs} dok.</strong></li>
+            </ul>
+            <ul class="ecom-example__price">
+              <li><span>Ryczałt, {e.bucketRange} dok., czynny podatnik VAT</span><strong>{e.base === null ? 'wycena indyw.' : `${fmt.format(e.base)} zł`}</strong></li>
+              {e.channelFee > 0 && (
+                <li><span>{e.channels - ecommerce.freeChannels} dodatkowe kanały</span><strong>{fmt.format(e.channelFee)} zł</strong></li>
+              )}
+              {e.ossFee > 0 && (
+                <li><span>Obsługa procedury VAT OSS</span><strong>{fmt.format(e.ossFee)} zł</strong></li>
+              )}
+            </ul>
+            <p class="ecom-example__total">
+              <span>Razem</span>
+              <strong>{e.total === null ? 'wycena indywidualna' : `${fmt.format(e.total)} zł netto / mies.`}</strong>
+            </p>
+          </article>
+        ))}
+      </div>
+
+      <p class="ecom-note">
+        <Icon name="calculator" size={16}/>
+        <span>Przykłady liczymy na dokładnych liczbach. <a href="/wycena?tryb=przeniesienie&branza=ecommerce">Kreator wyceny</a> pracuje na przedziałach, więc jego wynik bywa o jeden przedział wyższy niż wyliczenie powyżej. Dokładną kwotę potwierdzamy na Twoich rzeczywistych liczbach przed podpisaniem umowy.</span>
+      </p>
+
+      <h3 class="ecom-subhead">Czego nie doliczamy</h3>
+      <ul class="ecom-notcharged">
+        {notCharged.map((n) => (
+          <li><Icon name="check-circle" size={16}/><span>{n}</span></li>
+        ))}
+      </ul>
+
+      <div class="ecom-approach ecom-approach--tight">
+        <div class="ecom-approach__icon"><Icon name="file" size={22}/></div>
+        <div>
+          <h3>Reszta cennika działa tak samo jak w pozostałych branżach</h3>
+          <p>Do limitu dokumentów wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Bez zmian obowiązują też przedziały dokumentowe, rabaty lojalnościowe za staż współpracy i za terminowe dokumenty oraz dopłaty za dokumenty dostarczone po {surchargeFreeUntilDay}. dniu miesiąca. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</p>
+          <p>Obsługa kadrowa zespołu jest rozliczana za osobę: {hrZlecenie} zł netto miesięcznie przy umowie cywilnoprawnej bez składek ZUS i {hrEtat} zł przy umowie o pracę, przy minimalnym abonamencie kadrowym {hrMin} zł. Pełny zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.</p>
+        </div>
+      </div>
+
+      <div class="ecom-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=ecommerce" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swój sklep</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w e-commerce"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojego sklepu"
+    description="Jeśli prowadzisz sklep internetowy, sprzedajesz na marketplace'ach albo dopiero planujesz wejście na rynki zagraniczne, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje kanały sprzedaży, asortyment i model współpracy z dostawcami, a potem powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=ecommerce"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.ecom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.ecom-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.ecom-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.ecom-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+.ecom-subhead {
+  font-size: 1.375rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+}
+.ecom-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  line-height: 1.35;
+}
+.ecom-pill--good { background: var(--accent-100); color: var(--accent-700); }
+.ecom-pill--neutral { background: var(--ink-100); color: var(--text-muted); }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.ecom-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn pozwala ułożyć pięć kart bez pustego miejsca: trzy karty po
+     dwie kolumny w pierwszym rzędzie, dwie po trzy kolumny w drugim. */
+  .ecom-segments { grid-template-columns: repeat(6, 1fr); }
+  .ecom-segments > * { grid-column: span 2; }
+  .ecom-segments > :nth-child(4),
+  .ecom-segments > :nth-child(5) { grid-column: span 3; }
+}
+.ecom-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.ecom-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.ecom-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.ecom-segment h3 { font-size: 1.125rem; }
+.ecom-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.ecom-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.ecom-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.ecom-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dwa modele sprzedaży ─────────────────────────────────────────────── */
+.ecom-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .ecom-compare { grid-template-columns: 1fr 1fr; } }
+.ecom-compare__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ecom-compare__col--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.ecom-compare__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.ecom-compare__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.ecom-compare__col--good .ecom-compare__icon { background: var(--white); }
+.ecom-compare h3 { font-size: 1.25rem; }
+.ecom-compare p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.ecom-compare p.ecom-compare__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Blok ostrzegawczy ────────────────────────────────────────────────── */
+.ecom-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--accent-200);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+}
+.ecom-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+/* Wariant dla sekcji, w których stawka jest realnie kosztowna: wyłączenie
+   asortymentowe z VAT i magazyn za granicą. Kolor odróżnia je od zwykłych
+   wyjaśnień, żeby nie ginęły w rytmie strony. */
+.ecom-warning--danger { border-color: rgba(245,158,11,0.4); border-left-color: var(--warning); }
+.ecom-warning--danger .ecom-warning__icon { background: rgba(245,158,11,0.14); color: #92400e; }
+.ecom-warning h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.ecom-warning p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.ecom-warning p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .ecom-warning { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Panel wyjaśniający (ciemny) ──────────────────────────────────────── */
+.ecom-approach {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.ecom-approach__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.ecom-approach h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.ecom-approach p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.ecom-approach p + p { margin-top: 0.75rem; }
+.ecom-approach a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .ecom-approach { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Wyłączenia ze zwolnienia z VAT ───────────────────────────────────── */
+.ecom-exclusions {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .ecom-exclusions { grid-template-columns: repeat(4, 1fr); } }
+.ecom-exclusion {
+  display: flex;
+  gap: 0.875rem;
+  align-items: stretch;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--warning);
+  border-radius: var(--radius-lg);
+  padding: 1.375rem 1.5rem;
+}
+.ecom-exclusion__icon {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: rgba(245,158,11,0.14);
+  color: #92400e;
+  display: grid; place-items: center;
+}
+/* Nazwy kategorii mają różną długość, więc symbol PKWiU dosuwamy do dołu
+   karty - inaczej w rzędzie czterech kart wisiałby na czterech wysokościach. */
+.ecom-exclusion__body {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.ecom-exclusion__body strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.45;
+}
+.ecom-exclusion__body small {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Procedura OSS ────────────────────────────────────────────────────── */
+.ecom-oss {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  box-shadow: var(--shadow-sm);
+}
+.ecom-oss__head { max-width: 72ch; }
+.ecom-oss__head h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.ecom-oss__head p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.ecom-oss__head p + p { margin-top: 0.75rem; }
+.ecom-oss__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.625rem;
+  margin-top: 1.5rem;
+}
+.ecom-oss__list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.875rem 1.125rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+  line-height: 1.5;
+}
+.ecom-oss__list li :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 2px; }
+.ecom-oss__foot {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.7;
+}
+
+/* ── Warunki zwolnienia z kasy ────────────────────────────────────────── */
+.ecom-conditions {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .ecom-conditions { grid-template-columns: repeat(3, 1fr); } }
+.ecom-condition {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-lg);
+  padding: 1.375rem 1.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  font-weight: 500;
+  line-height: 1.55;
+}
+.ecom-condition__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+
+/* ── Karty ────────────────────────────────────────────────────────────── */
+.ecom-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .ecom-cards { grid-template-columns: repeat(3, 1fr); } }
+.ecom-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.ecom-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.ecom-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.ecom-card h4 { font-size: 1.0625rem; line-height: 1.4; }
+.ecom-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Towary wymagające kasy ───────────────────────────────────────────── */
+.ecom-goods {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.625rem;
+}
+.ecom-goods li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.875rem 1.125rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  line-height: 1.5;
+}
+.ecom-goods li :global(svg) { color: #92400e; flex-shrink: 0; margin-top: 3px; }
+
+/* ── DAC7 i KSeF ──────────────────────────────────────────────────────── */
+.ecom-duo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .ecom-duo { grid-template-columns: 1fr 1fr; } }
+.ecom-duo__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+.ecom-duo__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.ecom-duo__col h3 { font-size: 1.25rem; }
+.ecom-duo__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.ecom-duo__col p.ecom-duo__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+.ecom-duo__col a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.ecom-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .ecom-scope { grid-template-columns: repeat(2, 1fr); } }
+.ecom-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.ecom-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.ecom-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.ecom-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.ecom-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.ecom-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.ecom-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.ecom-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.ecom-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .ecom-benefits { grid-template-columns: 1fr; } }
+.ecom-benefits .lede { margin-top: 1rem; }
+.ecom-benefits__stats { margin-top: 2rem; }
+.ecom-benefits__link { margin-top: 1.75rem; }
+.ecom-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.ecom-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.ecom-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.ecom-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.ecom-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.ecom-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Cennik: przelicznik dokumentów ───────────────────────────────────── */
+.ecom-subhead--first { margin-top: 0; }
+.ecom-lede {
+  max-width: 72ch;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.ecom-conversion {
+  list-style: none;
+  display: grid;
+  gap: 0.625rem;
+}
+@media (min-width: 900px) { .ecom-conversion { grid-template-columns: 1fr 1fr; } }
+.ecom-conversion__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.875rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.ecom-conversion__rule { color: var(--text-muted); }
+.ecom-conversion__eq { display: grid; place-items: center; color: var(--accent-600); }
+.ecom-conversion__value {
+  font-weight: 700;
+  color: var(--accent-700);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .ecom-conversion__row { grid-template-columns: 1fr auto; }
+  .ecom-conversion__eq { display: none; }
+}
+
+/* ── Cennik: dopłata za kanał ─────────────────────────────────────────── */
+.ecom-channel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(1.25rem, 3vw, 2rem);
+  align-items: start;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-2xl);
+}
+@media (max-width: 720px) { .ecom-channel { grid-template-columns: 1fr; } }
+.ecom-channel__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-right: clamp(1.25rem, 3vw, 2rem);
+  border-right: 1px solid var(--accent-200);
+  max-width: 15rem;
+}
+@media (max-width: 720px) {
+  .ecom-channel__figure {
+    padding-right: 0;
+    padding-bottom: 1rem;
+    border-right: none;
+    border-bottom: 1px solid var(--accent-200);
+    max-width: none;
+  }
+}
+.ecom-channel__amount {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 800;
+  color: var(--accent-700);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.ecom-channel__unit { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+.ecom-channel__body p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.ecom-channel__body p + p { margin-top: 0.75rem; }
+
+/* ── Cennik: policzone przykłady ──────────────────────────────────────── */
+.ecom-examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .ecom-examples { grid-template-columns: repeat(3, 1fr); } }
+.ecom-example {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: clamp(1.5rem, 3vw, 1.75rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.ecom-example h4 { font-size: 1.0625rem; line-height: 1.4; }
+.ecom-example__intro { font-size: 0.875rem; color: var(--text-subtle); line-height: 1.55; }
+.ecom-example__calc,
+.ecom-example__price {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+}
+.ecom-example__calc { padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+.ecom-example__price { padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); margin-top: auto; }
+.ecom-example__calc li,
+.ecom-example__price li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+.ecom-example__calc span,
+.ecom-example__price span { color: var(--text-muted); line-height: 1.45; }
+.ecom-example__calc strong,
+.ecom-example__price strong {
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ecom-example__sum { padding-top: 0.375rem; border-top: 1px dashed var(--border); }
+.ecom-example__sum span { color: var(--text-strong); font-weight: 600; }
+.ecom-example__sum strong { color: var(--accent-700); }
+.ecom-example__total {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border);
+}
+.ecom-example__total span { font-size: 0.875rem; font-weight: 600; color: var(--text-strong); }
+.ecom-example__total strong {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── Cennik: czego nie doliczamy ──────────────────────────────────────── */
+.ecom-notcharged {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+.ecom-notcharged li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.ecom-notcharged li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 3px; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.ecom-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.ecom-price__head,
+.ecom-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.ecom-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.ecom-price__row { border-bottom: 1px solid var(--border-subtle); }
+.ecom-price__row:last-child { border-bottom: none; }
+.ecom-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.ecom-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.ecom-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.ecom-price__amount { text-align: right; }
+.ecom-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ecom-price__head--two,
+.ecom-price__row--two { grid-template-columns: 1fr auto; }
+/* Nazwy procedur i przypis o partnerze są długie, więc na wąskim ekranie
+   układamy je jedna pod drugą zamiast ściskać w dwóch kolumnach. */
+@media (max-width: 560px) {
+  .ecom-price__row--two { grid-template-columns: 1fr; row-gap: 0.25rem; }
+  .ecom-price__row--two .ecom-price__amount { text-align: left; }
+  .ecom-price__row--two .ecom-price__amount small { display: inline; margin-left: 0.375rem; }
+}
+.ecom-price__amount small { display: block; font-size: 0.75rem; color: var(--text-subtle); font-weight: 500; margin-top: 2px; }
+.ecom-price__partner { font-size: 0.875rem; color: var(--text-subtle); font-style: normal; }
+@media (max-width: 720px) {
+  .ecom-price__head { display: none; }
+  .ecom-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .ecom-price__situation { grid-column: 1 / -1; }
+}
+</style>

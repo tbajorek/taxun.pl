@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+---
+<BaseLayout
+  title="404 - strona nie istnieje"
+  description="Szukana strona nie istnieje. Wróć na stronę główną Taxun lub przeglądaj nasze usługi."
+  noindex
+>
+  <section class="notfound">
+    <div class="container container--narrow text-center">
+      <div class="notfound__code">404</div>
+      <h1>Strona, której szukasz, się przeprowadziła</h1>
+      <p class="lede">Możliwe, że wpisałeś nieprawidłowy adres lub strona została usunięta. Skorzystaj z linków poniżej.</p>
+      <div class="notfound__actions">
+        <a href="/" class="btn btn--accent btn--lg">
+          <Icon name="arrow-right" size={18} />
+          <span>Strona główna</span>
+        </a>
+        <a href="/kontakt" class="btn btn--outline btn--lg">
+          <Icon name="phone" size={18} />
+          <span>Skontaktuj się z nami</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+.notfound { padding: clamp(5rem, 12vw, 9rem) 0; text-align: center; }
+.notfound__code {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(6rem, 16vw, 11rem);
+  background: linear-gradient(135deg, var(--ink-700), var(--accent-500));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+.notfound h1 { max-width: 22ch; margin-inline: auto; }
+.notfound .lede { margin: 1rem auto 2rem; max-width: 60ch; }
+.notfound__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+</style>

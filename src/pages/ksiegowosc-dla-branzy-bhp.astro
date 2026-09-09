@@ -1,0 +1,1272 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  PKD_AKTUALIZACJA_DO,
+  PKD_NOWA_OD,
+  RYCZALT_HANDEL,
+  RYCZALT_USLUGI,
+  ULGA_NA_START_MONTHS,
+  VAT_ZWOLNIENIE_LIMIT,
+  ZUS_PREF_MONTHS,
+} from '../lib/tax-constants';
+import { pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaUslugi = pct(RYCZALT_USLUGI);
+const stawkaHandel = pct(RYCZALT_HANDEL);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * W branży BHP o kolumnie decyduje zakres usług, a nie obrót: doradztwo wyklucza
+ * zwolnienie ze względu na wysokość sprzedaży, więc wybór kolumny jest parametrem.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Szkolenia i nadzór bez doradztwa, kilka faktur miesięcznie'),
+  priceRow('ryczalt', 10, 'withVat', 'Zakres usług obejmujący doradztwo, kilka faktur miesięcznie'),
+  priceRow('ryczalt', 30, 'withVat', 'Kilkunastu klientów na stałych umowach abonamentowych'),
+  priceRow('kpir', 10, 'withVat', 'Działalność rozliczająca koszty przejazdów i sprzętu'),
+  priceRow('fk', 10, 'withVat', 'Firma BHP prowadzona w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt ${stawkaUslugi} od ${ryczalt} zł netto` },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta w cenie' },
+  { icon: 'globe', label: 'Obsługa zdalna w całej Polsce' },
+];
+
+const segments = [
+  {
+    icon: 'shield',
+    title: 'Specjalista BHP obsługujący firmy z zewnątrz',
+    description: 'Najczęstszy model w tej branży. Pracodawca zatrudniający do stu pracowników może powierzyć zadania służby BHP specjaliście spoza zakładu, więc Twoimi klientami są zwykle małe i średnie firmy na stałych umowach abonamentowych.',
+    points: [
+      'Rozliczanie stałych umów abonamentowych i faktur cyklicznych',
+      'Ustalenie, czy zakres Twoich usług pozwala na zwolnienie z VAT',
+      'Weryfikacja prawa do ryczałtu przy współpracy z byłym pracodawcą',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Firma szkoleniowa BHP',
+    description: 'Szkolenia wstępne i okresowe, kursy pierwszej pomocy, szkolenia dla pracodawców. Ta grupa ma najkorzystniejszą sytuację w VAT, ale też najwięcej do stracenia przy nieprecyzyjnym opisie usług.',
+    points: [
+      'Rozliczanie szkoleń korzystających ze zwolnienia przedmiotowego',
+      'Pilnowanie granicy między szkoleniem a doradztwem',
+      'Rozliczanie szkoleń finansowanych ze środków publicznych',
+    ],
+  },
+  {
+    icon: 'zap',
+    title: 'Obsługa BHP połączona z PPOŻ',
+    description: 'Ochrona przeciwpożarowa, instrukcje bezpieczeństwa pożarowego, przeglądy sprzętu. Zakres formalnie odrębny, ale podatkowo traktowany podobnie, bo obie grupy usług mieszczą się w tej samej kategorii działalności technicznej.',
+    points: [
+      'Wspólne rozliczanie usług BHP i PPOŻ',
+      'Rozdzielenie usług od sprzedaży sprzętu i wyposażenia',
+      'Rozliczanie przeglądów i pomiarów zlecanych podwykonawcom',
+    ],
+  },
+  {
+    icon: 'search',
+    title: 'Nadzór na budowach i obiektach',
+    description: 'Koordynacja bezpieczeństwa, kontrole stanu obiektów, sporządzanie dokumentacji powypadkowej. Praca w terenie oznacza koszty przejazdów, sprzętu pomiarowego i odzieży, które warto rozliczyć prawidłowo.',
+    points: [
+      'Rozliczanie kosztów przejazdów, noclegów i sprzętu',
+      'Dokumentacja powypadkowa i ocena ryzyka zawodowego',
+      'Faktury dla generalnych wykonawców i podwykonawców',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Firma z zespołem lub spółka',
+    description: 'Kilku specjalistów, własna sala szkoleniowa, stała obsługa większych klientów. Do rozliczeń podatkowych dochodzi obsługa kadrowa i rozliczanie współpracowników na własnych działalnościach.',
+    points: [
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+      'Umowy z zespołem, etatowe i cywilnoprawne',
+      'Rozliczanie podwykonawców prowadzących własne firmy',
+    ],
+  },
+];
+
+/**
+ * Cała branża mieści się praktycznie w jednej stawce, ale wynika ona z dwóch
+ * odrębnych pozycji ustawy, a sprzedaż towarów ma własną. Stąd trzy karty
+ * zamiast jednego zdania o stawce.
+ */
+const rates = [
+  {
+    featured: true,
+    rate: stawkaUslugi,
+    title: 'Usługi o charakterze technicznym',
+    body: 'Nadzór BHP, kontrola przestrzegania przepisów, ocena ryzyka zawodowego, opracowywanie instrukcji, dokumentacja powypadkowa i obsługa budów są kwalifikowane jako pozostałe usługi profesjonalne, naukowe i techniczne. Podstawą stawki jest wtedy przepis o działalności usługowej.',
+    note: 'Przedsiębiorcy często zaliczają te czynności do edukacji, ponieważ kojarzą całą branżę ze szkoleniami. Organy podatkowe konsekwentnie wskazują, że dokumentacja i nadzór mają charakter techniczny, a nie edukacyjny.',
+  },
+  {
+    rate: stawkaUslugi,
+    title: 'Szkolenia',
+    body: 'Szkolenia wstępne, okresowe i kursy mieszczą się w usługach w zakresie edukacji. Stawka jest ta sama, ale podstawa prawna inna, więc w ewidencji warto opisać je odrębnie.',
+    note: 'To rozróżnienie nie zmienia kwoty podatku. Ma znaczenie wtedy, gdy urząd pyta, z czego wynika zastosowana stawka.',
+  },
+  {
+    rate: stawkaHandel,
+    title: 'Sprzedaż towarów',
+    body: 'Jeżeli obok usług sprzedajesz znaki bezpieczeństwa, apteczki, gaśnice czy odzież roboczą, to jest to działalność handlowa objęta znacznie niższą stawką. Wymaga jednak rozdzielenia na fakturze i w ewidencji.',
+    note: 'Jeśli kupujesz znaki i montujesz je u klienta, sprzedaż towaru i usługę montażu wykazuje się osobno.',
+  },
+];
+
+/**
+ * Trzy rodzaje sprzedaży, które w praktyce występują u jednego behapowca,
+ * a w VAT są traktowane zupełnie inaczej. To sedno problemu podatkowego
+ * całej branży, dlatego stoją obok siebie w jednym zestawieniu.
+ */
+const vatRows = [
+  {
+    tone: 'good',
+    what: 'Szkolenia wstępne i okresowe',
+    detail: 'prowadzone zgodnie z Kodeksem pracy i rozporządzeniem o szkoleniu w dziedzinie BHP',
+    status: 'Zwolnione przedmiotowo',
+    note: 'Kształcenie zawodowe prowadzone w formach i na zasadach przewidzianych w odrębnych przepisach. Zwolnienie nie zależy od wysokości obrotu.',
+  },
+  {
+    tone: 'neutral',
+    what: 'Nadzór, kontrola przepisów, dokumentacja, ocena ryzyka',
+    detail: 'zadania służby BHP wykonywane u klienta',
+    status: 'Opodatkowane',
+    note: 'Sprzedaż opodatkowana, ale sama w sobie nie zamyka drogi do zwolnienia ze względu na wysokość sprzedaży.',
+  },
+  {
+    tone: 'warn',
+    what: 'Doradztwo w zakresie organizacji i metod pracy',
+    detail: 'porady i rekomendacje dla pracodawcy',
+    status: 'Opodatkowane i wykluczające zwolnienie',
+    note: `Wyłącza zwolnienie ze względu na wysokość sprzedaży od pierwszej wykonanej czynności, niezależnie od kwoty.`,
+  },
+];
+
+const etatRules = [
+  {
+    icon: 'zap',
+    title: 'Ryczałt',
+    description: 'Prawo do ryczałtu przepada, jeżeli świadczysz na rzecz obecnego lub byłego pracodawcy usługi odpowiadające czynnościom wykonywanym w ramach stosunku pracy w roku bieżącym lub poprzednim. Utrata następuje od dnia uzyskania takiego przychodu i obowiązuje do końca roku podatkowego.',
+    scope: 'rok bieżący i poprzedni',
+  },
+  {
+    icon: 'chart',
+    title: 'Podatek liniowy',
+    description: 'Tutaj ograniczenie obejmuje tylko rok bieżący. Jeżeli w danym roku wykonujesz dla byłego pracodawcy czynności tożsame z etatowymi, w tym roku rozliczysz się według skali podatkowej.',
+    scope: 'rok bieżący',
+  },
+  {
+    icon: 'shield',
+    title: 'Ulgi w ZUS',
+    description: `Ulga na start i preferencyjne składki nie przysługują, jeżeli wykonujesz dla byłego pracodawcy te same czynności co na etacie w roku bieżącym lub poprzednim. Zamiast obniżonych składek przez pierwsze ${ULGA_NA_START_MONTHS} i kolejne ${ZUS_PREF_MONTHS} miesięcy płacisz pełne.`,
+    scope: 'rok bieżący i poprzedni',
+  },
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów lub księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'zap',
+    title: 'VAT, podział sprzedaży i KSeF',
+    description: 'Ustalamy status w VAT na podstawie faktycznego zakresu usług, a przy sprzedaży mieszanej ustawiamy prawidłowy podział i proporcję odliczenia. Faktury wysyłamy i odbieramy w KSeF.',
+    points: [
+      'Weryfikacja zwolnienia przedmiotowego i zwolnienia ze względu na obrót',
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Proporcja odliczenia podatku naliczonego i roczna korekta',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Koszty typowe dla branży',
+    description: 'Znamy strukturę kosztów firmy BHP i wiemy, które wydatki bywają kwestionowane przy kontroli.',
+    points: [
+      'Przejazdy, noclegi i delegacje przy obsłudze klientów w terenie',
+      'Sprzęt pomiarowy, odzież robocza i wyposażenie sali szkoleniowej',
+      'Materiały szkoleniowe, literatura fachowa i szkolenia okresowe dla Ciebie',
+    ],
+  },
+  {
+    icon: 'headset',
+    title: 'ZUS, ulgi i kontakt z urzędami',
+    description: 'Naliczamy składki właściciela działalności i pilnujemy progów przychodowych wpływających na składkę zdrowotną. W kontaktach z urzędem skarbowym i ZUS wspieramy Cię dokumentacją: kompletujemy zestawienia z ksiąg i przygotowujemy wyjaśnienia dotyczące ujęcia zdarzeń.',
+    points: [
+      'Obsługa ZUS właściciela JDG w cenie abonamentu',
+      'Ulga na start i preferencyjne składki dla rozpoczynających działalność',
+      'Wnioski o interpretację indywidualną w sprawie stawki ryczałtu i statusu w VAT',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.' },
+  { icon: 'clock', title: 'Faktury cykliczne bez ręcznej pracy', description: 'Obsługa BHP opiera się zwykle na stałych umowach abonamentowych z wieloma klientami. Sprzedaż cykliczną obsługujemy przez KSeF, więc comiesięczne wystawianie kilkunastu takich samych faktur nie zabiera Ci czasu.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twoje umowy i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy wyłącznie przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Analiza zakresu usług i wybór formy opodatkowania', description: 'Sprawdzamy, jakie rodzaje usług będziesz świadczyć, jaki będzie ich status w VAT i czy nie występuje problem byłego pracodawcy.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające faktycznemu zakresowi działalności, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}. Zwykle potrzebne są przynajmniej dwa: jeden dla nadzoru i doradztwa, drugi dla szkoleń.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start lub preferencyjne składki.' },
+  { title: 'Decyzja w sprawie VAT', description: 'Ustalamy, czy możesz pozostać podatnikiem zwolnionym, czy zakres usług wymusza rejestrację. W razie potrzeby składamy VAT-R.' },
+  { title: 'Uprawnienia w KSeF i pełnomocnictwo UPL-1', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury wychodziły i przychodziły bez Twojego udziału. Natomiast dzięki UPL-1 podpisujemy za Ciebie deklaracje i JPK.' },
+  { title: 'Onboarding w portalu klienta', description: 'Od pierwszego miesiąca masz dostęp do dokumentów i bieżącego stanu rozliczeń.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Przechodzimy przez Twoje umowy i zakres usług, ustalamy status w VAT i właściwe stawki ryczałtu. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i uzyskanie pełnomocnictw załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje przy usługach BHP?',
+    a: `W praktyce ${stawkaUslugi}, przy czym wynika ona z dwóch odrębnych przepisów. Nadzór, kontrola przepisów, ocena ryzyka i dokumentacja są kwalifikowane jako pozostałe usługi profesjonalne, naukowe i techniczne. Szkolenia mieszczą się w usługach w zakresie edukacji. Stawka jest ta sama, ale podstawa prawna inna, więc warto opisać to prawidłowo w ewidencji.`,
+  },
+  {
+    q: 'Czy dokumentacja powypadkowa to edukacja?',
+    a: 'Nie. Organy podatkowe konsekwentnie wskazują, że opracowywanie dokumentacji ma charakter techniczny, a nie edukacyjny. Jest to częsty błąd w tej branży, ponieważ przedsiębiorcy kojarzą całą działalność BHP ze szkoleniami i przypisują do edukacji także czynności dokumentacyjne.',
+  },
+  {
+    q: 'Czy szkolenia BHP są zwolnione z VAT?',
+    a: 'Szkolenia wstępne i okresowe prowadzone zgodnie z przepisami Kodeksu pracy i rozporządzeniem w sprawie szkolenia w dziedzinie BHP są traktowane jako kształcenie zawodowe prowadzone w formach i na zasadach przewidzianych w odrębnych przepisach, a więc korzystają ze zwolnienia przedmiotowego. Warunkiem jest zgodność z wymaganymi programami, liczbą godzin i sposobem dokumentowania. Dowolnie przygotowany kurs tego warunku nie spełnia.',
+  },
+  {
+    q: 'Czy jako behapowiec mogę korzystać ze zwolnienia z VAT ze względu na obrót?',
+    a: 'Zależy od zakresu usług. Nadzór BHP, kontrola przestrzegania przepisów i prowadzenie dokumentacji nie są doradztwem, więc nie wykluczają zwolnienia. Doradztwo wyklucza je natomiast od pierwszej wykonanej czynności, niezależnie od kwoty. Przechodzimy przez Twoje umowy i mówimy wprost, jak oceniamy ryzyko.',
+  },
+  {
+    q: `Czy szkolenia wliczają się do limitu ${limitVat}?`,
+    a: 'Nie, jeśli korzystają ze zwolnienia przedmiotowego. Sprzedaży zwolnionej przedmiotowo nie wlicza się do wartości sprzedaży decydującej o zwolnieniu ze względu na obrót. W praktyce oznacza to, że behapowiec, u którego szkolenia stanowią większość przychodu, może pozostać podatnikiem zwolnionym mimo obrotów wyraźnie wyższych.',
+  },
+  {
+    q: 'Czy na jednej fakturze mogę mieć szkolenie i doradztwo?',
+    a: 'Tak. Jedna faktura może dokumentować dwie usługi, szkolenie jako zwolnione oraz doradztwo jako opodatkowane, co potwierdzają interpretacje. Ważne, żeby pozycje były rozdzielone, a opis odpowiadał temu, co faktycznie zostało wykonane.',
+  },
+  {
+    q: 'Odchodzę z etatu w służbie BHP i chcę obsługiwać ten sam zakład. Co powinienem sprawdzić?',
+    a: 'Czy usługi z umowy odpowiadają czynnościom wykonywanym wcześniej na etacie. Jeśli tak, w przypadku ryczałtu ograniczenie obejmuje rok bieżący i poprzedni, a w przypadku podatku liniowego tylko rok bieżący. Osobno przepada prawo do ulgi na start i preferencyjnych składek ZUS. Porównujemy zakres obowiązków z etatu z zakresem usług z kontraktu, zanim podpiszesz umowę.',
+  },
+  {
+    q: 'Sprzedaję też znaki BHP i apteczki. Jak to rozliczyć?',
+    a: `Sprzedaż towarów jest działalnością handlową objętą na ryczałcie stawką ${stawkaHandel}, czyli znacznie niższą niż usługi, więc wymaga rozdzielenia na fakturze i w ewidencji. Jeśli kupujesz znaki i montujesz je u klienta, sprzedaż towaru i usługę montażu wykazuje się osobno.`,
+  },
+  {
+    q: 'Jakie kody PKD powinienem mieć?',
+    a: `Zwykle przynajmniej dwa: jeden dla doradztwa, nadzoru i audytów, drugi dla szkoleń. Jeśli zarejestrowałeś działalność przed ${PKD_NOWA_OD}, kody trzeba zaktualizować do ${PKD_AKTUALIZACJA_DO}, ponieważ dotychczasowa podklasa pozostałej działalności profesjonalnej, naukowej i technicznej (74.90.Z) została rozdzielona na trzy odrębne podklasy. Weryfikujemy to u każdego klienta i zgłaszamy zmianę za Ciebie.`,
+  },
+  {
+    q: 'Czy kod PKD wpływa na stawkę ryczałtu albo na VAT?',
+    a: 'Nie bezpośrednio. O stawce ryczałtu decyduje klasyfikacja PKWiU, a o statusie w VAT faktyczny zakres usług. Kod PKD porządkuje wpis w rejestrze, ale rozbieżność między nim a rzeczywistą działalnością bywa punktem wyjścia do pytań ze strony urzędu.',
+  },
+  {
+    q: 'Mam część sprzedaży zwolnioną, a część opodatkowaną. Co z odliczeniem VAT?',
+    a: 'Odliczanie podatku naliczonego wymaga wtedy proporcji, a po zakończeniu roku korekty. Ustawiamy to od początku współpracy i pilnujemy terminów, żeby korekta nie zaskoczyła Cię przy rocznym rozliczeniu.',
+  },
+  {
+    q: 'Zatrudniam drugiego specjalistę. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę, a umowa cywilnoprawna bez składek ZUS ${hrZlecenie} zł. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla firmy BHP?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${priceRows[1].price} zł netto. KPiR zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla branży BHP', href: '/ksiegowosc-dla-branzy-bhp' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-branzy-bhp#service`,
+  name: 'Księgowość dla branży BHP',
+  serviceType: 'Usługi księgowe dla specjalistów i firm z branży BHP',
+  description: 'Obsługa księgowa specjalistów BHP prowadzących własną działalność, firm szkoleniowych oraz spółek świadczących obsługę BHP i PPOŻ. Ryczałt, KPiR i pełna księgowość, ustalenie statusu w VAT, podział sprzedaży zwolnionej i opodatkowanej.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-branzy-bhp`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Specjaliści BHP na własnej działalności, firmy szkoleniowe BHP, firmy obsługi BHP i PPOŻ',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla specjalistów i firm BHP',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}${r.vatLabel ? `, ${r.vatLabel}` : ''}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title={`Księgowość dla branży BHP - szkolenia i nadzór`}
+  description={`Księgowość dla specjalistów BHP na własnej działalności. Ryczałt ${stawkaUslugi}, zwolnienie szkoleń z VAT, granica doradztwa. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla specjalistów i firm z branży BHP"
+    description="Rozliczamy behapowców prowadzących własną działalność, firmy szkoleniowe oraz spółki świadczące obsługę BHP i PPOŻ. Ustalamy właściwą stawkę ryczałtu, sprawdzamy, czy przysługuje Ci zwolnienie z VAT, i pilnujemy prawidłowego podziału sprzedaży. Ty odpowiadasz za bezpieczeństwo w firmach klientów, a my za Twoje rozliczenia."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla branży BHP' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=bhp" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Rozliczenia dopasowane do tego, co masz w umowach</h2>
+        <p>Branża BHP wygląda inaczej u osoby obsługującej kilkanaście małych firm na stałych abonamentach, a inaczej u kogoś, kto prowadzi wyłącznie szkolenia albo pilnuje bezpieczeństwa na budowie. Te różnice mają bezpośrednie przełożenie na podatki, o czym piszemy niżej. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="bhp-segments">
+        {segments.map((s) => (
+          <article class="bhp-segment">
+            <div class="bhp-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ryczałt ───────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt {stawkaUslugi}, ale z dwóch różnych podstaw prawnych</h2>
+        <p>Dobra wiadomość jest taka, że praktycznie cała działalność BHP mieści się w stawce {stawkaUslugi}. Zła jest taka, że wynika to z dwóch odrębnych przepisów, a przypisanie usługi do niewłaściwego z nich bywa punktem wyjścia do sporu. Interpretacje wydawane w ostatnich latach są w tej sprawie konsekwentne.</p>
+      </div>
+
+      <div class="bhp-rates">
+        {rates.map((r) => (
+          <article class={`bhp-rate ${r.featured ? 'bhp-rate--featured' : ''}`}>
+            <span class={`bhp-rate__value ${r.featured ? 'bhp-rate__value--featured' : ''}`}>{r.rate}</span>
+            <h3>{r.title}</h3>
+            <p>{r.body}</p>
+            <p class="bhp-rate__note">{r.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="bhp-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Ryczałt liczy się osobno dla każdego rodzaju działalności, a warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody. Prowadzimy taką ewidencję w ramach abonamentu, bez dopłat. O stawce decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności, a nie kod PKD ani nazwa usługi w umowie. Jeśli sprawa jest niejednoznaczna, przygotowujemy wniosek o interpretację indywidualną albo o opinię klasyfikacyjną urzędu statystycznego.</span>
+      </p>
+
+      <div class="bhp-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT w branży BHP</span>
+        <h2>Jedno słowo w umowie decyduje o tym, czy musisz być VAT-owcem</h2>
+        <p>To najważniejsza sekcja na tej stronie. W branży BHP sytuacja w VAT nie zależy od wysokości obrotu, tylko od tego, co dokładnie masz zapisane w zakresie usług. Trzy rodzaje sprzedaży, które w praktyce występują u jednego behapowca, są traktowane zupełnie inaczej.</p>
+      </div>
+
+      <div class="bhp-vat">
+        <div class="bhp-vat__head">
+          <span>Rodzaj sprzedaży</span>
+          <span>Traktowanie w VAT</span>
+        </div>
+        {vatRows.map((r) => (
+          <div class="bhp-vat__row">
+            <div class="bhp-vat__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="bhp-vat__how">
+              <span class={`bhp-pill bhp-pill--${r.tone}`}>{r.status}</span>
+              <p>{r.note}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="bhp-vat-detail">
+        <article class="bhp-vat-detail__col">
+          <div class="bhp-vat-detail__head">
+            <Icon name="search" size={20}/>
+            <h3>Dlaczego doradztwo jest tak istotne</h3>
+          </div>
+          <p>Przepisy o zwolnieniu ze względu na wysokość sprzedaży wyłączają z niego usługi doradztwa. Wyłączenie działa od pierwszej wykonanej czynności i nie zależy od kwoty. Behapowiec, który w zakresie obowiązków ma doradzanie klientowi w sprawie organizacji stanowisk pracy, musi być czynnym podatnikiem VAT niezależnie od tego, czy zarobił dwadzieścia tysięcy, czy dwieście.</p>
+          <p>Jednocześnie organy podatkowe wielokrotnie potwierdzały, że sam nadzór BHP, kontrola przestrzegania przepisów i prowadzenie dokumentacji doradztwem nie są, ponieważ polegają na wykonywaniu czynności, a nie na udzielaniu porad i rekomendacji. Rozporządzenie o służbie BHP wymienia ponad dwadzieścia zadań, a doradczy charakter ma tylko część z nich.</p>
+          <p>W praktyce rozstrzyga więc to, jak opisany jest zakres usług w umowie i na fakturze. Nie chodzi o kreatywne nazewnictwo, tylko o to, żeby dokumenty odpowiadały temu, co faktycznie robisz. Przechodzimy przez Twoje umowy razem z Tobą i mówimy wprost, jak oceniamy ryzyko.</p>
+        </article>
+        <article class="bhp-vat-detail__col bhp-vat-detail__col--accent">
+          <div class="bhp-vat-detail__head">
+            <Icon name="check-circle" size={20}/>
+            <h3>Limit {limitVat} liczy się inaczej, niż myślisz</h3>
+          </div>
+          <p>Sprzedaży zwolnionej przedmiotowo nie wlicza się do wartości sprzedaży decydującej o zwolnieniu ze względu na obrót. Skoro szkolenia wstępne i okresowe są zwolnione przedmiotowo, to nie powiększają one limitu.</p>
+          <p>Oznacza to, że behapowiec, u którego szkolenia stanowią większość przychodu, może pozostać podatnikiem zwolnionym mimo obrotów wyraźnie przekraczających {limitVat}. Liczy się wyłącznie sprzedaż opodatkowana.</p>
+          <p class="bhp-vat-detail__foot">To informacja, która w tej branży realnie zmienia rachunek, a rzadko pada w rozmowie z biurem rachunkowym.</p>
+        </article>
+      </div>
+
+      <p class="bhp-note">
+        <Icon name="shield" size={16}/>
+        <span>Jeżeli część sprzedaży jest zwolniona, a część opodatkowana, odliczanie podatku naliczonego wymaga proporcji. Ustawiamy to od początku i pilnujemy rocznej korekty. Na jednej fakturze można zresztą wykazać obie usługi, szkolenie jako zwolnione i doradztwo jako opodatkowane, co potwierdzają interpretacje. Znaczenie pojęć, które padają w tej sekcji, wyjaśniamy w <a href="/slownik">słowniku księgowym</a>. Jeśli obok szkoleń BHP prowadzisz również inne kursy i szkolenia, pozostałe podstawy zwolnienia dla edukacji zestawiamy na podstronie dla <a href="/ksiegowosc-dla-branzy-edukacyjnej">branży edukacyjnej</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Przejście z etatu ─────────────────────────────────────────────── -->
+  <section class="section section--alt" id="przejscie-z-etatu">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Przejście z etatu</span>
+        <h2>Odchodzisz z etatu i chcesz obsługiwać ten sam zakład? Sprawdź to najpierw</h2>
+        <p>W tej branży jest to scenariusz podręcznikowy. Pracownik służby BHP odchodzi z zakładu i wraca do niego jako specjalista spoza zakładu, na własnej działalności. Rzecz w tym, że wykonywane czynności bywają wtedy niemal tożsame z etatowymi, a przepisy podatkowe i składkowe reagują na to w trzech miejscach naraz.</p>
+      </div>
+
+      <div class="bhp-rules">
+        {etatRules.map((r) => (
+          <article class="bhp-rule">
+            <div class="bhp-rule__icon"><Icon name={r.icon} size={22}/></div>
+            <div class="bhp-rule__body">
+              <h3>{r.title}</h3>
+              <p>{r.description}</p>
+            </div>
+            <span class="bhp-rule__scope">Ograniczenie obejmuje: {r.scope}</span>
+          </article>
+        ))}
+      </div>
+
+      <aside class="bhp-warning">
+        <div class="bhp-warning__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Liczy się faktyczna tożsamość czynności, a nie nazwa stanowiska</h3>
+          <p>Zakres zadań pracownika służby BHP i zakres usług specjalisty spoza zakładu bywają zbieżne, ale nie zawsze tożsame, więc ocena wymaga porównania obu dokumentów. Robimy to na bezpłatnej konsultacji, zanim podpiszesz umowę z dawnym pracodawcą.</p>
+          <p>Przy okazji warto sprawdzić, jak sama współpraca jest zorganizowana. Od lipca 2026 roku inspektor pracy może uznać umowę B2B za stosunek pracy w drodze decyzji administracyjnej, a układ, w którym pracujesz dla jednego dawnego pracodawcy w jego godzinach i pod jego kierownictwem, jest tu najbardziej narażony. Opisujemy to szczegółowo w artykule o <a href="/wiedza/nowe-uprawnienia-pip-2026">nowych uprawnieniach PIP</a>.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Kody PKD ──────────────────────────────────────────────────────── -->
+  <section class="section" id="pkd">
+    <div class="container">
+      <div class="bhp-pkd">
+        <div class="bhp-pkd__head">
+          <span class="eyebrow">Obowiązki formalne</span>
+          <h2>Nowe kody PKD zmieniły się akurat dla Twojej branży</h2>
+          <p class="lede">Nowa klasyfikacja działalności obowiązuje od {PKD_NOWA_OD}, a przedsiębiorcy zarejestrowani wcześniej mają czas na dostosowanie kodów do {PKD_AKTUALIZACJA_DO}. Zmiana dotknęła branżę BHP bezpośrednio, ponieważ dotychczasowa pozostała działalność profesjonalna, naukowa i techniczna (74.90.Z) została rozdzielona na trzy odrębne podklasy.</p>
+        </div>
+        <div class="bhp-pkd__grid">
+          <article class="bhp-pkd__item">
+            <div class="bhp-pkd__icon"><Icon name="file" size={20}/></div>
+            <h3>Zwykle potrzebne są dwa kody</h3>
+            <p>Doradztwo, nadzór i audyty BHP trafiają dziś do nowej podklasy pozostałej działalności profesjonalnej, natomiast szkolenia mają własny kod w obszarze edukacji pozaszkolnej. Rzadko która firma z tej branży zajmuje się wyłącznie jednym rodzajem działalności.</p>
+          </article>
+          <article class="bhp-pkd__item">
+            <div class="bhp-pkd__icon"><Icon name="clock" size={20}/></div>
+            <h3>Bez aktualizacji kody przypisze urząd</h3>
+            <p>Jeżeli nie zaktualizujesz wpisu samodzielnie, kody zostaną przypisane automatycznie według kluczy przejść, a efekt nie musi odpowiadać temu, czym faktycznie się zajmujesz. Weryfikujemy to u każdego klienta i zgłaszamy zmianę w CEIDG, co jest bezpłatne i natychmiastowe.</p>
+          </article>
+          <article class="bhp-pkd__item">
+            <div class="bhp-pkd__icon"><Icon name="search" size={20}/></div>
+            <h3>Kod PKD nie zmienia stawki podatku</h3>
+            <p>Zmiana klasyfikacji nie zmieniła stawek ryczałtu. O stawce nadal decyduje PKWiU, które pozostało bez zmian. Kod PKD porządkuje wpis do rejestru, ale sam w sobie nie przesądza o wysokości podatku ani o statusie w VAT.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Obsługę prowadzimy w całości online, więc dokumenty ze szkolenia albo z nadzoru na budowie wysyłasz zdjęciem z telefonu. Opisujemy to na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+      </div>
+      <div class="bhp-scope">
+        {scope.map((s) => (
+          <article class="bhp-scope__item">
+            <div class="bhp-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="bhp-actions">
+        <a href="/ksiegowosc" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Pełny zakres księgowości</span>
+        </a>
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="bhp-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia prowadzone w tle, kiedy Ty jesteś u&nbsp;klientów</h2>
+          <p class="lede">Praca behapowca to głównie wyjazdy, szkolenia i obiekty, a nie biurko. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="bhp-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow bhp-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="bhp-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="bhp-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="bhp-startup">
+        <div class="bhp-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zakładasz firmę BHP? Ustawmy to dobrze od pierwszego dnia</h2>
+          <p class="lede">Rejestracja działalności BHP nie wymaga koncesji ani wpisu do rejestru działalności regulowanej. Wymagania kwalifikacyjne dla specjalisty spoza zakładu wynikają z przepisów o służbie BHP i to pracodawca odpowiada za sprawdzenie, czy je spełniasz. Od strony podatkowej natomiast decyzje podejmowane przy rejestracji wiążą Cię na cały rok.</p>
+        </div>
+
+        <ol class="bhp-steps">
+          {startupSteps.map((s, i) => (
+            <li class="bhp-step">
+              <span class="bhp-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="bhp-startup__cols">
+          <div class="bhp-startup__col bhp-startup__col--primary">
+            <span class="bhp-startup__pill bhp-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="bhp-startup__col">
+            <span class="bhp-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=bhp" class="btn btn--accent btn--lg bhp-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla firmy BHP</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. W tej branży cena zależy przede wszystkim od statusu w VAT, a ten wynika z zakresu Twoich usług, a nie z wysokości obrotu.</p>
+      </div>
+
+      <div class="bhp-price">
+        <div class="bhp-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="bhp-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="bhp-price__row">
+            <span class="bhp-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów{r.vatLabel ? `, ${r.vatLabel}` : ''}</small>
+            </span>
+            <span class="bhp-price__situation">{r.situation}</span>
+            <span class="bhp-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="bhp-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy. Obsługa kadrowa zespołu zaczyna się od {hrZlecenie} zł netto miesięcznie za osobę przy umowie cywilnoprawnej bez składek ZUS i od {hrMin} zł przy umowie o pracę.</span>
+      </p>
+
+      <div class="bhp-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=bhp" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swoją firmę</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość w branży BHP"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej firmy"
+    description="Jeśli prowadzisz obsługę BHP, szkolisz albo dopiero planujesz odejść z etatu na własną działalność, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje umowy, ustalimy status w VAT i powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=bhp"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.bhp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.bhp-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.bhp-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.bhp-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.bhp-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa pięć kart po trzy w rzędzie, a dwie ostatnie
+     rozkładają się symetrycznie w drugim wierszu. */
+  .bhp-segments { grid-template-columns: repeat(6, 1fr); }
+  .bhp-segments > * { grid-column: span 2; }
+  .bhp-segments > :nth-child(4) { grid-column: 2 / span 2; }
+  .bhp-segments > :nth-child(5) { grid-column: 4 / span 2; }
+}
+.bhp-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.bhp-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.bhp-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.bhp-segment h3 { font-size: 1.125rem; }
+.bhp-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.bhp-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.bhp-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.bhp-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Ryczałt ──────────────────────────────────────────────────────────── */
+.bhp-rates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .bhp-rates { grid-template-columns: repeat(3, 1fr); } }
+.bhp-rate {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.bhp-rate--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.bhp-rate__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--ink-800);
+}
+.bhp-rate__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.bhp-rate h3 { font-size: 1.25rem; }
+.bhp-rate p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.bhp-rate p.bhp-rate__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── VAT ──────────────────────────────────────────────────────────────── */
+.bhp-vat {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.bhp-vat__head,
+.bhp-vat__row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+}
+.bhp-vat__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.bhp-vat__row { border-bottom: 1px solid var(--border-subtle); }
+.bhp-vat__row:last-child { border-bottom: none; }
+.bhp-vat__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.bhp-vat__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.bhp-vat__how p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; margin-top: 0.5rem; }
+.bhp-pill {
+  display: inline-flex;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+}
+.bhp-pill--good { background: var(--accent-100); color: var(--accent-700); }
+.bhp-pill--neutral { background: var(--ink-100); color: var(--ink-700); }
+.bhp-pill--warn { background: #FEF3C7; color: #92400E; }
+@media (max-width: 720px) {
+  .bhp-vat__head { display: none; }
+  .bhp-vat__row { grid-template-columns: 1fr; gap: 0.75rem; }
+}
+
+.bhp-vat-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 980px) { .bhp-vat-detail { grid-template-columns: 1.15fr 1fr; } }
+.bhp-vat-detail__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.bhp-vat-detail__col--accent {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.bhp-vat-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+.bhp-vat-detail__head h3 { font-size: 1.125rem; }
+.bhp-vat-detail__col :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.bhp-vat-detail__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.bhp-vat-detail__col p + p { margin-top: 0.75rem; }
+.bhp-vat-detail__foot {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--accent-200);
+  font-size: 0.875rem !important;
+  color: var(--text-subtle) !important;
+}
+
+/* ── Przejście z etatu ────────────────────────────────────────────────── */
+.bhp-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .bhp-rules { grid-template-columns: repeat(3, 1fr); } }
+.bhp-rule {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.bhp-rule:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.bhp-rule__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.bhp-rule h3 { font-size: 1.125rem; margin-bottom: 0.375rem; }
+.bhp-rule p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.bhp-rule__body { flex: 1; }
+.bhp-rule__scope {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  color: var(--ink-700);
+}
+
+.bhp-warning {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.bhp-warning__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.bhp-warning h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.bhp-warning p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.bhp-warning p + p { margin-top: 0.75rem; }
+.bhp-warning a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .bhp-warning { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Kody PKD ─────────────────────────────────────────────────────────── */
+.bhp-pkd {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.bhp-pkd__head { max-width: 75ch; }
+.bhp-pkd__head .lede { margin-top: 1rem; }
+.bhp-pkd__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+@media (min-width: 900px) { .bhp-pkd__grid { grid-template-columns: repeat(3, 1fr); } }
+.bhp-pkd__item {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+.bhp-pkd__icon {
+  width: 38px; height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border: 1px solid var(--border);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.875rem;
+}
+.bhp-pkd__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.bhp-pkd__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.bhp-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .bhp-scope { grid-template-columns: repeat(2, 1fr); } }
+.bhp-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.bhp-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.bhp-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.bhp-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.bhp-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.bhp-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.bhp-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.bhp-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.bhp-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .bhp-benefits { grid-template-columns: 1fr; } }
+.bhp-benefits .lede { margin-top: 1rem; }
+.bhp-benefits__stats { margin-top: 2rem; }
+.bhp-benefits__link { margin-top: 1.75rem; }
+.bhp-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.bhp-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.bhp-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.bhp-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.bhp-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.bhp-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.bhp-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.bhp-startup__head { max-width: 70ch; }
+.bhp-startup__head .lede { margin-top: 1rem; }
+.bhp-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .bhp-steps { grid-template-columns: repeat(3, 1fr); } }
+.bhp-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.bhp-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.bhp-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.bhp-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.bhp-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .bhp-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.bhp-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.bhp-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.bhp-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.bhp-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.bhp-startup__col h3 { font-size: 1.1875rem; }
+.bhp-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.bhp-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.bhp-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.bhp-price__head,
+.bhp-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.bhp-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.bhp-price__row { border-bottom: 1px solid var(--border-subtle); }
+.bhp-price__row:last-child { border-bottom: none; }
+.bhp-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.bhp-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.bhp-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.bhp-price__amount { text-align: right; }
+.bhp-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .bhp-price__head { display: none; }
+  .bhp-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .bhp-price__situation { grid-column: 1 / -1; }
+}
+</style>

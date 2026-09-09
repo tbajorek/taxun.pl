@@ -1,0 +1,177 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { site } from '../data/site';
+const toc = [
+  { id: 'postanowienia', label: 'Postanowienia ogólne' },
+  { id: 'definicje', label: 'Definicje' },
+  { id: 'uslugi', label: 'Rodzaje i zakres usług elektronicznych' },
+  { id: 'warunki', label: 'Warunki techniczne i zasady korzystania' },
+  { id: 'konto', label: 'Konto w Portalu klienta' },
+  { id: 'zawarcie', label: 'Zawieranie i rozwiązywanie umów o usługi elektroniczne' },
+  { id: 'ksiegowosc', label: 'Relacja do umowy o usługi księgowe' },
+  { id: 'cennik', label: 'Charakter cennika i innych treści w Serwisie' },
+  { id: 'doradztwo', label: 'Granica doradztwa podatkowego' },
+  { id: 'jednorazowe', label: 'Usługi jednorazowe zamawiane przez Serwis' },
+  { id: 'konsument', label: 'Prawo odstąpienia dla konsumentów i osób z nimi zrównanych' },
+  { id: 'marketing', label: 'Informacja handlowa i newsletter' },
+  { id: 'odpowiedzialnosc', label: 'Dostępność Serwisu i odpowiedzialność' },
+  { id: 'reklamacje', label: 'Tryb postępowania reklamacyjnego' },
+  { id: 'dane', label: 'Dane osobowe i cookies' },
+  { id: 'zmiany', label: 'Zmiany Regulaminu' },
+  { id: 'koncowe', label: 'Postanowienia końcowe' },
+];
+---
+<LegalLayout
+  title="Regulamin serwisu"
+  description="Regulamin świadczenia usług drogą elektroniczną przez Taxun: zasady korzystania z serwisu taxun.pl, formularzy kontaktowych i wyceny oraz z Portalu klienta."
+  effective="1 października 2026 r."
+  breadcrumbLabel="Regulamin"
+  toc={toc}
+>
+  <p>
+    Niniejszy Regulamin dotyczy <strong>usług świadczonych drogą elektroniczną</strong>, czyli korzystania z serwisu
+    taxun.pl, formularzy dostępnych w serwisie oraz Portalu klienta. Regulamin nie określa zasad świadczenia usług
+    księgowych, podatkowych ani kadrowo-płacowych. Zasady te wynikają wyłącznie z indywidualnej Umowy zawieranej
+    z klientem i z jej załączników.
+  </p>
+
+  <h2 id="postanowienia">1. Postanowienia ogólne</h2>
+  <p>1. Regulamin został wydany na podstawie art. 8 ust. 1 pkt 1 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną i określa rodzaje oraz zakres usług świadczonych drogą elektroniczną, warunki ich świadczenia, warunki zawierania i rozwiązywania umów o świadczenie tych usług oraz tryb postępowania reklamacyjnego.</p>
+  <p>2. Usługodawcą jest <strong>{site.brandOwner}</strong>, działający pod marką <strong>Taxun</strong>, {site.legalAddress.street}, {site.legalAddress.postal} {site.address.city}, NIP {site.taxId.nip}, REGON {site.taxId.regon}, adres poczty elektronicznej <a href={`mailto:${site.email}`}>{site.email}</a>, numer telefonu {site.phoneDisplay}.</p>
+  <p>3. Regulamin jest udostępniany nieodpłatnie przed zawarciem umowy o świadczenie usług drogą elektroniczną, w postaci umożliwiającej jego pozyskanie, odtwarzanie i utrwalanie za pomocą systemu teleinformatycznego, którym posługuje się Usługobiorca. Na żądanie Usługobiorcy Regulamin zostanie przesłany również pocztą elektroniczną.</p>
+  <p>4. Usługobiorca nie jest związany tymi postanowieniami Regulaminu, które nie zostały mu udostępnione w sposób wskazany w ust. 3.</p>
+  <p>5. Korzystanie z Serwisu i Usług elektronicznych jest nieodpłatne, o ile Regulamin albo opis konkretnej usługi nie stanowi inaczej.</p>
+
+  <h2 id="definicje">2. Definicje</h2>
+  <ul>
+    <li><strong>Usługodawca</strong> - {site.brandOwner}, działający pod marką Taxun;</li>
+    <li><strong>Usługobiorca</strong> - osoba fizyczna, osoba prawna albo jednostka organizacyjna korzystająca z Usług elektronicznych, w tym odwiedzająca Serwis;</li>
+    <li><strong>Serwis</strong> - strona internetowa dostępna pod adresem taxun.pl wraz z podstronami;</li>
+    <li><strong>Usługi elektroniczne</strong> - usługi świadczone drogą elektroniczną w rozumieniu ustawy o świadczeniu usług drogą elektroniczną, wskazane w rozdziale 3 Regulaminu;</li>
+    <li><strong>Portal klienta</strong> - system teleinformatyczny udostępniany przez Usługodawcę klientom obsługiwanym na podstawie Umowy, służący do przekazywania i przechowywania dokumentów, udostępniania zestawień oraz komunikacji stron;</li>
+    <li><strong>Konto</strong> - indywidualny zbiór zasobów i uprawnień w Portalu klienta, oznaczony loginem i zabezpieczony hasłem;</li>
+    <li><strong>Umowa</strong> - odrębna umowa o świadczenie usług księgowych i kadrowo-płacowych zawierana pomiędzy Usługodawcą a klientem, wraz z załącznikami;</li>
+    <li><strong>Konsument</strong> - osoba fizyczna dokonująca z Usługodawcą czynności prawnej niezwiązanej bezpośrednio z jej działalnością gospodarczą lub zawodową;</li>
+    <li><strong>Przedsiębiorca na prawach konsumenta</strong> - osoba fizyczna zawierająca umowę bezpośrednio związaną z jej działalnością gospodarczą, gdy z treści tej umowy wynika, że nie ma ona dla niej charakteru zawodowego, w rozumieniu art. 385<sup>5</sup> Kodeksu cywilnego oraz art. 7aa ustawy o prawach konsumenta;</li>
+    <li><strong>Dzień roboczy</strong> - dzień od poniedziałku do piątku, z wyłączeniem dni ustawowo wolnych od pracy w Rzeczypospolitej Polskiej.</li>
+  </ul>
+
+  <h2 id="uslugi">3. Rodzaje i zakres usług świadczonych drogą elektroniczną</h2>
+  <p>1. Usługodawca świadczy drogą elektroniczną następujące usługi:</p>
+  <ul>
+    <li><strong>Przeglądanie Serwisu</strong> - udostępnianie treści informacyjnych o Usługodawcy, zakresie jego działalności i warunkach współpracy;</li>
+    <li><strong>Formularz kontaktowy</strong> - umożliwienie przesłania zapytania i uzyskania odpowiedzi na wskazany adres poczty elektronicznej lub numer telefonu;</li>
+    <li><strong>Formularz bezpłatnej wyceny</strong> - umożliwienie przesłania informacji o profilu działalności i oczekiwanym zakresie obsługi w celu otrzymania niewiążącej propozycji warunków współpracy;</li>
+    <li><strong>Portal klienta</strong> - udostępnienie Konta oraz funkcji wymiany dokumentów, przeglądania zestawień i komunikacji, wyłącznie klientom obsługiwanym na podstawie Umowy;</li>
+    <li><strong>Newsletter</strong> - cykliczne przesyłanie na wskazany adres poczty elektronicznej informacji o zmianach przepisów, terminach i usługach Usługodawcy, o ile Usługobiorca wyraził na to zgodę.</li>
+  </ul>
+  <p>2. Usługi elektroniczne mają charakter pomocniczy wobec działalności Usługodawcy. Ich celem jest umożliwienie kontaktu, przygotowanie propozycji współpracy oraz obsługa techniczna wymiany dokumentów z klientami.</p>
+  <p>3. Przesłanie formularza kontaktowego lub formularza wyceny nie stanowi zawarcia Umowy ani zobowiązania którejkolwiek ze stron do jej zawarcia. Propozycja warunków współpracy przedstawiona w odpowiedzi na zapytanie nie jest ofertą w rozumieniu art. 66 Kodeksu cywilnego, chyba że wyraźnie wskazano inaczej.</p>
+
+  <h2 id="warunki">4. Warunki techniczne i zasady korzystania</h2>
+  <p>1. Do korzystania z Usług elektronicznych niezbędne są:</p>
+  <ul>
+    <li>urządzenie z dostępem do sieci Internet;</li>
+    <li>aktualna wersja przeglądarki internetowej obsługującej HTML5, CSS3, JavaScript oraz protokół TLS;</li>
+    <li>włączona obsługa plików cookies w zakresie technologii niezbędnych do działania Serwisu;</li>
+    <li>aktywne konto poczty elektronicznej, w przypadku usług wymagających kontaktu zwrotnego;</li>
+    <li>w przypadku Portalu klienta dodatkowo aktywne Konto oraz, jeżeli zostało włączone, urządzenie lub aplikacja obsługująca uwierzytelnianie wieloskładnikowe.</li>
+  </ul>
+  <p>2. Usługodawca nie gwarantuje poprawnego działania Serwisu w przeglądarkach nieaktualizowanych, z wyłączoną obsługą skryptów albo z rozszerzeniami ingerującymi w treść strony.</p>
+  <p>3. <strong>Usługobiorcę obowiązuje zakaz dostarczania treści o charakterze bezprawnym.</strong> Zakaz obejmuje w szczególności treści naruszające prawa osób trzecich, dobra osobiste, prawa autorskie, tajemnicę przedsiębiorstwa, przepisy o ochronie danych osobowych, a także treści obraźliwe, wprowadzające w błąd oraz treści zawierające złośliwe oprogramowanie.</p>
+  <p>4. Zabronione jest korzystanie z Serwisu i Portalu klienta w sposób zakłócający ich działanie, w szczególności przez nieuprawnione próby dostępu, automatyczne pobieranie treści na skalę obciążającą infrastrukturę, omijanie zabezpieczeń oraz działania zmierzające do przeciążenia systemu.</p>
+  <p>5. Usługodawca stosuje środki techniczne i organizacyjne odpowiadające ryzyku, w szczególności szyfrowanie transmisji, kontrolę dostępu i kopie zapasowe. Usługobiorca przyjmuje do wiadomości, że korzystanie z sieci Internet wiąże się z ryzykiem typowym dla tego środka komunikacji, w szczególności ryzykiem przechwycenia transmisji lub działania złośliwego oprogramowania po stronie użytkownika.</p>
+
+  <h2 id="konto">5. Konto w Portalu klienta</h2>
+  <p>1. Konto jest zakładane przez Usługodawcę na rzecz klienta obsługiwanego na podstawie Umowy, po wskazaniu przez klienta osób upoważnionych i ich adresów poczty elektronicznej.</p>
+  <p>2. Klient odpowiada za aktualność listy osób upoważnionych oraz za niezwłoczne zgłoszenie Usługodawcy potrzeby odebrania dostępu osobie, która utraciła upoważnienie.</p>
+  <p>3. Użytkownik Konta zobowiązuje się chronić login, hasło oraz inne środki uwierzytelnienia, nie udostępniać ich osobom nieuprawnionym i nie korzystać z Kont innych osób.</p>
+  <p>4. W razie podejrzenia naruszenia bezpieczeństwa Konta Usługobiorca niezwłocznie zawiadamia Usługodawcę oraz, jeżeli jest to możliwe, zmienia hasło. Usługodawca może zablokować Konto do czasu wyjaśnienia sprawy, informując o tym klienta.</p>
+  <p>5. Usługodawca może dokonywać przerw technicznych w działaniu Portalu klienta niezbędnych do konserwacji, aktualizacji lub zwiększenia bezpieczeństwa. O planowanych przerwach trwających dłużej niż 2 godziny w Dniu roboczym Usługodawca informuje z wyprzedzeniem, o ile jest to możliwe.</p>
+  <p>6. Zaprzestanie działania Konta następuje wraz z zakończeniem Umowy. Usługodawca utrzymuje dostęp do Konta w zakresie umożliwiającym pobranie dokumentów przez okres wskazany w Umowie, a w razie jego braku przez 30 dni od zakończenia Umowy. Nie ogranicza to obowiązku wydania dokumentacji na zasadach określonych w Umowie.</p>
+
+  <h2 id="zawarcie">6. Zawieranie i rozwiązywanie umów o świadczenie usług elektronicznych</h2>
+  <p>1. Umowa o świadczenie Usługi elektronicznej polegającej na przeglądaniu Serwisu zostaje zawarta z chwilą wejścia na stronę i rozwiązana z chwilą jej opuszczenia.</p>
+  <p>2. Umowa o świadczenie Usługi elektronicznej polegającej na obsłudze formularza kontaktowego lub formularza wyceny zostaje zawarta z chwilą wysłania formularza i rozwiązana z chwilą udzielenia odpowiedzi albo zakończenia korespondencji.</p>
+  <p>3. Umowa o świadczenie Usługi elektronicznej polegającej na prowadzeniu Konta w Portalu klienta zostaje zawarta z chwilą aktywacji Konta i jest zawarta na czas obowiązywania Umowy.</p>
+  <p>4. Umowa o świadczenie Usługi elektronicznej polegającej na wysyłce Newslettera zostaje zawarta z chwilą potwierdzenia zapisu i jest zawarta na czas nieokreślony. Usługobiorca może ją wypowiedzieć w każdym czasie, w szczególności przez kliknięcie linku rezygnacji w wiadomości albo przez wiadomość na adres <a href={`mailto:${site.email}`}>{site.email}</a>. Rezygnacja jest skuteczna niezwłocznie.</p>
+  <p>5. Usługodawca może wypowiedzieć umowę o świadczenie Usługi elektronicznej z zachowaniem 7-dniowego okresu wypowiedzenia, jeżeli Usługobiorca narusza Regulamin, w szczególności dostarcza treści bezprawne albo korzysta z Usług elektronicznych w sposób zakłócający ich działanie. W przypadku rażącego naruszenia Usługodawca może zablokować dostęp ze skutkiem natychmiastowym, informując o przyczynie.</p>
+  <p>6. Rozwiązanie umowy o świadczenie Usług elektronicznych nie wpływa na obowiązywanie Umowy o świadczenie usług księgowych, chyba że dotyczy Konta niezbędnego do jej wykonywania. W takim przypadku strony uzgadniają zastępczy kanał wymiany dokumentów.</p>
+
+  <h2 id="ksiegowosc">7. Relacja do umowy o świadczenie usług księgowych</h2>
+  <p>1. <strong>Usługi księgowe, podatkowe i kadrowo-płacowe nie są usługami świadczonymi drogą elektroniczną i nie są regulowane niniejszym Regulaminem.</strong> Zasady ich świadczenia, zakres obowiązków stron, wynagrodzenie, odpowiedzialność, terminy oraz warunki rozwiązania współpracy określa wyłącznie Umowa wraz z załącznikami, podpisywana indywidualnie z klientem.</p>
+  <p>2. Umowa wraz z załącznikami wyczerpująco reguluje prawa i obowiązki stron w zakresie usług księgowych. <strong>W razie jakiejkolwiek rozbieżności pomiędzy Regulaminem a Umową pierwszeństwo ma Umowa.</strong></p>
+  <p>3. Regulamin nie może być podstawą do wywodzenia obowiązków Usługodawcy w zakresie prowadzenia ksiąg, ewidencji, rozliczeń publicznoprawnych ani obsługi kadrowo-płacowej.</p>
+  <p>4. Umowa jest zawierana w formie pisemnej lub dokumentowej, w tym z wykorzystaniem kwalifikowanego podpisu elektronicznego, podpisu zaufanego albo podpisu osobistego. Przed jej zawarciem klient otrzymuje pełną treść Umowy i wszystkich załączników, w tym cennika obowiązującego dla tej Umowy.</p>
+
+  <h2 id="cennik">8. Charakter cennika i innych treści prezentowanych w Serwisie</h2>
+  <p>1. Treści prezentowane w Serwisie, w tym opisy usług, zestawienia zakresu obsługi, materiały poradnikowe oraz cennik, mają <strong>charakter informacyjny i marketingowy</strong>. Nie stanowią oferty w rozumieniu art. 66 Kodeksu cywilnego ani porady podatkowej, prawnej lub księgowej w indywidualnej sprawie.</p>
+  <p>2. <strong>Cennik publikowany w Serwisie dotyczy nowych umów i może ulec zmianie.</strong> Klienta obsługiwanego na podstawie Umowy wiąże wyłącznie cennik stanowiący załącznik do jego Umowy, w wersji i na okres tam wskazany. Zmiana cennika publikowanego w Serwisie nie zmienia cennika stanowiącego załącznik do zawartej Umowy.</p>
+  <p>3. Zasady zmiany cennika obowiązującego klienta, w tym termin uprzedzenia i uprawnienie do wypowiedzenia Umowy, określa wyłącznie Umowa.</p>
+  <p>4. Materiały informacyjne publikowane w Serwisie odzwierciedlają stan prawny na dzień ich publikacji. Usługodawca nie zobowiązuje się do bieżącej aktualizacji archiwalnych materiałów.</p>
+  <p>5. Treści Serwisu, w tym teksty, grafiki, układ i znaki towarowe, podlegają ochronie prawnej. Korzystanie z nich w zakresie wykraczającym poza dozwolony użytek wymaga zgody Usługodawcy.</p>
+
+  <h2 id="doradztwo">9. Granica doradztwa podatkowego</h2>
+  <p>1. Usługodawca prowadzi usługowo księgi rachunkowe i podatkowe, ewidencje oraz sporządza deklaracje i zeznania, czyli wykonuje czynności wskazane w art. 2 ust. 1 pkt 2, 3 i 3a ustawy z dnia 5 lipca 1996 r. o doradztwie podatkowym. Czynności te nie są zastrzeżone dla żadnego zawodu regulowanego.</p>
+  <p>2. <strong>Usługodawca nie jest doradcą podatkowym i nie wykonuje czynności zastrzeżonych</strong> w art. 2 ust. 1 pkt 1, 4 i 5 tej ustawy, to jest udzielania porad, opinii i wyjaśnień z zakresu obowiązków podatkowych w indywidualnej sprawie, reprezentowania podatników w postępowaniach przed organami administracji publicznej i w postępowaniu sądowoadministracyjnym oraz przeprowadzania niezależnego audytu funkcji podatkowej. Zgodnie z art. 2 ust. 2 ustawy zawodowe wykonywanie tych czynności jest zastrzeżone dla podmiotów uprawnionych.</p>
+  <p>3. Treści publikowane w Serwisie, w tym artykuły w bazie wiedzy, słownik pojęć, kalkulatory oraz opisy podstron branżowych, są <strong>materiałami informacyjnymi skierowanymi do nieoznaczonego kręgu odbiorców</strong>. Nie odnoszą się do sytuacji konkretnej osoby, nie są udzielane na jej żądanie i nie stanowią porady, opinii ani wyjaśnienia w rozumieniu art. 2 ust. 1 pkt 1 ustawy o doradztwie podatkowym.</p>
+  <p>4. Wyniki kalkulatorów oraz wynik kreatora wyceny powstają wyłącznie z danych wprowadzonych przez Usługobiorcę i z uproszczonych założeń przyjętych dla typowych przypadków. Mają charakter szacunkowy, nie uwzględniają indywidualnych okoliczności, o które kalkulator nie pyta, i nie są podstawą do złożenia deklaracji ani zapłaty zobowiązania.</p>
+  <p>5. Postanowienia niniejszego rozdziału nie ograniczają odpowiedzialności Usługodawcy za należyte wykonanie Umowy o świadczenie usług księgowych, w tym za prawidłowość prowadzonych ksiąg i sporządzonych deklaracji.</p>
+
+  <h2 id="jednorazowe">10. Usługi jednorazowe zamawiane za pośrednictwem Serwisu</h2>
+  <p>1. Za pośrednictwem Serwisu można zamówić wybrane usługi jednorazowe, niewymagające zawarcia Umowy o stałą obsługę, w szczególności konsultację poprzedzającą założenie działalności gospodarczej albo spółki. Zakres i cena takiej usługi są potwierdzane przed jej rozpoczęciem.</p>
+  <p>2. Konsultacja polega na <strong>omówieniu danych i decyzji, które zapadają we wniosku</strong>, wspólnym przejściu przez formularz podczas spotkania online oraz sprawdzeniu kompletności dokumentów. <strong>Usługodawca nie składa wniosku w imieniu Usługobiorcy i nie występuje w rejestracji jako pełnomocnik.</strong> Wniosek o wpis do Centralnej Ewidencji i Informacji o Działalności Gospodarczej podpisuje i składa Usługobiorca. Przy spółce umowę podpisują wszyscy wspólnicy, a wniosek o wpis do rejestru wszyscy członkowie zarządu i to oni składają go do sądu rejestrowego; pełnomocnikiem w postępowaniu rejestrowym może być wyłącznie osoba wskazana w art. 87 § 1 Kodeksu postępowania cywilnego. Usługodawca nie wykonuje także czynności zastrzeżonych dla notariusza, więc umowa wymagająca formy aktu notarialnego, w tym umowa z wkładem niepieniężnym, nie jest objęta tą usługą.</p>
+  <p>3. Jeżeli w terminie wskazanym w Serwisie od dnia konsultacji wejdzie w życie Umowa o stałą obsługę księgową, wynagrodzenie za konsultację zalicza się na poczet pierwszego wynagrodzenia z tej Umowy. Zaliczenie nie zależy od tego, jak długo Umowa o stałą obsługę będzie obowiązywać.</p>
+  <p>4. Umowa o świadczenie usługi jednorazowej zostaje zawarta z chwilą potwierdzenia przez Usługodawcę przyjęcia zamówienia do realizacji. Potwierdzenie zawiera co najmniej opis usługi, cenę, termin wykonania oraz informacje wymagane przepisami prawa.</p>
+  <p>5. Jeżeli usługa jednorazowa jest zamawiana przez osobę, która nie prowadzi jeszcze działalności gospodarczej, umowa ma charakter umowy z Konsumentem, a Usługodawca przekazuje pełną informację wymaganą ustawą z dnia 30 maja 2014 r. o prawach konsumenta przed jej zawarciem.</p>
+  <p>6. Do usług jednorazowych nie stosuje się postanowień Umowy o stałą obsługę księgową.</p>
+
+  <h2 id="konsument">11. Prawo odstąpienia dla konsumentów i osób z nimi zrównanych</h2>
+  <p>1. Konsument oraz Przedsiębiorca na prawach konsumenta, który zawarł z Usługodawcą umowę na odległość lub poza lokalem przedsiębiorstwa, może od niej odstąpić <strong>bez podania przyczyny w terminie 14 dni</strong> od dnia jej zawarcia, składając oświadczenie w dowolnej formie, w tym pocztą elektroniczną na adres <a href={`mailto:${site.email}`}>{site.email}</a>. Do zachowania terminu wystarczy wysłanie oświadczenia przed jego upływem.</p>
+  <p>2. Jeżeli osoba uprawniona chce, aby Usługodawca rozpoczął wykonywanie usługi przed upływem terminu na odstąpienie, składa <strong>wyraźne żądanie</strong> w tym zakresie. W przypadku umowy zawartej poza lokalem przedsiębiorstwa żądanie wymaga oświadczenia utrwalonego na trwałym nośniku.</p>
+  <p>3. W razie odstąpienia od umowy po zgłoszeniu żądania, o którym mowa w ust. 2, osoba uprawniona ma obowiązek zapłaty za świadczenia spełnione do chwili odstąpienia, proporcjonalnie do zakresu wykonanej usługi, zgodnie z art. 35 ustawy o prawach konsumenta.</p>
+  <p>4. <strong>Prawo odstąpienia nie przysługuje</strong> w odniesieniu do umowy o świadczenie usług, za którą osoba uprawniona jest zobowiązana zapłacić cenę, jeżeli Usługodawca wykonał usługę w pełni za wyraźną i uprzednią zgodą tej osoby, która przed rozpoczęciem świadczenia została poinformowana, że po spełnieniu świadczenia utraci prawo odstąpienia, i przyjęła to do wiadomości, zgodnie z art. 38 ust. 1 pkt 1 ustawy o prawach konsumenta.</p>
+  <p>5. Usługodawca informuje o okoliczności wskazanej w ust. 4 przed rozpoczęciem świadczenia i odbiera odrębne oświadczenie osoby uprawnionej. Samo postanowienie Regulaminu nie zastępuje takiego oświadczenia.</p>
+  <p>6. Usługodawca zwraca otrzymane płatności niezwłocznie, nie później niż w terminie 14 dni od otrzymania oświadczenia o odstąpieniu, przy użyciu tego samego sposobu zapłaty, chyba że osoba uprawniona zgodzi się na inny sposób nieobciążający jej kosztami.</p>
+  <p>7. Konsument może skorzystać z pozasądowych sposobów rozpatrywania reklamacji i dochodzenia roszczeń, w szczególności z pomocy powiatowego lub miejskiego rzecznika konsumentów, wojewódzkiego inspektora Inspekcji Handlowej oraz z platformy internetowego rozstrzygania sporów. Skorzystanie z nich jest dobrowolne.</p>
+
+  <h2 id="marketing">12. Informacja handlowa i newsletter</h2>
+  <p>1. Usługodawca przesyła informacje handlowe drogą elektroniczną wyłącznie po uprzednim uzyskaniu zgody odbiorcy, zgodnie z art. 398 ustawy z dnia 12 lipca 2024 r. Prawo komunikacji elektronicznej.</p>
+  <p>2. Informacja handlowa jest wyraźnie wyodrębniana i oznaczana w sposób niebudzący wątpliwości, że jest to informacja handlowa, zgodnie z art. 9 ustawy o świadczeniu usług drogą elektroniczną. Wiadomość zawiera oznaczenie Usługodawcy i jego adres elektroniczny.</p>
+  <p>3. Zgoda na otrzymywanie informacji handlowych jest dobrowolna, nie warunkuje odpowiedzi na zapytanie ani zawarcia Umowy, i może zostać wycofana w każdym czasie. Wycofanie zgody jest równie łatwe jak jej udzielenie i nie wpływa na zgodność z prawem działań podjętych wcześniej.</p>
+  <p>4. Odbiorca nie ponosi żadnych kosztów związanych z otrzymywaniem informacji handlowej.</p>
+
+  <h2 id="odpowiedzialnosc">13. Dostępność Serwisu i odpowiedzialność</h2>
+  <p>1. Usługodawca dokłada starań, aby Serwis i Portal klienta działały w sposób ciągły i poprawny, nie gwarantuje jednak nieprzerwanej dostępności. Usługi elektroniczne są świadczone w modelu starannego działania.</p>
+  <p>2. Usługodawca nie ponosi odpowiedzialności za niedostępność lub nieprawidłowe działanie Serwisu wynikające z awarii po stronie dostawców infrastruktury, operatorów telekomunikacyjnych, dostawców hostingu, systemów publicznych ani z działania siły wyższej, o ile dochował należytej staranności w zakresie dostępnych mu środków.</p>
+  <p>3. Usługodawca nie ponosi odpowiedzialności za skutki podania przez Usługobiorcę nieprawdziwych lub niekompletnych danych w formularzach, a także za skutki udostępnienia przez Usługobiorcę danych dostępowych do Konta osobom nieuprawnionym.</p>
+  <p>4. Ograniczenia odpowiedzialności wskazane w niniejszym rozdziale nie dotyczą szkody wyrządzonej umyślnie ani odpowiedzialności, której zgodnie z bezwzględnie obowiązującymi przepisami nie można wyłączyć ani ograniczyć, w szczególności wobec Konsumentów i Przedsiębiorców na prawach konsumenta.</p>
+  <p>5. Odpowiedzialność Usługodawcy z tytułu wykonywania Umowy o świadczenie usług księgowych regulują wyłącznie postanowienia tej Umowy.</p>
+
+  <h2 id="reklamacje">14. Tryb postępowania reklamacyjnego</h2>
+  <p>1. Reklamacje dotyczące Usług elektronicznych, w szczególności działania Serwisu, formularzy, Portalu klienta lub Newslettera, można składać pocztą elektroniczną na adres <a href={`mailto:${site.email}`}>{site.email}</a> albo pisemnie na adres Usługodawcy.</p>
+  <p>2. Reklamacja powinna zawierać oznaczenie zgłaszającego, adres do korespondencji, opis nieprawidłowości, datę jej wystąpienia oraz oczekiwany sposób załatwienia sprawy.</p>
+  <p>3. Usługodawca rozpatruje reklamację niezwłocznie, nie później niż w terminie 14 dni od jej otrzymania, i informuje zgłaszającego o wyniku na wskazany adres. Jeżeli rozpatrzenie reklamacji wymaga dodatkowych informacji, Usługodawca zwraca się o ich uzupełnienie, a termin biegnie od dnia ich otrzymania.</p>
+  <p>4. Brak odpowiedzi w terminie wskazanym w ust. 3 oznacza uznanie reklamacji złożonej przez Konsumenta lub Przedsiębiorcę na prawach konsumenta.</p>
+  <p>5. Reklamacje dotyczące usług księgowych, podatkowych i kadrowo-płacowych rozpatrywane są na zasadach określonych w Umowie.</p>
+  <p>6. Postanowienia niniejszego rozdziału nie ograniczają praw wynikających z bezwzględnie obowiązujących przepisów prawa ani prawa do dochodzenia roszczeń na drodze sądowej.</p>
+
+  <h2 id="dane">15. Dane osobowe i cookies</h2>
+  <p>1. Administratorem danych osobowych przetwarzanych w związku z korzystaniem z Serwisu i Usług elektronicznych jest Usługodawca. Szczegółowe informacje o celach, podstawach prawnych, okresach przechowywania, odbiorcach danych i prawach osób, których dane dotyczą, zawiera <a href="/polityka-prywatnosci">Polityka prywatności</a>.</p>
+  <p>2. Serwis wykorzystuje pliki cookies i podobne technologie. Zasady ich stosowania, kategorie technologii oraz sposób zarządzania zgodą opisuje Polityka prywatności. Zgoda jest pobierana zgodnie z art. 399 ustawy Prawo komunikacji elektronicznej, z wyjątkiem technologii objętych ustawowym wyłączeniem.</p>
+  <p>3. W zakresie, w jakim Usługodawca przetwarza dane osobowe w imieniu klienta w związku z wykonywaniem Umowy, działa jako podmiot przetwarzający na podstawie odrębnej umowy powierzenia stanowiącej załącznik do Umowy. Niniejszy Regulamin nie reguluje tego przetwarzania.</p>
+
+  <h2 id="zmiany">16. Zmiany Regulaminu</h2>
+  <p>1. Usługodawca może zmienić Regulamin z ważnych przyczyn, w szczególności w razie zmiany przepisów prawa, zmiany zakresu lub sposobu świadczenia Usług elektronicznych, zmian technologicznych, zmian po stronie dostawców wykorzystywanych narzędzi albo konieczności poprawy bezpieczeństwa.</p>
+  <p>2. O zmianie Regulaminu Usługobiorcy korzystający z Usług elektronicznych o charakterze ciągłym, to jest Konta w Portalu klienta oraz Newslettera, zostają poinformowani na wskazany adres poczty elektronicznej co najmniej <strong>14 dni</strong> przed dniem wejścia zmiany w życie. Nowa wersja Regulaminu jest jednocześnie publikowana w Serwisie.</p>
+  <p>3. Usługobiorca, który nie akceptuje zmiany, może wypowiedzieć umowę o świadczenie danej Usługi elektronicznej przed dniem jej wejścia w życie. Brak wypowiedzenia oznacza przyjęcie zmiany.</p>
+  <p>4. Do Usług elektronicznych o charakterze jednorazowym stosuje się Regulamin w brzmieniu obowiązującym w chwili rozpoczęcia korzystania z danej usługi.</p>
+  <p>5. Zmiana Regulaminu nie zmienia treści Umowy o świadczenie usług księgowych ani jej załączników.</p>
+
+  <h2 id="koncowe">17. Postanowienia końcowe</h2>
+  <p>1. W sprawach nieuregulowanych Regulaminem stosuje się prawo polskie, w szczególności Kodeks cywilny, ustawę o świadczeniu usług drogą elektroniczną, ustawę Prawo komunikacji elektronicznej, ustawę o prawach konsumenta oraz przepisy o ochronie danych osobowych.</p>
+  <p>2. Jeżeli którekolwiek postanowienie Regulaminu okaże się nieważne, bezskuteczne lub niewykonalne, pozostałe postanowienia pozostają w mocy, a Usługodawca zastąpi je postanowieniem możliwie najbliższym jego celowi gospodarczemu.</p>
+  <p>3. Spory z Usługobiorcą niebędącym Konsumentem ani Przedsiębiorcą na prawach konsumenta rozstrzyga sąd właściwy miejscowo dla siedziby Usługodawcy. Spory z Konsumentem oraz z Przedsiębiorcą na prawach konsumenta rozstrzyga sąd właściwy według przepisów ogólnych.</p>
+  <p>4. Regulamin obowiązuje od <strong>1 października 2026 r.</strong> i zastępuje wcześniejszą wersję Regulaminu z dnia 26 sierpnia 2026 r. Do umów o świadczenie usług księgowych zawartych przed tym dniem stosuje się postanowienia tych umów; jeżeli umowa odsyłała do wcześniejszej wersji Regulaminu w zakresie usług księgowych, odesłanie to pozostaje skuteczne do czasu zmiany umowy.</p>
+  <p>5. Aktualna wersja Regulaminu jest dostępna nieodpłatnie pod adresem taxun.pl/regulamin.</p>
+</LegalLayout>

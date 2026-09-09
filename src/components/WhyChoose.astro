@@ -1,0 +1,102 @@
+---
+import Feature from './Feature.astro';
+import Stats from './Stats.astro';
+
+const features = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela JDG i roczne PIT/CIT - to wszystko w cenie pakietu, bez żadnych dopłat.' },
+  { icon: 'zap', title: 'Wygodna obsługa online', description: 'Dostęp do faktur i innych dokumentów 24/7 z każdego miejsca na świecie poprzez wygodny w użyciu portal klienta.' },
+  { icon: 'shield', title: 'Bezpieczeństwo i prywatność', description: 'Dokumenty i dane finansowe Twojej firmy wymieniamy wyłącznie przez szyfrowany portal klienta lub poprzez zabezpieczoną korespondencję mailową. Współpraca online nie oznacza mniejszego bezpieczeństwa niż wizyta osobista z segregatorem pod pachą. Biuro posiada ubezpieczenie OC.' },
+  { icon: 'headset', title: 'Dedykowany zdalny opiekun', description: 'Każdy klient posiada jednego opiekuna kadrowo - księgowego, z którym współpracuje. Współpraca zdalna pozwala na szybki kontakt, bez potrzeby osobistych wizyt w biurze.' },
+];
+---
+<section class="section why-choose">
+  <div class="container">
+    <div class="why-choose__grid">
+      <div class="why-choose__content">
+        <span class="eyebrow">Dlaczego Taxun</span>
+        <h2>Księgowość, której możesz powierzyć swoją firmę</h2>
+        <p class="lede">Pilnujemy terminów wysyłek deklaracji, JPK i VAT. Trzymamy proaktywnie rękę na pulsie, aby odciążyć w tym procesie naszych klientów. Przypominamy z wyprzedzeniem o&nbsp;nadchodzących terminach lub o decyzjach, które należy podjąć. Wolimy unikać pożarów, niż je gasić.</p>
+        <div class="why-choose__features">
+          {features.map((f) => <Feature {...f} />)}
+        </div>
+      </div>
+      <aside class="why-choose__stats">
+        <div class="why-choose__panel">
+          <span class="why-choose__badge">Nasze zobowiązania</span>
+          <Stats variant="dark" items={[
+            { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%', note: 'przy dokumentach dostarczonych w terminie' },
+            { label: 'Standardowy czas odpowiedzi', value: 4, suffix: ' h' },
+            { label: 'Procesy w pełni online', value: 100, suffix: '%' },
+            { label: 'Dostępność portalu klienta', value: '24/7' },
+          ]} />
+          <div class="why-choose__cta">
+            <p>Sprawdź, ile możesz odzyskać czasu, przekazując księgowość naszym specjalistom.</p>
+            <a href="/wycena" class="btn btn--accent btn--block">Policz cenę obsługi swojej firmy</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<style>
+.why-choose__grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.why-choose__content .lede { margin-top: 1rem; max-width: 56ch; }
+.why-choose__content h2 { letter-spacing: -0.025em; }
+.why-choose__features {
+  margin-top: 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 1.25rem;
+}
+.why-choose__panel {
+  background: linear-gradient(180deg, var(--ink-900), var(--ink-950));
+  color: var(--white);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.why-choose__panel::before {
+  content: '';
+  position: absolute;
+  inset: -40% -40% auto auto;
+  width: 80%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.3), transparent 60%);
+  z-index: -1;
+}
+.why-choose__badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  margin-bottom: 1.5rem;
+}
+.why-choose__cta {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.why-choose__cta p {
+  color: var(--text-on-dark-muted);
+  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 900px) {
+  .why-choose__grid { grid-template-columns: 1fr; }
+  .why-choose__features { grid-template-columns: 1fr; }
+}
+</style>

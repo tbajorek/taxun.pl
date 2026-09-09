@@ -1,0 +1,1678 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { currencyInvoices, hrMin, hrPricing, ipBox, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  AMORT_NISKOCENNE,
+  CAR_EKSPLOATACJA_LIMIT,
+  CAR_LIMIT,
+  CO2_THRESHOLD,
+  IP_BOX_RATE,
+  PIT_RATE_LINIOWY,
+  PKD_AKTUALIZACJA_DO,
+  PKD_NOWA_OD,
+  RYCZALT_DORADZTWO,
+  RYCZALT_IT,
+  RYCZALT_LIMIT,
+  RYCZALT_LIMIT_EUR,
+  RYCZALT_PROJEKTOWANIE,
+  RYCZALT_HEALTH_DEDUCT_RATE,
+  RYCZALT_USLUGI,
+  VAT_MIXED_DEDUCT,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { num, pct, pctOf, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaIT = pct(RYCZALT_IT);
+const stawkaUslugi = pct(RYCZALT_USLUGI);
+const stawkaIpBox = pct(IP_BOX_RATE);
+const stawkaLiniowa = pct(PIT_RATE_LINIOWY);
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts - dzięki temu tabela
+ * na tej podstronie nie może rozjechać się z cennikiem po zmianie stawek.
+ * W IT często spotykamy zarówno podatników zwolnionych z VAT (praca wyłącznie
+ * dla zagranicy), jak i czynnych, stąd wybór kolumny jako parametr.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Kontraktor B2B fakturujący jednego klienta, zwykle zagranicznego'),
+  priceRow('ryczalt', 10, 'withVat', 'Kontraktor B2B rozliczający VAT w kraju'),
+  priceRow('ryczalt', 30, 'withVat', 'Freelancer z kilkoma klientami i większą liczbą kosztów'),
+  priceRow('kpir', 10, 'withVat', 'Podatek liniowy lub skala, niewielka liczba dokumentów'),
+  priceRow('fk', 10, 'noVat', 'Software house albo spółka technologiczna'),
+];
+
+/**
+ * Koszty w IT: rozdzielone na te, które są kosztem tylko przy KPiR, i te,
+ * które obniżają podatek także na ryczałcie. Na ryczałcie podstawą jest
+ * przychód, więc zakup laptopa nie zmienia podatku - to najczęstsze
+ * nieporozumienie w tej branży i dlatego stoi jako pierwsze.
+ */
+const kosztyGrupy = [
+  {
+    icon: 'zap',
+    title: 'Sprzęt i wyposażenie',
+    description: `Laptop, monitory, peryferia, serwer domowy, telefon. Do ${zl(AMORT_NISKOCENNE)} netto wrzucamy zakup jednorazowo w koszty, powyżej tej kwoty wprowadzamy środek trwały do ewidencji i amortyzujemy - komputery i elektronika mają stawkę ${pctOf(30)} rocznie.`,
+  },
+  {
+    icon: 'globe',
+    title: 'Oprogramowanie i usługi chmurowe',
+    description: 'Licencje na środowisko programistyczne, hosting, chmura obliczeniowa, repozytoria, narzędzia do testów i monitoringu. Zakup od dostawcy zagranicznego to import usług - u czynnego podatnika VAT rozliczamy go w abonamencie, u zwolnionego uruchamia on rejestrację do VAT-UE i deklarację VAT-9M.',
+  },
+  {
+    icon: 'award',
+    title: 'Szkolenia, konferencje i certyfikaty',
+    description: 'Kursy podnoszące kwalifikacje wykorzystywane w działalności, egzaminy certyfikacyjne, bilety na konferencje branżowe wraz z dojazdem i noclegiem, literatura fachowa i subskrypcje serwisów technicznych.',
+  },
+  {
+    icon: 'file',
+    title: 'Telefon, internet i biuro',
+    description: `Abonament telefoniczny i internetowy, coworking albo wynajęte biuro. Przy pracy z mieszkania kosztem jest część opłat odpowiadająca powierzchni wykorzystywanej w działalności - z jednym zastrzeżeniem: amortyzacji samego lokalu mieszkalnego od 2023 roku w koszty zaliczyć już nie można.`,
+  },
+  {
+    icon: 'briefcase',
+    title: 'Samochód',
+    description: `Przy użytku mieszanym w koszty wchodzi ${pctOf(CAR_EKSPLOATACJA_LIMIT * 100)} wydatków eksploatacyjnych, a czynny podatnik VAT odlicza ${pctOf(VAT_MIXED_DEDUCT * 100)} podatku naliczonego. Limit wartości auta osobowego to ${zl(CAR_LIMIT.spalinowy)} przy emisji CO2 od ${CO2_THRESHOLD} g/km, ${zl(CAR_LIMIT.niskoemisyjny)} poniżej tego progu i ${zl(CAR_LIMIT.elektryczny)} przy napędzie elektrycznym lub wodorowym.`,
+  },
+  {
+    icon: 'shield',
+    title: 'Składki i ubezpieczenia',
+    description: 'Składki ZUS, ubezpieczenie od odpowiedzialności cywilnej zawodowej, ubezpieczenie sprzętu. To jedyna grupa, która obniża podatek niezależnie od formy opodatkowania - z tą różnicą, że na ryczałcie odliczamy je od przychodu, a nie zaliczamy do kosztów.',
+  },
+];
+
+const heroBadges = [
+  { icon: 'zap', label: `Ryczałt dla programisty od ${ryczalt} zł netto` },
+  { icon: 'globe', label: 'Faktury walutowe i VAT-UE w cenie' },
+  { icon: 'sparkle', label: 'KSeF, OCR i portal klienta bez dopłat' },
+];
+
+const segments = [
+  {
+    icon: 'file',
+    title: 'Programista na kontrakcie B2B',
+    description: 'Najczęstszy model w branży. Jedna albo dwie faktury miesięcznie, niewielkie koszty, a największe pieniądze do wygrania na etapie doboru formy opodatkowania i stawki ryczałtu.',
+    points: [
+      `Porównanie ryczałtu ${stawkaIT}, ryczałtu ${stawkaUslugi} i podatku liniowego`,
+      'Weryfikacja prawa do ryczałtu przy współpracy z byłym pracodawcą',
+      'Monitorowanie progów przychodu, od których zależy składka zdrowotna',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'Freelancer z klientami zagranicznymi',
+    description: 'Jeśli fakturujesz firmę z Niemiec, Holandii, Wielkiej Brytanii czy Stanów Zjednoczonych, do standardowych obowiązków dochodzi ustalenie miejsca opodatkowania usługi i rejestracja do VAT-UE.',
+    points: [
+      'Faktury z odwrotnym obciążeniem i adnotacją „reverse charge”',
+      'Rejestracja do VAT-UE oraz informacje podsumowujące VAT-UE',
+      'Przeliczanie przychodu po właściwym kursie NBP',
+    ],
+  },
+  {
+    icon: 'search',
+    title: 'Specjalista IT spoza programowania',
+    description: 'Testerzy, administratorzy, specjaliści DevOps, analitycy i kierownicy projektów wykonują często czynności, które nie mieszczą się w kategorii usług związanych z oprogramowaniem. Ma to bezpośredni wpływ na stawkę ryczałtu.',
+    points: [
+      'Analiza zakresu obowiązków pod kątem właściwego grupowania PKWiU',
+      'Rozdzielenie przychodów opodatkowanych różnymi stawkami',
+      'Przygotowanie wniosku o interpretację indywidualną',
+    ],
+  },
+  {
+    icon: 'sparkle',
+    title: 'Twórca własnego produktu, aplikacji lub gry',
+    description: 'Sprzedaż licencji, model subskrypcyjny i przychody z platform dystrybucji rządzą się innymi zasadami niż praca na kontrakcie. Rozliczamy zarówno sprzedaż do firm, jak i do klientów indywidualnych.',
+    points: [
+      'Przychody z platform dystrybucji cyfrowej i sklepów z aplikacjami',
+      'Sprzedaż do konsumentów w Unii Europejskiej i procedura VAT-OSS',
+      'Analiza kwalifikowalności do ulgi IP Box',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Software house i spółka technologiczna',
+    description: 'Dla spółek prowadzimy pełną księgowość zgodną z ustawą o rachunkowości. Przygotowujemy sprawozdania finansowe, raporty dla zarządu i analizujemy opłacalność estońskiego CIT.',
+    points: [
+      'Plan kont dopasowany do podziału na projekty i zespoły',
+      'CIT-8, JPK_KR oraz e-sprawozdanie do KRS',
+      'Estoński CIT, ulga B+R i rozliczanie podwykonawców B2B',
+    ],
+  },
+];
+
+const taxForms = [
+  {
+    badge: 'najczęstszy wybór',
+    featured: true,
+    title: `Ryczałt ${stawkaIT} lub ${stawkaUslugi}`,
+    body: 'Podatek liczy się od przychodu, bez pomniejszania go o koszty. Sprawdza się przy kontrakcie B2B, w którym wydatki firmowe ograniczają się do sprzętu, telefonu i księgowości.',
+    note: 'Ryczałt nie łączy się z ulgą IP Box, wspólnym rozliczeniem z małżonkiem ani z ulgą na dzieci. Zostaje między innymi ulga termomodernizacyjna i wpłaty na IKZE.',
+  },
+  {
+    badge: 'przy kosztach i IP Box',
+    title: `Podatek liniowy ${stawkaLiniowa}`,
+    body: 'Podatek liczy się od dochodu, więc każdy koszt realnie obniża podstawę. To jedyna sensowna ścieżka, jeśli planujesz korzystać z ulgi IP Box albo zatrudniasz podwykonawców.',
+    note: 'Nie ma tu kwoty wolnej, a składkę zdrowotną liczy się od dochodu. Przy niskich kosztach ryczałt zwykle wypada lepiej.',
+  },
+  {
+    badge: 'przy niższych dochodach',
+    title: 'Skala podatkowa',
+    body: 'Skala bywa rozsądnym wyborem na początku działalności, przy niższych dochodach albo wtedy, gdy zależy Ci na wspólnym rozliczeniu z małżonkiem lub na uldze na dzieci.',
+    note: 'Przy wyższych dochodach warto policzyć łączny efekt drugiego progu i składki zdrowotnej, zanim podejmiesz decyzję.',
+  },
+];
+
+const rate12 = [
+  'Usługi związane z oprogramowaniem',
+  'Doradztwo w zakresie oprogramowania oraz sprzętu komputerowego',
+  'Oryginały oprogramowania komputerowego',
+  'Instalowanie oprogramowania',
+  'Zarządzanie siecią i systemami informatycznymi',
+];
+
+const rate85 = [
+  'Realizacja zadań według gotowej dokumentacji, bez elementu decyzyjnego',
+  'Konfigurowanie środowisk i serwerów bez podejmowania decyzji projektowych',
+  'Testowanie manualne bez rekomendowania rozwiązań',
+  'Wsparcie techniczne polegające na usuwaniu bieżących błędów operacyjnych',
+];
+
+const formerEmployer = [
+  {
+    icon: 'zap',
+    title: 'Ryczałt',
+    description: 'Prawo do ryczałtu przepada, jeżeli usługi odpowiadają czynnościom wykonywanym w ramach stosunku pracy w roku bieżącym lub poprzednim. Utrata następuje od dnia uzyskania takiego przychodu i obowiązuje do końca roku podatkowego.',
+  },
+  {
+    icon: 'chart',
+    title: 'Podatek liniowy',
+    description: `Tutaj ograniczenie dotyczy wyłącznie tego samego roku podatkowego. Jeżeli w danym roku wykonujesz dla obecnego lub byłego pracodawcy czynności tożsame z etatowymi, ten rok rozliczysz według skali, a nie stawką ${stawkaLiniowa}.`,
+  },
+  {
+    icon: 'shield',
+    title: 'Ulgi w ZUS',
+    description: 'Ulga na start i preferencyjne składki nie przysługują, jeżeli wykonujesz dla byłego pracodawcy te same czynności co na etacie w roku bieżącym lub poprzednim. Zamiast obniżonych składek płacisz pełne.',
+  },
+];
+
+const ipBoxConditions = [
+  'Działalność badawczo-rozwojowa, w wyniku której powstaje, jest rozwijane lub ulepszane oprogramowanie',
+  'Przeniesienie autorskich praw majątkowych na kontrahenta, wynikające z umowy i udokumentowane fakturami',
+  'Odrębna ewidencja pozwalająca przypisać przychody i koszty do konkretnego prawa oraz obliczyć wskaźnik nexus',
+];
+
+const ipBoxHelp = [
+  'Analiza kwalifikowalności Twojej działalności do ulgi',
+  'Prowadzenie odrębnej ewidencji IP Box i obliczenie wskaźnika nexus',
+  'Przygotowanie wniosku o interpretację indywidualną',
+  'Ocena ryzyk podatkowych przed podjęciem decyzji',
+];
+
+const vatCases = [
+  {
+    icon: 'globe',
+    title: 'Klient z Unii Europejskiej',
+    description: 'Wystawiasz fakturę bez stawki i kwoty podatku, z adnotacją o odwrotnym obciążeniu. Potrzebna jest rejestracja do VAT-UE oraz informacje podsumowujące za miesiące, w których wystąpiła sprzedaż.',
+    note: 'Rejestracja do VAT-UE nie oznacza automatycznie utraty zwolnienia w transakcjach krajowych.',
+  },
+  {
+    icon: 'file',
+    title: 'Klient spoza Unii Europejskiej',
+    description: 'Fakturę wystawiasz na analogicznych zasadach, ale takiej transakcji nie wykazujesz w informacji podsumowującej, ponieważ obejmuje ona wyłącznie kontrahentów unijnych.',
+    note: 'Przychód i tak trafia do ewidencji, więc kurs przeliczenia ustalamy tak samo jak przy sprzedaży do UE.',
+  },
+  {
+    icon: 'search',
+    title: 'Uwaga na usługi doradcze',
+    description: 'Świadczenie usług doradztwa wyklucza prawo do zwolnienia podmiotowego z VAT, i to od pierwszej takiej usługi, niezależnie od wysokości przychodów.',
+    note: 'W IT granica między realizacją a doradztwem bywa nieostra, dlatego warto precyzyjnie opisać zakres w umowie i na fakturze.',
+  },
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów albo księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'globe',
+    title: 'VAT, transakcje zagraniczne i KSeF',
+    description: 'Ustalamy miejsce opodatkowania usługi, obsługujemy rejestrację do VAT-UE i przygotowujemy informacje podsumowujące. Faktury wysyłamy i odbieramy w KSeF.',
+    points: [
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Informacje podsumowujące VAT-UE i procedura VAT-OSS',
+      'Faktury walutowe przeliczane po kursie NBP',
+    ],
+  },
+  {
+    icon: 'shield',
+    title: 'ZUS i składka zdrowotna',
+    description: 'Naliczamy składki właściciela działalności i pilnujemy progów przychodu, od których zależy wysokość składki zdrowotnej na ryczałcie. O zbliżającym się progu informujemy z wyprzedzeniem.',
+    points: [
+      'Obsługa ZUS właściciela JDG w cenie abonamentu',
+      'Ulga na start i preferencyjne składki na początku działalności',
+      'Roczne rozliczenie składki zdrowotnej',
+    ],
+  },
+  {
+    icon: 'headset',
+    title: 'Ulgi, analizy i kontakt z urzędami',
+    description: 'Analizujemy kwalifikowalność do IP Box i ulgi B+R oraz prowadzimy wymaganą ewidencję. W kontaktach z urzędem skarbowym i ZUS wspieramy Cię dokumentacją: kompletujemy zestawienia z ksiąg i przygotowujemy wyjaśnienia dotyczące ujęcia zdarzeń.',
+    points: [
+      'Ewidencja IP Box i obliczenie wskaźnika nexus',
+      'Wnioski o interpretację indywidualną w sprawie stawki ryczałtu',
+      'Wsparcie w kontaktach z US, ZUS i CEIDG - dokumentacja i wyjaśnienia',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Abonament all-inclusive', description: 'KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne rozliczenie PIT masz w cenie pakietu. Nie doliczamy za rzeczy, które w innych biurach bywają osobną pozycją na fakturze.' },
+  { icon: 'zap', title: 'Rozmowa bez tłumaczenia podstaw', description: 'Nie musisz wyjaśniać, czym różni się kontrakt body leasingowy od projektu fixed price ani dlaczego faktura przychodzi w dolarach. Wychodzimy z tej samej branży.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twój kontrakt i historię rozliczeń. Nie opowiadasz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Analiza kontraktu i forma opodatkowania', description: 'Sprawdzamy zakres usług pod kątem stawki ryczałtu oraz to, czy nie pojawia się problem byłego pracodawcy. Liczymy warianty, zanim cokolwiek zgłosimy.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające faktycznemu zakresowi działalności, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start albo preferencyjne składki.' },
+  { title: 'VAT-R i VAT-UE', description: 'Rejestrujemy do VAT, jeśli jest to potrzebne, oraz do VAT-UE, jeśli będziesz fakturować kontrahentów z Unii Europejskiej.' },
+  { title: 'Uprawnienia w KSeF i pełnomocnictwo UPL-1', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury wychodziły i przychodziły bez Twojego udziału. Natomiast dzięki UPL-1 podpisujemy za Ciebie deklaracje i JPK.' },
+  { title: 'Onboarding w portalu klienta', description: 'Od pierwszego miesiąca masz dostęp do dokumentów, deklaracji i bieżącego stanu rozliczeń.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Rozmawiamy o Twoim kontrakcie, zakresie usług, kosztach i planach na najbliższy rok. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Konfigurujemy portal klienta i dostęp do KSeF.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej decyzji, i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: `Jaka stawka ryczałtu obowiązuje programistę, ${stawkaIT} czy ${stawkaUslugi}?`,
+    a: `O stawce decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności, a nie nazwa stanowiska ani kod PKD. Usługi związane z oprogramowaniem oraz doradztwo w zakresie oprogramowania i sprzętu mieszczą się w stawce ${stawkaIT}. Czynności pozbawione elementu doradczego i niepowiązane bezpośrednio z tworzeniem oprogramowania mogą kwalifikować się do stawki ${stawkaUslugi}. Warto pamiętać, że stawek jest więcej niż dwie: projektowanie specjalistyczne ma ${pct(RYCZALT_PROJEKTOWANIE)}, a doradztwo związane z zarządzaniem i usługi reklamowe ${pct(RYCZALT_DORADZTWO)}. Przeglądamy zakres Twoich obowiązków i mówimy wprost, jak oceniamy ryzyko. Szerzej opisujemy to w artykule o <a href="/wiedza/ryczalt-12-vs-8-5-dla-it">stawkach ryczałtu w IT</a>.`,
+  },
+  {
+    q: 'Czy kod PKD wpływa na wysokość podatku?',
+    a: 'Nie bezpośrednio. Kod PKD porządkuje wpis w CEIDG i statystykę publiczną, natomiast stawkę ryczałtu wyznacza PKWiU konkretnej usługi. Warto jednak, żeby kod PKD odpowiadał rzeczywistej działalności, ponieważ rozbieżność bywa punktem wyjścia do pytań ze strony urzędu.',
+  },
+  {
+    q: 'Czy muszę zaktualizować kody PKD?',
+    a: `Jeżeli zarejestrowałeś działalność przed ${PKD_NOWA_OD}, tak. Na dostosowanie kodów do nowej klasyfikacji masz czas do ${PKD_AKTUALIZACJA_DO}. Zmiana w CEIDG jest bezpłatna i natychmiastowa. Weryfikujemy to u każdego klienta i zgłaszamy aktualizację za Ciebie.`,
+  },
+  {
+    q: 'Czy mogę połączyć ryczałt z ulgą IP Box?',
+    a: `Nie. IP Box stosuje się wyłącznie w ramach skali podatkowej albo podatku liniowego, czyli przy prowadzeniu KPiR. Jeśli tworzysz autorskie oprogramowanie, przed wyborem formy opodatkowania warto porównać ryczałt z wariantem podatku liniowego z IP Box na Twoich rzeczywistych liczbach. Rozpisaliśmy to w artykule o <a href="/wiedza/ip-box-dla-programistow">uldze IP Box</a>.`,
+  },
+  {
+    q: 'Od kiedy trzeba prowadzić ewidencję IP Box?',
+    a: 'Od początku roku podatkowego i na bieżąco. Nie można jej sporządzić po zakończeniu roku, na potrzeby zeznania. Brak prawidłowej ewidencji jest najczęstszą przyczyną zakwestionowania ulgi przez organy podatkowe.',
+  },
+  {
+    q: 'Czy zmiany w IP Box weszły już w życie?',
+    a: 'Na 2026 rok zasady pozostają niezmienione. Projekt nowelizacji przewidujący wymóg zatrudnienia oraz objęcie dochodu z IP Box daniną solidarnościową nie został uchwalony i nadal jest procedowany, a jego zakres w toku prac ulegał zmianom. Śledzimy postęp prac i informujemy klientów przed początkiem kolejnego roku podatkowego, żeby dało się zaplanować formę opodatkowania.',
+  },
+  {
+    q: 'Przechodzę z etatu na B2B u tego samego pracodawcy. Czy stracę ryczałt?',
+    a: 'Zależy to od tego, czy usługi z kontraktu odpowiadają czynnościom wykonywanym wcześniej na umowie o pracę. Przy ryczałcie ograniczenie obejmuje rok bieżący i poprzedni, przy podatku liniowym tylko rok bieżący. Osobno przepada prawo do ulgi na start i preferencyjnych składek ZUS. Porównujemy zakres obowiązków z etatu z zakresem kontraktu, zanim podpiszesz umowę.',
+  },
+  {
+    q: 'Fakturuję firmę z Niemiec. Czy muszę rejestrować się do VAT?',
+    a: `Do VAT-UE tak, ponieważ jest to warunek prawidłowego wystawiania faktur z odwrotnym obciążeniem i składania informacji podsumowujących. Nie oznacza to jednak automatycznie rejestracji jako czynny podatnik VAT w transakcjach krajowych. Usługi opodatkowane poza Polską nie wliczają się do limitu zwolnienia podmiotowego, który wynosi ${zl(VAT_ZWOLNIENIE_LIMIT)} rocznie.`,
+  },
+  {
+    q: 'Czy muszę być czynnym podatnikiem VAT, jeśli świadczę usługi doradcze?',
+    a: 'Tak. Usługi doradztwa są wyłączone ze zwolnienia podmiotowego, a obowiązek rejestracji powstaje od pierwszej takiej usługi, niezależnie od wysokości przychodów. W IT granica między realizacją a doradztwem bywa nieostra, dlatego warto precyzyjnie opisać zakres w umowie.',
+  },
+  {
+    q: 'Jak rozliczacie faktury w walutach obcych?',
+    a: `Przychód przeliczamy po właściwym kursie Narodowego Banku Polskiego. W abonamencie masz do ${currencyInvoices.freeLimit} faktur walutowych miesięcznie, między innymi w euro, dolarach i funtach. Powyżej tej liczby doliczamy ${currencyInvoices.rate} zł netto za dokument, zgodnie z <a href="/cennik#dodatkowe">katalogiem usług dodatkowych</a>.`,
+  },
+  {
+    q: 'Do jakiego przychodu mogę rozliczać się ryczałtem?',
+    a: `Ryczałt przysługuje przedsiębiorcom, których przychody w roku poprzednim nie przekroczyły równowartości ${num(RYCZALT_LIMIT_EUR)} euro, czyli ${zl(RYCZALT_LIMIT)} na 2026 rok. Przy kontrakcie B2B jest to próg, do którego dochodzi niewielu programistów, ale pilnujemy go za Ciebie i sygnalizujemy zawczasu, gdyby zbliżał się moment przejścia na KPiR.`,
+  },
+  {
+    q: 'Ile kosztuje prowadzenie ewidencji IP Box?',
+    a: `${ipBox.monthly} zł netto miesięcznie dla jednego kwalifikowanego prawa przy KPiR, a każde kolejne prawo to ${ipBox.nextRight} zł. Przy księgach rachunkowych, czyli IP Box w CIT, stawka wynosi ${ipBox.monthlyFk} zł. W tej cenie jest wyliczenie wskaźnika nexus oraz załącznik PIT/IP do rocznego zeznania, więc nie ma osobnej opłaty za rozliczenie ulgi na koniec roku. Jest to pozycja poza abonamentem, ponieważ ustawa wymaga prowadzenia ewidencji na bieżąco przez cały rok. Przygotowanie wniosku o interpretację indywidualną kosztuje ${fmt.format(ipBox.interpretation)} zł, a do tego dochodzi ${ipBox.interpretationFee} zł opłaty urzędowej od każdego stanu faktycznego opisanego we wniosku.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla programisty?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów, czyli w sytuacji typowej dla kontraktora. Dla czynnego podatnika VAT jest to ${tables.find((t) => t.id === 'ryczalt')?.buckets[0].withVat} zł netto. KPiR, potrzebna przy IP Box, zaczyna się od ${kpir} zł netto, a pełna księgowość spółki od ${fmt.format(fk)} zł netto.`,
+  },
+  {
+    q: 'Czy obsługujecie programistów z całej Polski?',
+    a: 'Tak. Pracujemy w pełni zdalnie, a nasza siedziba mieści się w Krakowie. Niezależnie od tego, gdzie mieszkasz, otrzymujesz ten sam standard obsługi: portal klienta dostępny całą dobę, jednego opiekuna i standardowo odpowiedź w ciągu 4 godzin roboczych.',
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla programistów', href: '/ksiegowosc-dla-programistow' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-programistow#service`,
+  name: 'Księgowość dla programistów i branży IT',
+  serviceType: 'Usługi księgowe dla branży IT',
+  description: 'Obsługa księgowa programistów na kontraktach B2B, freelancerów z klientami zagranicznymi i spółek technologicznych. Ryczałt, KPiR i pełna księgowość, IP Box, VAT-UE, faktury walutowe i KSeF.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-programistow`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Programiści, testerzy, administratorzy, specjaliści DevOps, software house i spółki technologiczne',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla branży IT',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: [r.form, r.vatLabel, `${r.docs} dokumentów / mies.`].filter(Boolean).join(', '),
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title={`Księgowość dla programistów`}
+  description={`Księgowość dla programistów i firm IT. Ryczałt ${stawkaIT} i ${stawkaUslugi}, IP Box, faktury walutowe i VAT-UE. KSeF, OCR i portal klienta w cenie, od ${ryczalt} zł netto miesięcznie.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla programisty, testera i całej branży IT"
+    description="Rozliczamy programistów na kontraktach B2B, freelancerów pracujących dla klientów zagranicznych oraz spółki technologiczne. Pomagamy dobrać stawkę ryczałtu do faktycznego zakresu usług, prowadzimy ewidencję na potrzeby IP Box i obsługujemy faktury w walutach obcych. Ty piszesz kod, a my pilnujemy reszty."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla programistów' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=it" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Księgowość dla programisty B2B i pozostałych modeli pracy w IT</h2>
+        <p>Branża IT wygląda inaczej u kontraktora wystawiającego jedną fakturę miesięcznie, a inaczej u zespołu budującego własny produkt. Poniżej opisujemy pięć sytuacji, z którymi spotykamy się najczęściej, i to, czym zajmujemy się w każdej z nich.</p>
+      </div>
+      <div class="dev-segments">
+        {segments.map((s) => (
+          <article class="dev-segment">
+            <div class="dev-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Stawka ryczałtu ───────────────────────────────────────────────── -->
+  <section class="section section--alt" id="stawka-ryczaltu">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Ryczałt w IT</span>
+        <h2>Ryczałt dla programisty: {stawkaIT} czy {stawkaUslugi}?</h2>
+        <p>To najczęstsze pytanie, jakie słyszymy od osób z branży IT. Odpowiedź nie zależy od nazwy stanowiska ani od kodu PKD wpisanego w CEIDG. Decyduje klasyfikacja PKWiU faktycznie wykonywanych czynności. Dwie osoby z tym samym tytułem w umowie mogą mieć prawo do różnych stawek.</p>
+      </div>
+
+      <div class="dev-split">
+        <article class="dev-split__col dev-split__col--main">
+          <div class="dev-split__head">
+            <span class="dev-split__rate">{stawkaIT}</span>
+            <h3>Usługi związane z oprogramowaniem</h3>
+          </div>
+          <p>Ustawa wymienia tę stawkę wprost i obejmuje nią między innymi:</p>
+          <ul>
+            {rate12.map((r) => <li><Icon name="check" size={14}/>{r}</li>)}
+          </ul>
+          <p class="dev-split__foot">Organy podatkowe interpretują pojęcie usług związanych z oprogramowaniem szeroko. Obejmuje ono nie tylko pisanie kodu, ale też czynności towarzyszące, jeżeli są z oprogramowaniem powiązane. Dla większości programistów pracujących na kontrakcie właściwa jest właśnie ta stawka.</p>
+        </article>
+        <article class="dev-split__col dev-split__col--alt">
+          <div class="dev-split__head">
+            <span class="dev-split__rate dev-split__rate--alt">{stawkaUslugi}</span>
+            <h3>Pozostała działalność usługowa</h3>
+          </div>
+          <p>Stawka dla usług, których ustawa nie przypisała do żadnej innej kategorii. Sprzyjają jej między innymi:</p>
+          <ul>
+            {rate85.map((r) => <li><Icon name="chevron-right" size={14}/>{r}</li>)}
+          </ul>
+          <p class="dev-split__foot">To nie jest automatyczna alternatywa dla wyższej stawki. Jeżeli Twoja usługa trafia do innego katalogu ustawy, obowiązuje stawka z tego katalogu, a nie ta.</p>
+        </article>
+      </div>
+
+      <p class="dev-note">
+        <Icon name="search" size={16}/>
+        <span>W otoczeniu IT liczą się jeszcze dwie stawki, o których łatwo zapomnieć. Specjalistyczne projektowanie, w tym część pracy projektantów interfejsów, mieści się w stawce {pct(RYCZALT_PROJEKTOWANIE)}, a doradztwo związane z zarządzaniem, usługi reklamowe i badanie rynku w stawce {pct(RYCZALT_DORADZTWO)}. Granice opisujemy szczegółowo w artykule o <a href="/wiedza/ryczalt-12-vs-8-5-dla-it">stawkach ryczałtu w IT</a>, a jeśli projektowanie interfejsów jest Twoim głównym zajęciem, właściwym miejscem jest podstrona o <a href="/ksiegowosc-dla-marketingu-i-branz-kreatywnych">księgowości dla branż kreatywnych</a>.</span>
+      </p>
+
+      <aside class="dev-approach">
+        <div class="dev-approach__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Jak do tego podchodzimy</h3>
+          <p>Nie obiecujemy niższej stawki, bo nie od nas ona zależy. Przechodzimy przez faktyczny zakres Twoich obowiązków, porównujemy go z treścią kontraktu i mówimy wprost, jak oceniamy ryzyko. Jeśli sytuacja jest niejednoznaczna, przygotowujemy wniosek o interpretację indywidualną. To jedyny sposób, żeby uzyskać ochronę prawną i spać spokojnie.</p>
+          <p>Jeżeli wykonujesz czynności należące do różnych kategorii, ryczałt liczy się według stawki właściwej dla każdego rodzaju działalności. Wymaga to ewidencji pozwalającej rozdzielić przychody i prowadzimy ją w ramach abonamentu.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Forma opodatkowania ───────────────────────────────────────────── -->
+  <section class="section" id="forma-opodatkowania">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Podatki</span>
+        <h2>Ryczałt, podatek liniowy czy skala podatkowa</h2>
+        <p>Wybór formy opodatkowania zostaje z Tobą na cały rok podatkowy, a w branży IT potrafi zmienić wynik netto o kilkanaście tysięcy złotych rocznie. Rozstrzyga o nim przede wszystkim relacja przychodów do kosztów oraz to, czy jesteś w stanie skorzystać z ulgi IP Box.</p>
+      </div>
+
+      <div class="dev-forms">
+        {taxForms.map((f) => (
+          <article class={`dev-form ${f.featured ? 'dev-form--featured' : ''}`}>
+            <span class={`dev-form__badge ${f.featured ? 'dev-form__badge--featured' : ''}`}>{f.badge}</span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+            <p class="dev-form__note">{f.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="dev-note">
+        <Icon name="file" size={16}/>
+        <span>Ryczałt jest w IT najczęściej wybieraną formą, ale ma jedno istotne ograniczenie: nie łączy się z ulgą IP Box. Jeżeli tworzysz autorskie oprogramowanie i spełniasz warunki ulgi, porównanie musi objąć również podatek liniowy ze stawką {stawkaIpBox} dla dochodu z kwalifikowanego prawa. Prawo do ryczałtu przysługuje przy przychodach za rok poprzedni do równowartości {num(RYCZALT_LIMIT_EUR)} euro, czyli {zl(RYCZALT_LIMIT)} na 2026 rok.</span>
+      </p>
+
+      <p class="dev-lede-center">Przed podjęciem decyzji przygotowujemy porównanie na Twoich liczbach, z uwzględnieniem składki zdrowotnej i możliwych odliczeń. Nie rekomendujemy formy opodatkowania na podstawie samego stanowiska w kontrakcie.</p>
+
+      <div class="dev-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── IP Box ────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ip-box">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">IP Box</span>
+        <h2>IP Box dla programisty - {stawkaIpBox} podatku od dochodu z autorskiego oprogramowania</h2>
+        <p>IP Box pozwala opodatkować stawką {stawkaIpBox} dochód z kwalifikowanego prawa własności intelektualnej. U programisty jest nim zwykle autorskie prawo do programu komputerowego, które powstaje z chwilą stworzenia kodu i nie wymaga rejestracji. Ulga nie jest odrębną formą opodatkowania, tylko preferencją stosowaną w ramach skali podatkowej albo podatku liniowego.</p>
+      </div>
+
+      <div class="dev-ipbox">
+        <article class="dev-ipbox__card">
+          <div class="dev-ipbox__icon"><Icon name="check-circle" size={22}/></div>
+          <h3>Warunki, które trzeba spełnić</h3>
+          <ul>
+            {ipBoxConditions.map((c) => <li><Icon name="check" size={14}/>{c}</li>)}
+          </ul>
+        </article>
+        <article class="dev-ipbox__card">
+          <div class="dev-ipbox__icon"><Icon name="headset" size={22}/></div>
+          <h3>W czym pomagamy</h3>
+          <ul>
+            {ipBoxHelp.map((c) => <li><Icon name="check" size={14}/>{c}</li>)}
+          </ul>
+        </article>
+      </div>
+
+      <aside class="dev-approach dev-approach--warn">
+        <div class="dev-approach__icon"><Icon name="clock" size={22}/></div>
+        <div>
+          <h3>Najczęstszy błąd</h3>
+          <p>Ewidencję IP Box trzeba prowadzić na bieżąco, od początku roku podatkowego. Nie da się jej odtworzyć w kwietniu, przed złożeniem zeznania. Organy podatkowe wielokrotnie kwestionowały prawo do ulgi właśnie z tego powodu, więc jeśli planujesz skorzystać z IP Box za dany rok, decyzję trzeba podjąć zawczasu.</p>
+          <p>Druga częsta pomyłka to założenie, że każda praca programisty kwalifikuje się do ulgi. Rutynowe czynności, takie jak bieżące poprawianie błędów czy konfiguracja gotowych narzędzi, zwykle nie spełniają definicji działalności badawczo-rozwojowej.</p>
+        </div>
+      </aside>
+
+      <p class="dev-note">
+        <Icon name="tag" size={16}/>
+        <span>Ewidencję IP Box prowadzimy za {ipBox.monthly} zł netto miesięcznie dla jednego kwalifikowanego prawa, a każde kolejne prawo to {ipBox.nextRight} zł. Przy spółce, czyli IP Box w CIT, stawka wynosi {ipBox.monthlyFk} zł. W cenie jest wskaźnik nexus i załącznik PIT/IP do rocznego zeznania, więc nie doliczamy osobnej opłaty za rozliczenie ulgi na koniec roku. To pozycja poza abonamentem, bo ewidencję trzeba prowadzić w każdym miesiącu, a nie raz w roku przy zeznaniu. Przygotowanie wniosku o interpretację indywidualną kosztuje {fmt.format(ipBox.interpretation)} zł plus {ipBox.interpretationFee} zł opłaty urzędowej od każdego stanu faktycznego, która trafia do KIS, a nie do nas.</span>
+      </p>
+
+      <div class="dev-legal">
+        <h3>Stan przepisów na dziś</h3>
+        <p>Na 2026 rok zasady korzystania z IP Box pozostają niezmienione. Projekt nowelizacji, który przewidywał wprowadzenie wymogu zatrudnienia oraz objęcie dochodu z IP Box daniną solidarnościową, nie został uchwalony i nadal znajduje się w procesie legislacyjnym. Jego zakres w toku prac ulegał zmianom, a deklarowany termin wejścia w życie przesunięto na kolejny rok.</p>
+        <p>Nie potrafimy przewidzieć ostatecznego kształtu tych przepisów i nie będziemy udawać, że jest inaczej. Śledzimy prace legislacyjne i informujemy klientów o zmianach z wyprzedzeniem, tak aby dało się zaplanować kolejny rok podatkowy.</p>
+        <a href="/wiedza/ip-box-dla-programistow" class="btn-arrow">
+          <span>Przeczytaj przewodnik po IP Box</span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Przejście z etatu na B2B ──────────────────────────────────────── -->
+  <section class="section" id="etat-na-b2b">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Przejście na B2B</span>
+        <h2>Przechodzisz z etatu na kontrakt? Sprawdź to, zanim wystawisz pierwszą fakturę</h2>
+        <p>To najczęstszy i najbardziej kosztowny błąd osób wchodzących w model B2B. Świadczenie na rzecz obecnego albo byłego pracodawcy usług odpowiadających czynnościom wykonywanym wcześniej na umowie o pracę uderza w trzy obszary jednocześnie.</p>
+      </div>
+
+      <div class="dev-cards">
+        {formerEmployer.map((f) => (
+          <article class="dev-card">
+            <div class="dev-card__icon"><Icon name={f.icon} size={22}/></div>
+            <h3>{f.title}</h3>
+            <p>{f.description}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="dev-note">
+        <Icon name="shield" size={16}/>
+        <span>Kluczowa jest faktyczna tożsamość czynności, a nie nazwa stanowiska ani treść umowy. Organy podatkowe przyjmują, że częściowa zbieżność zakresu obowiązków nie oznacza jeszcze ich tożsamości, więc wiele osób zachowuje prawo do preferencji. Ocena wymaga jednak porównania zakresu obowiązków z etatu z zakresem usług z kontraktu. Robimy to na bezpłatnej konsultacji, zanim podpiszesz cokolwiek.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── VAT i klienci zagraniczni ─────────────────────────────────────── -->
+  <section class="section section--alt" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT</span>
+        <h2>VAT i VAT-UE w branży IT</h2>
+        <p>Jeżeli świadczysz usługi dla firmy z siedzibą poza Polską, miejscem opodatkowania jest co do zasady kraj nabywcy. Twoja faktura nie zawiera wtedy polskiego VAT, a podatek rozlicza kontrahent. Z tej prostej zasady wynika kilka konsekwencji, o których warto wiedzieć wcześniej.</p>
+      </div>
+
+      <div class="dev-cards">
+        {vatCases.map((v) => (
+          <article class="dev-card">
+            <div class="dev-card__icon"><Icon name={v.icon} size={22}/></div>
+            <h3>{v.title}</h3>
+            <p>{v.description}</p>
+            <p class="dev-card__note">{v.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="dev-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Warto znać jeszcze jedną zasadę, bo bywa źródłem niepotrzebnych rejestracji do VAT. Usługi, których miejsce opodatkowania znajduje się poza Polską, nie stanowią sprzedaży krajowej, więc nie wliczają się do limitu zwolnienia podmiotowego, wynoszącego {zl(VAT_ZWOLNIENIE_LIMIT)} rocznie. Kontraktor pracujący wyłącznie dla zagranicznej firmy może więc pozostać podatnikiem zwolnionym mimo wysokich przychodów, a rozliczamy go wtedy według stawki dla zwolnionych z VAT.</span>
+      </p>
+
+      <p class="dev-note">
+        <Icon name="globe" size={16}/>
+        <span>Przychód w walucie obcej przeliczamy po właściwym kursie Narodowego Banku Polskiego. W abonamencie masz do {currencyInvoices.freeLimit} faktur walutowych miesięcznie, powyżej tej liczby doliczamy {currencyInvoices.rate} zł netto za dokument, zgodnie z <a href="/cennik#dodatkowe">katalogiem usług dodatkowych</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Faktury zagraniczne ───────────────────────────────────────────── -->
+  <section class="section" id="faktury-zagraniczne">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Fakturowanie</span>
+        <h2>Faktury dla klientów zagranicznych</h2>
+        <p>Sam VAT to jedno, a wystawienie poprawnej faktury to drugie. Poniżej cztery rzeczy, na które patrzymy przy każdym dokumencie wystawianym poza Polskę.</p>
+      </div>
+
+      <div class="dev-terms">
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="search" size={22}/></div>
+          <h3>Status nabywcy</h3>
+          <p>Zanim ustalimy sposób opodatkowania, sprawdzamy, czy kontrahent jest podatnikiem. Przy firmie z Unii weryfikujemy numer VAT w systemie VIES, a przy kliencie spoza Unii opieramy się na dokumentach potwierdzających prowadzenie działalności. Sprzedaż do konsumenta rozliczamy inaczej niż sprzedaż do firmy, więc pomyłka na tym etapie przenosi się na całą deklarację.</p>
+        </article>
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="file" size={22}/></div>
+          <h3>Treść faktury</h3>
+          <p>Faktura dla podatnika z Unii nie zawiera stawki ani kwoty polskiego VAT, za to musi mieć numery VAT-UE obu stron oraz adnotację o odwrotnym obciążeniu. Przy kliencie spoza Unii adnotacja wygląda inaczej, bo tam nie stosuje się unijnego mechanizmu. Przygotowujemy szablony pod oba warianty, żebyś nie musiał ich składać za każdym razem od nowa.</p>
+        </article>
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="globe" size={22}/></div>
+          <h3>Waluta i kurs</h3>
+          <p>Fakturę możesz wystawić w euro czy dolarach, ale w księgach przychód musi być w złotych. Przeliczamy go po kursie średnim Narodowego Banku Polskiego z ostatniego dnia roboczego poprzedzającego dzień powstania przychodu. Różnice kursowe między datą wystawienia a datą wpływu pieniędzy rozliczamy osobno - przy stałym kontrakcie w obcej walucie potrafią być zauważalne.</p>
+        </article>
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="clock" size={22}/></div>
+          <h3>Terminy raportowania</h3>
+          <p>Sprzedaż usług do podatników z Unii wykazujemy w informacji podsumowującej VAT-UE za okres, w którym powstał obowiązek podatkowy. Pilnujemy tego kalendarza za Ciebie; rejestracja do VAT-UE i same informacje podsumowujące są w abonamencie.</p>
+        </article>
+      </div>
+
+      <p class="dev-note">
+        <Icon name="check-circle" size={16}/>
+        <span>Praktyczna konsekwencja dla kontraktora pracującego wyłącznie dla zagranicznej firmy: możesz być zarejestrowany do VAT-UE i jednocześnie pozostawać podatnikiem zwolnionym z VAT w kraju. To dwie różne rejestracje i jedna nie wymusza drugiej.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Koszty ────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="koszty">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Koszty</span>
+        <h2>Koszty programisty - co realnie obniża podatek</h2>
+        <p>Odpowiedź zaczyna się od pytania, które łatwo pominąć: na jakiej formie opodatkowania jesteś. Od tego zależy, czy zakup sprzętu w ogóle wpływa na wysokość podatku.</p>
+      </div>
+
+      <div class="dev-cost-note">
+        <div class="dev-cost-note__col">
+          <h3>Na ryczałcie koszty nie obniżają podatku</h3>
+          <p>Ryczałt liczy się od przychodu, a nie od dochodu. Nowy laptop, licencja czy konferencja nie zmniejszą podstawy opodatkowania ani o złotówkę. Od przychodu odliczysz natomiast zapłacone składki na ubezpieczenia społeczne oraz {pct(RYCZALT_HEALTH_DEDUCT_RATE)} zapłaconych składek zdrowotnych.</p>
+          <p>Dlatego przy wyborze formy opodatkowania liczymy nie samą stawkę, tylko realny podatek przy Twojej strukturze przychodów i wydatków. Programista z kosztami rzędu kilkuset złotych miesięcznie i programista, który utrzymuje własną infrastrukturę, wychodzą na tym zupełnie inaczej.</p>
+        </div>
+        <div class="dev-cost-note__col">
+          <h3>Na KPiR liczy się dochód</h3>
+          <p>Przy skali podatkowej i podatku liniowym prowadzimy podatkową księgę przychodów i rozchodów, a podatek płacisz od różnicy między przychodem a kosztami. Kosztem jest wydatek poniesiony w celu osiągnięcia przychodu albo zachowania jego źródła, o ile nie znajduje się na ustawowej liście wyłączeń.</p>
+          <p>W praktyce spór z urzędem rzadko dotyczy tego, czy dana pozycja jest kosztem co do zasady. Dotyczy związku wydatku z działalnością - dlatego przy pozycjach z pogranicza pytamy o kontekst, zamiast księgować w ciemno.</p>
+        </div>
+      </div>
+
+      <div class="dev-cards">
+        {kosztyGrupy.map((k) => (
+          <article class="dev-card">
+            <div class="dev-card__icon"><Icon name={k.icon} size={22}/></div>
+            <h3>{k.title}</h3>
+            <p>{k.description}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="dev-note">
+        <Icon name="search" size={16}/>
+        <span>Ile realnie kosztuje Cię firmowy zakup po uwzględnieniu VAT i podatku dochodowego, policzysz w <a href="/kalkulatory/zakupow-na-firme">kalkulatorze zakupów na firmę</a>. Opłacalność samego auta sprawdzisz w <a href="/kalkulatory/auta-w-leasingu">kalkulatorze leasingu</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── KSeF i kody PKD ───────────────────────────────────────────────── -->
+  <section class="section" id="obowiazki">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obowiązki formalne</span>
+        <h2>KSeF i nowe kody PKD, czyli dwie rzeczy do sprawdzenia w 2026 roku</h2>
+        <p>Obie dotyczą wszystkich przedsiębiorców, ale w branży IT łatwo je przeoczyć, bo nie mają nic wspólnego z codzienną pracą. Pilnujemy ich za Ciebie, jednak warto wiedzieć, o co chodzi.</p>
+      </div>
+
+      <div class="dev-terms">
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="zap" size={22}/></div>
+          <h3>KSeF</h3>
+          <p>Od 1 lutego 2026 roku wszyscy przedsiębiorcy odbierają faktury zakupowe przez Krajowy System e-Faktur. Obowiązek wystawiania faktur w systemie objął większość firm od 1 kwietnia 2026 roku, a podmioty o sprzedaży nieprzekraczającej 10 000 zł brutto miesięcznie mają czas do 1 stycznia 2027 roku.</p>
+          <p>Obsługa KSeF jest u nas elementem abonamentu, bez dopłat. Konfigurujemy dostęp, nadajemy uprawnienia i możemy wystawiać faktury w Twoim imieniu. Pracujemy na własnej integracji z systemem, więc przy zmianie przepisów nie czekamy na dostawcę zewnętrznego.</p>
+          <a href="/wiedza/ksef-praktyczny-przewodnik" class="btn-arrow">
+            <span>Praktyczny przewodnik po KSeF</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </article>
+        <article class="dev-term">
+          <div class="dev-term__icon"><Icon name="file" size={22}/></div>
+          <h3>Aktualizacja kodów PKD</h3>
+          <p>Nowa klasyfikacja działalności obowiązuje od {PKD_NOWA_OD}, a przedsiębiorcy zarejestrowani wcześniej mają na dostosowanie kodów czas do {PKD_AKTUALIZACJA_DO}. Zmiany dotknęły branżę IT wyraźnie. Dawna działalność związana z oprogramowaniem została rozdzielona na programowanie gier i pozostałą działalność programistyczną, a doradztwo w zakresie informatyki połączono z zarządzaniem urządzeniami informatycznymi i wyodrębniono z nich cyberbezpieczeństwo.</p>
+          <p>Jeżeli nie zaktualizujesz kodów samodzielnie, zostaną przypisane automatycznie według kluczy przejść, a efekt może nie odpowiadać temu, czym faktycznie się zajmujesz. Weryfikujemy to u każdego klienta i zgłaszamy zmianę w CEIDG, co jest bezpłatne i natychmiastowe.</p>
+        </article>
+      </div>
+
+      <p class="dev-note">
+        <Icon name="search" size={16}/>
+        <span>Ważne rozróżnienie: zmiana klasyfikacji PKD nie zmieniła stawek ryczałtu. O stawce nadal decyduje PKWiU, a ta klasyfikacja pozostała bez zmian. Kod PKD porządkuje wpis do rejestru, ale sam w sobie nie przesądza o wysokości podatku. Znaczenie obu klasyfikacji tłumaczymy też w <a href="/slownik">słowniku księgowym</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Prowadzenie działalności w IT generuje comiesięczny kalendarz obowiązków, który nie ma nic wspólnego z programowaniem. Bierzemy go na siebie w całości, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard.</p>
+      </div>
+      <div class="dev-scope">
+        {scope.map((s) => (
+          <article class="dev-scope__item">
+            <div class="dev-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="container">
+      <div class="dev-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Biuro rachunkowe, które rozumie, jak&nbsp;powstaje oprogramowanie</h2>
+          <p class="lede">Taxun powstał z inicjatywy programisty prowadzącego software house, więc znamy tę branżę również od strony klienta, a nie tylko z faktur. Integrację z KSeF napisaliśmy samodzielnie, w oparciu o dokumentację Ministerstwa Finansów. Dzięki temu automatyzujemy to, co da się zautomatyzować, i wyceniamy usługi konkurencyjnie.</p>
+          <div class="dev-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow dev-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="dev-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="dev-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section section--alt" id="zakladanie-firmy">
+    <div class="container">
+      <div class="dev-startup">
+        <div class="dev-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zakładasz działalność? Zrobimy to razem, zanim popełnisz pierwszy błąd</h2>
+          <p class="lede">Rejestracja jednoosobowej działalności zajmuje kilkanaście minut, ale decyzje podejmowane przy tej okazji wiążą Cię na cały rok. Forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT i wybór kodów PKD to rzeczy, które łatwiej ustawić dobrze od razu, niż potem poprawiać.</p>
+        </div>
+
+        <ol class="dev-steps">
+          {startupSteps.map((s, i) => (
+            <li class="dev-step">
+              <span class="dev-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="dev-startup__cols">
+          <div class="dev-startup__col dev-startup__col--primary">
+            <span class="dev-startup__pill dev-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem: {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="dev-startup__col">
+            <span class="dev-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem: {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=it" class="btn btn--accent btn--lg dev-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Spółka i zespół ───────────────────────────────────────────────── -->
+  <section class="section" id="spolka">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Spółki i zespoły</span>
+        <h2>Rośniesz? Obsłużymy również spółkę i zespół</h2>
+        <p>Wielu klientów zaczyna u nas jako jednoosobowa działalność, a po kilku latach prowadzi spółkę i zatrudnia ludzi. Nie musisz wtedy zmieniać biura.</p>
+      </div>
+
+      <div class="dev-company">
+        <article class="dev-company__card">
+          <div class="dev-card__icon"><Icon name="briefcase" size={22}/></div>
+          <h3>Spółka z ograniczoną odpowiedzialnością</h3>
+          <p>Prowadzimy pełną księgowość zgodną z ustawą o rachunkowości. Sporządzamy sprawozdanie finansowe oraz e-sprawozdanie do KRS, analizujemy opłacalność estońskiego CIT i pomagamy ułożyć wynagrodzenia wspólników.</p>
+          <p class="dev-card__note">Pełna księgowość zaczyna się od {fmt.format(fk)} zł netto miesięcznie. Szczegóły opisujemy na stronie <a href="/ksiegowosc">księgowości</a>.</p>
+        </article>
+        <article class="dev-company__card">
+          <div class="dev-card__icon"><Icon name="users" size={22}/></div>
+          <h3>Kadry i płace</h3>
+          <p>Jeżeli zatrudniasz pracowników albo współpracujesz z podwykonawcami, prowadzimy dokumentację kadrową w stałej cenie za osobę. Obsługujemy również zatrudnianie cudzoziemców, z dokumentacją w języku polskim i angielskim.</p>
+          <ul class="dev-company__hr">
+            {hrPricing.slice(0, 3).map((h) => (
+              <li>
+                <span>{h.name}</span>
+                <strong>{fmt.format(h.price)} zł</strong>
+              </li>
+            ))}
+          </ul>
+          <p class="dev-card__note">Ceny netto miesięcznie za osobę. Minimalny abonament kadrowy wynosi {hrMin} zł niezależnie od liczby zatrudnionych.</p>
+        </article>
+      </div>
+
+      <div class="dev-actions">
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Pełna oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Księgowość online ─────────────────────────────────────────────── -->
+  <section class="section" id="online">
+    <div class="container">
+      <div class="dev-online">
+        <div>
+          <span class="eyebrow">Model współpracy</span>
+          <h2>Księgowość online dla programisty</h2>
+          <p class="lede">Pracujesz zdalnie, wystawiasz faktury z laptopa i rozliczasz się z klientem przez system do zarządzania projektami. Księgowość, która wymaga dowożenia dokumentów, jest w tym układzie jedynym elementem cofającym Cię do papieru.</p>
+          <p>U nas cały obieg jest elektroniczny: fakturę sprzedaży wystawiasz w portalu albo we własnym systemie, faktury kosztowe pobieramy z KSeF, a rachunki spoza systemu wrzucasz zdjęciem. Deklaracje wysyłamy elektronicznie, a kwoty do zapłaty widzisz przed terminem.</p>
+          <p>Kontakt też działa tak, jak w Twojej pracy: piszesz do konkretnej osoby, standardowo dostajesz odpowiedź w 4 godziny robocze, a trudniejsze tematy omawiamy na wideo. Szczegóły opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+        </div>
+        <ul class="dev-online__list">
+          <li><Icon name="check-circle" size={16}/> Faktury kosztowe pobierane automatycznie z KSeF</li>
+          <li><Icon name="check-circle" size={16}/> Portal klienta w przeglądarce, bez instalowania programu</li>
+          <li><Icon name="check-circle" size={16}/> Jeden opiekun i standardowo odpowiedź w 4 godziny robocze</li>
+          <li><Icon name="check-circle" size={16}/> Umowa podpisywana elektronicznie, bez drukowania</li>
+          <li><Icon name="check-circle" size={16}/> Ten sam cennik co przy obsłudze stacjonarnej</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla programisty</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. Poniżej podajemy stawki dla sytuacji, które w branży IT spotykamy najczęściej.</p>
+      </div>
+
+      <div class="dev-price">
+        <div class="dev-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="dev-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="dev-price__row">
+            <span class="dev-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.vatLabel ? `${r.vatLabel}, ` : ''}{r.docs} dokumentów</small>
+            </span>
+            <span class="dev-price__situation">{r.situation}</span>
+            <span class="dev-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="dev-note">
+        <Icon name="file" size={16}/>
+        <span>Cena zależy od liczby dokumentów księgowych w miesiącu. Do limitu wliczamy faktury sprzedaży i kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych. Deklaracje wysyłane do urzędów nie są wliczane. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</span>
+      </p>
+
+      <p class="dev-note">
+        <Icon name="sparkle" size={16}/>
+        <span>Ewidencja IP Box nie mieści się w powyższych stawkach, bo jest odrębną pracą wykonywaną co miesiąc. Kosztuje {ipBox.monthly} zł netto, więc KPiR z VAT przy liczbie do 10 dokumentów wraz z ewidencją IP Box to {fmt.format((tables.find((t) => t.id === 'kpir')?.buckets[0].withVat as number) + ipBox.monthly)} zł netto miesięcznie. Podajemy to wprost, żeby kwota na fakturze nie zaskoczyła Cię po pierwszym miesiącu.</span>
+      </p>
+
+      <div class="dev-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/slownik" class="btn btn--ghost btn--lg">
+          <Icon name="search" size={18}/>
+          <span>Słownik księgowy</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość dla programistów"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej działalności"
+    description="Jeśli prowadzisz już działalność w IT albo dopiero planujesz przejście na kontrakt, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twój kontrakt, porównamy formy opodatkowania i powiemy wprost, co da się uprościć. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=it"
+  />
+</BaseLayout>
+
+<style>
+/* Koszty: dwie kolumny porównawcze ryczałt kontra KPiR */
+.dev-cost-note {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.dev-cost-note__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem;
+}
+.dev-cost-note__col h3 { font-size: 1.0625rem; margin-bottom: 0.5rem; }
+.dev-cost-note__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-cost-note__col p + p { margin-top: 0.75rem; }
+
+.dev-online {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: clamp(2rem, 5vw, 3.5rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .dev-online { grid-template-columns: 1fr; } }
+.dev-online > div > p { margin-top: 1rem; line-height: 1.65; color: var(--text); }
+.dev-online a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.dev-online__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+}
+.dev-online__list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.dev-online__list svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.dev-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.dev-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.dev-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.dev-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+.dev-lede-center {
+  margin-top: 1.75rem;
+  text-align: center;
+  max-width: 72ch;
+  margin-inline: auto;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.dev-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn pozwala ułożyć pięć kart bez pustego miejsca: trzy karty po
+     dwie kolumny w pierwszym rzędzie, dwie po trzy kolumny w drugim. */
+  .dev-segments { grid-template-columns: repeat(6, 1fr); }
+  .dev-segments > * { grid-column: span 2; }
+  .dev-segments > :nth-child(4),
+  .dev-segments > :nth-child(5) { grid-column: span 3; }
+}
+.dev-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.dev-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.dev-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-segment h3 { font-size: 1.125rem; }
+.dev-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.dev-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.dev-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.dev-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Stawki ryczałtu ──────────────────────────────────────────────────── */
+.dev-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-split { grid-template-columns: 1fr 1fr; } }
+.dev-split__col {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dev-split__col--main { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.dev-split__head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+}
+.dev-split__head h3 { font-size: 1.125rem; }
+.dev-split__rate {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-500);
+  color: var(--ink-950);
+}
+.dev-split__rate--alt { background: var(--ink-100); color: var(--ink-800); }
+.dev-split__col > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-split__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dev-split__col li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.dev-split__col--main li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+.dev-split__col--alt li :global(svg) { color: var(--text-subtle); flex-shrink: 0; margin-top: 4px; }
+.dev-split__col p.dev-split__foot {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── Panel wyjaśniający (ciemny) ──────────────────────────────────────── */
+.dev-approach {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-xl);
+  color: var(--text-on-dark);
+}
+.dev-approach__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+}
+.dev-approach--warn .dev-approach__icon { background: rgba(245,158,11,0.16); color: var(--warning); }
+.dev-approach h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.625rem; }
+.dev-approach p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.7; }
+.dev-approach p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .dev-approach { flex-direction: column; gap: 1rem; }
+}
+
+/* ── Formy opodatkowania ──────────────────────────────────────────────── */
+.dev-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-forms { grid-template-columns: repeat(3, 1fr); } }
+.dev-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dev-form--featured {
+  border-color: var(--accent-200);
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+}
+.dev-form__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.dev-form__badge--featured { background: var(--accent-500); color: var(--ink-950); }
+.dev-form h3 { font-size: 1.25rem; }
+.dev-form p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-form p.dev-form__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+/* ── IP Box ───────────────────────────────────────────────────────────── */
+.dev-ipbox {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-ipbox { grid-template-columns: 1fr 1fr; } }
+.dev-ipbox__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.dev-ipbox__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-ipbox__card h3 { font-size: 1.125rem; }
+.dev-ipbox__card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dev-ipbox__card li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.dev-ipbox__card li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+.dev-legal {
+  margin-top: 1.75rem;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.dev-legal h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+.dev-legal p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.dev-legal p + p { margin-top: 0.75rem; }
+.dev-legal .btn-arrow { margin-top: 1.25rem; }
+
+/* ── Karty (były pracodawca, VAT) ─────────────────────────────────────── */
+.dev-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-cards { grid-template-columns: repeat(3, 1fr); } }
+.dev-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.dev-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.dev-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-card h3 { font-size: 1.125rem; }
+.dev-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-card p.dev-card__note {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+.dev-card__note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── KSeF i PKD ───────────────────────────────────────────────────────── */
+.dev-terms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-terms { grid-template-columns: 1fr 1fr; } }
+.dev-term {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dev-term__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-term h3 { font-size: 1.25rem; }
+.dev-term p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.dev-term .btn-arrow { margin-top: auto; padding-top: 0.5rem; align-self: flex-start; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.dev-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .dev-scope { grid-template-columns: repeat(2, 1fr); } }
+.dev-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.dev-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.dev-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.dev-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.dev-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.dev-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.dev-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .dev-benefits { grid-template-columns: 1fr; } }
+.dev-benefits .lede { margin-top: 1rem; }
+.dev-benefits__stats { margin-top: 2rem; }
+.dev-benefits__link { margin-top: 1.75rem; }
+.dev-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.dev-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.dev-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.dev-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.dev-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.dev-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.dev-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.dev-startup__head { max-width: 70ch; }
+.dev-startup__head .lede { margin-top: 1rem; }
+
+.dev-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .dev-steps { grid-template-columns: repeat(3, 1fr); } }
+.dev-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.dev-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.dev-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.dev-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.dev-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .dev-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.dev-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.dev-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.dev-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.dev-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.dev-startup__col h3 { font-size: 1.1875rem; }
+.dev-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-startup__cta { margin-top: 1.75rem; }
+
+/* ── Spółka i kadry ───────────────────────────────────────────────────── */
+.dev-company {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) { .dev-company { grid-template-columns: 1fr 1fr; } }
+.dev-company__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dev-company__card h3 { font-size: 1.1875rem; }
+.dev-company__card > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.dev-company__hr {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.dev-company__hr li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+.dev-company__hr strong {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.dev-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.dev-price__head,
+.dev-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.dev-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.dev-price__row { border-bottom: 1px solid var(--border-subtle); }
+.dev-price__row:last-child { border-bottom: none; }
+.dev-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.dev-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.dev-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.dev-price__amount { text-align: right; }
+.dev-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .dev-price__head { display: none; }
+  .dev-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .dev-price__situation { grid-column: 1 / -1; }
+}
+</style>

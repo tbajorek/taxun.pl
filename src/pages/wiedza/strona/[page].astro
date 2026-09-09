@@ -1,0 +1,81 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
+import CTA from '../../../components/CTA.astro';
+import BlogArchive from '../../../components/BlogArchive.astro';
+import {
+  blogPath,
+  collectCategories,
+  collectTags,
+  getSortedPosts,
+  lastPageOf,
+  pageSlice,
+  paginatedPosts,
+  pickFeatured,
+  POSTS_PER_PAGE,
+  type BlogPost,
+} from '../../../lib/blog';
+import { site } from '../../../data/site';
+
+/**
+ * Kolejne strony listy artykułów. Strona 1 mieszka pod /wiedza (razem
+ * z wyróżnionym artykułem), dlatego tutaj generujemy dopiero od strony 2.
+ */
+export const getStaticPaths: GetStaticPaths = async () => {
+  const posts = await getSortedPosts();
+  const rest = paginatedPosts(posts, pickFeatured(posts));
+  const lastPage = lastPageOf(rest.length, POSTS_PER_PAGE);
+  return Array.from({ length: Math.max(0, lastPage - 1) }, (_, i) => ({
+    params: { page: String(i + 2) },
+  }));
+};
+
+const currentPage = Number(Astro.params.page);
+const posts = await getSortedPosts();
+const rest = paginatedPosts(posts, pickFeatured(posts));
+const lastPage = lastPageOf(rest.length, POSTS_PER_PAGE);
+const pagePosts: BlogPost[] = pageSlice(rest, currentPage, POSTS_PER_PAGE);
+
+const categories = collectCategories(posts);
+const popularTags = collectTags(posts);
+
+const breadcrumbs = [{ label: 'Wiedza', href: '/wiedza' }, { label: `Strona ${currentPage}` }];
+---
+<BaseLayout
+  title={`Wiedza i blog - strona ${currentPage} | Taxun`}
+  description={`Artykuły o podatkach, księgowości i kadrach - strona ${currentPage} z ${lastPage}.`}
+  breadcrumbs={breadcrumbs}
+>
+  <link slot="head" rel="prev" href={new URL(blogPath(currentPage - 1), site.url).toString()} />
+  {currentPage < lastPage && (
+    <link slot="head" rel="next" href={new URL(blogPath(currentPage + 1), site.url).toString()} />
+  )}
+
+  <PageHero
+    eyebrow="Wiedza"
+    title="Praktyczna wiedza podatkowa - bez branżowego żargonu"
+    description={`Wszystkie artykuły zespołu Taxun. Strona ${currentPage} z ${lastPage}.`}
+    breadcrumbs={breadcrumbs}
+  />
+
+  <section class="section">
+    <div class="container">
+      <BlogArchive
+        posts={pagePosts}
+        currentPage={currentPage}
+        lastPage={lastPage}
+        total={posts.length}
+        hrefFor={blogPath}
+        categories={categories}
+        popularTags={popularTags}
+      />
+    </div>
+  </section>
+
+  <CTA
+    variant="dark"
+    title="Potrzebujesz indywidualnej odpowiedzi?"
+    description="Każdy artykuł to ogólny przewodnik. Szczegóły zawsze zależą od kontekstu Twojej firmy - porozmawiajmy."
+  />
+</BaseLayout>

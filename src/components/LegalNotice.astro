@@ -1,0 +1,114 @@
+---
+/**
+ * Zastrzeżenie prawne pod treścią.
+ *
+ * Treść wspólna pochodzi z `src/data/legal.ts`, komponent odpowiada za to,
+ * gdzie i jak się pokazuje. Zmiana brzmienia klauzuli jest więc zmianą
+ * w jednym pliku, a nie w kilkudziesięciu podstronach.
+ *
+ * To, co dotyczy jednej strony, wstawiamy przez `<slot>` na tej stronie -
+ * kreator wyceny musi napisać, że wyliczenie nie jest ofertą, ale nikt inny
+ * tego zdania nie potrzebuje. Trzymanie takich wariantów w konfiguracji kończy
+ * się listą kluczy, z których połowa ma jednego użytkownika.
+ *
+ * Datę bierzemy w kolejności: `updated` podane wprost (artykuł zna swoją datę
+ * z frontmatteru, kalkulator z `tax-constants.ts`), inaczej wpis dla tego
+ * adresu z `legal-updated.json`. Bez daty czytelnik nie ma jak ocenić, czy tekst
+ * zdążył się zdezaktualizować, a to jest połowa ryzyka przy treści podatkowej.
+ *
+ * Ramka nie ma skryptu i nie jest zwijana. Zastrzeżenie, które trzeba rozwinąć,
+ * żeby przeczytać, jest zastrzeżeniem tylko z nazwy - a przy okazji łamałoby
+ * zasadę jednego skryptu na stronę.
+ */
+import Icon from './Icon.astro';
+import { formatLegalDate, legalNotice, legalNoticeTitle, legalUpdatedFor } from '../data/legal';
+
+interface Props {
+  /**
+   * Data stanu prawnego. `Date` dla treści, która zna swój dzień; tekst tam,
+   * gdzie uczciwie da się podać tylko miesiąc i rok (stałe roczne).
+   * Pominięcie sięga po datę przypisaną adresowi strony.
+   */
+  updated?: Date | string;
+  class?: string;
+}
+
+const { updated, class: className = '' } = Astro.props;
+
+const fallback = legalUpdatedFor(Astro.url.pathname);
+const source = updated ?? fallback;
+const shown = source instanceof Date ? formatLegalDate(source) : source;
+---
+<aside class:list={['legal-notice', className]} aria-labelledby="legal-notice-title">
+  <div class="legal-notice__head">
+    <Icon name="shield" size={16} />
+    <h2 id="legal-notice-title">{legalNoticeTitle}</h2>
+  </div>
+  {legalNotice.map((text) => <p>{text}</p>)}
+  <slot />
+  {shown && (
+    <p class="legal-notice__date">
+      <Icon name="clock" size={13} />
+      <span>Stan prawny sprawdzony <strong>{shown}</strong>. Późniejszych zmian przepisów ten materiał nie uwzględnia.</span>
+    </p>
+  )}
+</aside>
+
+<style>
+.legal-notice {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.375rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--text-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.legal-notice__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+.legal-notice__head :global(svg) { color: var(--text-subtle); flex: none; }
+
+/*
+  Nagłówek jest <h2> ze względu na czytniki ekranu, ale w hierarchii wizualnej
+  stoi poniżej treści, którą opatruje - stąd rozmiar bliższy etykiecie niż
+  śródtytułowi. Reguły z .prose trzeba przy okazji cofnąć: ramka trafia w środek
+  artykułu, gdzie h2 dostaje górną kreskę i duży odstęp.
+*/
+.legal-notice__head h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+
+/* Akapity dołożone przez <slot> wyglądają tak samo jak wspólne - inaczej
+   zastrzeżenie czytałoby się jak dwa dokumenty sklejone jeden pod drugim. */
+.legal-notice :global(p) {
+  margin: 0 0 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.legal-notice :global(p:last-child) { margin-bottom: 0; }
+.legal-notice :global(a) { color: var(--accent-700); text-decoration: underline; }
+
+.legal-notice__date {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.8125rem !important;
+}
+.legal-notice__date :global(svg) { color: var(--text-subtle); flex: none; transform: translateY(2px); }
+.legal-notice__date strong { color: var(--text-strong); font-weight: 600; }
+</style>

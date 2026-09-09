@@ -1,0 +1,178 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import { KM_VEHICLES, KM_DEFAULT_VEHICLE, KM_RYCZALT_LIMITS, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+
+const zl = (v: number) => v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Wszystkie liczby na tej stronie - kalkulator, tabela, FAQ i opisy - biorą się
+// z tax-constants.ts. Nowy rok = zmiana stawek w jednym miejscu.
+const stawkiZdanie = KM_VEHICLES.map((v) => `${zl(v.rate)} zł - ${v.label.toLowerCase()}`).join(', ');
+const stawkiLista = KM_VEHICLES.map((v) => `${zl(v.rate)} zł`).join(', ');
+const limityZdanie = KM_RYCZALT_LIMITS.map((l) => `${l.km} km ${l.label}`).join(', ');
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/kilometrowki#webpage',
+  name: `Kalkulator kilometrówki ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator kilometrówki na ${TAX_YEAR} r. Stawki za 1 km dla samochodu osobowego, motocykla i motoroweru. Rozliczenie używania prywatnego pojazdu w firmie.`,
+  url: 'https://taxun.pl/kalkulatory/kilometrowki',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ile wynosi stawka kilometrówki w ${TAX_YEAR} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Stawki za 1 km przebiegu wynoszą: ${stawkiZdanie}.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy kilometrówka jest opodatkowana?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Zwrot kosztów używania prywatnego pojazdu do celów służbowych wypłacany według stawek z rozporządzenia nie jest opodatkowany PIT ani oskładkowany ZUS - do wysokości ustalonego limitu.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jaki jest miesięczny limit kilometrówki dla jazd lokalnych?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Dla ryczałtu na jazdy lokalne limit miesięczny zależy od liczby mieszkańców gminy: ${limityZdanie}.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator kilometrówki ${TAX_YEAR}`}
+  description="Policz zwrot za używanie prywatnego auta w firmie. Stawki za 1 km dla samochodu, motocykla i motoroweru. Liczy się w przeglądarce, bez wysyłania danych."
+  metaTitle={`Kalkulator kilometrówki ${TAX_YEAR} - stawka za 1 km`}
+  metaDescription={`Bezpłatny kalkulator kilometrówki ${TAX_YEAR}. Stawki za 1 km dla samochodu, motocykla i motoroweru. Policz zwrot kosztów. Bez logowania.`}
+  breadcrumbLabel="Kilometrówka"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="km-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="km-dystans">
+          Liczba przejechanych km
+          <small>wg ewidencji przebiegu</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="km-dystans" min="0" step="1" value="500" inputmode="numeric"/>
+          <span class="calc-field__suffix">km</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="km-pojazd">
+          Rodzaj pojazdu
+        </label>
+        <div class="calc-field__input">
+          <select id="km-pojazd">
+            {KM_VEHICLES.map((v) => (
+              <option value={v.value} selected={v.value === KM_DEFAULT_VEHICLE}>{v.label} ({zl(v.rate)} zł)</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Zwrot kosztów (kilometrówka)</div>
+      <div class="calc-result__value">
+        <span id="km-kwota">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Stawka: <strong id="km-stawka">-</strong> za każdy kilometr.
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Liczba kilometrów</span>
+          <span class="calc-breakdown__value" id="km-dystans-val">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Stawka za 1 km</span>
+          <span class="calc-breakdown__value" id="km-stawka-val">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy kilometrówkę</h2>
+    <p>Kilometrówka to zwrot kosztów używania <strong>prywatnego pojazdu</strong> do celów służbowych. Kwotę liczy się jako iloczyn przejechanych kilometrów i ustawowej stawki za 1 km.</p>
+
+    <h3>{`Stawki za 1 km (${TAX_YEAR})`}</h3>
+    <table>
+      <thead>
+        <tr><th>Pojazd</th><th>Stawka</th></tr>
+      </thead>
+      <tbody>
+        {KM_VEHICLES.map((v) => (
+          <tr><td>{v.label}</td><td>{zl(v.rate)} zł</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h3>Dwa sposoby rozliczenia</h3>
+    <ul>
+      <li><strong>Ewidencja przebiegu (jazdy zamiejscowe)</strong> - rozliczasz faktycznie przejechane kilometry × stawka, na podstawie prowadzonej kilometrówki.</li>
+      <li><strong>Ryczałt (jazdy lokalne)</strong> - miesięczny limit km zależny od liczby mieszkańców gminy: {KM_RYCZALT_LIMITS.map((l) => `${l.km} km (${l.label})`).join(', ')}.</li>
+    </ul>
+
+    <h3>Podatki</h3>
+    <p>Zwrot według stawek z rozporządzenia jest <strong>wolny od PIT i ZUS</strong> do wysokości limitu. Kilometrówka dotyczy pojazdów niewprowadzonych do ewidencji środków trwałych firmy.</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> rozporządzenie w sprawie warunków ustalania należności za używanie pojazdów prywatnych do celów służbowych, <a href="https://www.gov.pl/" rel="noopener" target="_blank">gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Rozliczasz pracownikom przejazdy prywatnym autem? Zajmiemy się ewidencją w ramach <a href="/kadry-place" style="color: var(--accent-700)">kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { KM_RATES } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const km = Math.max(0, Number(($('km-dystans') as HTMLInputElement).value) || 0);
+    const pojazd = ($('km-pojazd') as HTMLSelectElement).value as keyof typeof KM_RATES;
+    const stawka = KM_RATES[pojazd];
+
+    const kwota = km * stawka;
+
+    $span('km-kwota').textContent = fmt2.format(kwota);
+    $span('km-stawka').textContent = fmtMoney2(stawka);
+    $span('km-dystans-val').textContent = `${fmt0.format(km)} km`;
+    $span('km-stawka-val').textContent = fmtMoney2(stawka);
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#km-calc input, #km-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

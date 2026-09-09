@@ -1,0 +1,1668 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
+import {
+  CAR_EKSPLOATACJA_LIMIT,
+  CAR_LIMIT,
+  CAR_LIMIT_LEGACY,
+  CO2_THRESHOLD,
+  CO2_TYPICAL,
+  DAC7_OD,
+  DAC7_RAPORT_DO,
+  DMC_SAMOCHOD_OSOBOWY,
+  KASA_LIMIT_ROCZNY,
+  KASA_ULGA_MAX,
+  KASA_ULGA_RATE,
+  PIT_FREE_AMOUNT,
+  PIT_RATE_1,
+  PIT_RATE_2,
+  PIT_RATE_LINIOWY,
+  PIT_THRESHOLD,
+  PKD_NOWA_OD,
+  RYCZALT_TRANSPORT,
+  RYCZALT_USLUGI,
+  TAX_YEAR,
+  TRANSPORT_LADOWNOSC_PROG,
+  VAT_MIXED_DEDUCT,
+  VAT_RATE,
+  VAT_RATE_OBNIZONA,
+  VAT_TAXI_OKRES_MIESIACE,
+  VAT_TAXI_RYCZALT,
+  VAT_TAXI_RYCZALT_USTAWOWY,
+  VAT_TAXI_RYCZALT_WYLACZENIA,
+  VAT_ZWOLNIENIE_LIMIT,
+} from '../lib/tax-constants';
+import { num, pct, zl } from '../lib/format';
+import { industriesLabel, site } from '../data/site';
+
+const fmt = new Intl.NumberFormat('pl-PL');
+const ryczalt = startsFrom('ryczalt');
+const kpir = startsFrom('kpir');
+const fk = startsFrom('fk');
+const stawkaOsoby = pct(RYCZALT_USLUGI);
+const stawkaTowary = pct(RYCZALT_TRANSPORT);
+const stawkaLiniowy = pct(PIT_RATE_LINIOWY);
+const vatObnizony = pct(VAT_RATE_OBNIZONA);
+const vatPodstawowy = pct(VAT_RATE);
+const vatTaxi = pct(VAT_TAXI_RYCZALT);
+const vatTaxiStary = pct(VAT_TAXI_RYCZALT_USTAWOWY);
+const limitVat = zl(VAT_ZWOLNIENIE_LIMIT);
+const limitKasy = zl(KASA_LIMIT_ROCZNY);
+const eksploatacja = pct(CAR_EKSPLOATACJA_LIMIT);
+const odliczenieMieszane = pct(VAT_MIXED_DEDUCT);
+const dmc = num(DMC_SAMOCHOD_OSOBOWY);
+const ladownosc = num(TRANSPORT_LADOWNOSC_PROG);
+/** Najtańszy wariant obsługi kadrowej - umowa cywilnoprawna bez składek ZUS. */
+const hrZlecenie = hrPricing.find((h) => h.id === 'zlecenie')?.price ?? hrMin;
+
+/**
+ * Wiersz cennika składany z danych z src/data/pricing.ts, żeby tabela na tej
+ * podstronie nie mogła rozjechać się z cennikiem po zmianie stawek.
+ *
+ * U kierowcy o kolumnie decyduje status w VAT i liczba faktur kosztowych, a nie
+ * liczba kursów: sprzedaż dla pasażerów podsumowuje raport okresowy z kasy,
+ * a rozliczenie z platformą - zestawienie z panelu kierowcy.
+ */
+const priceRow = (
+  id: 'ryczalt' | 'kpir' | 'fk',
+  upTo: number,
+  vat: 'noVat' | 'withVat',
+  situation: string
+) => {
+  const table = tables.find((t) => t.id === id);
+  const bucket = table?.buckets.find((b) => b.upTo === upTo);
+  const price = table?.hasVat ? bucket?.[vat] : bucket?.price;
+  return {
+    form: table?.shortName ?? '',
+    vatLabel: table?.hasVat ? (vat === 'noVat' ? 'zwolniony z VAT' : 'czynny podatnik VAT') : '',
+    docs: (bucket?.range ?? '').replace(/\s{2,}/g, ' '),
+    situation,
+    price: typeof price === 'number' ? price : null,
+  };
+};
+
+const priceRows = [
+  priceRow('ryczalt', 10, 'noVat', 'Kierowca pracujący sam, korzystający jeszcze ze zwolnienia z VAT'),
+  priceRow('ryczalt', 10, 'withVat', 'Kierowca będący czynnym podatnikiem VAT, kilka faktur kosztowych miesięcznie'),
+  priceRow('kpir', 10, 'withVat', 'Kierowca rozliczający koszty pojazdu, dokumenty zbierane raz w miesiącu'),
+  priceRow('kpir', 20, 'withVat', 'Duży przebieg, codzienne tankowanie, faktury za serwis i opłaty drogowe'),
+  priceRow('fk', 10, 'withVat', 'Firma transportowa prowadzona w formie spółki'),
+];
+
+const heroBadges = [
+  { icon: 'truck', label: `Ryczałt dla kierowcy od ${ryczalt} zł netto` },
+  { icon: 'printer', label: 'Sprzedaż z kasy rozliczana z raportu miesięcznego' },
+  { icon: 'sparkle', label: 'Dokumenty zdjęciem z telefonu, bez wizyt w biurze' },
+];
+
+const segments = [
+  {
+    icon: 'pin',
+    title: 'Kierowca taxi i aplikacji przewozowych',
+    description: 'Uber, Bolt, FreeNow, iTaxi albo klasyczna korporacja. Rozliczamy sprzedaż z kasy, prowizje potrącane przez platformę i koszty pojazdu, a przy okazji sprawdzamy, czy nie płacisz podatku wyższego, niż musisz.',
+    points: [
+      'Rozliczanie wypłat z platform razem z potrąconymi prowizjami',
+      `Wybór między stawką ${vatObnizony} a zryczałtowanym VAT dla taksówek`,
+      'Rozliczanie paliwa, serwisu, ubezpieczenia i amortyzacji auta',
+    ],
+  },
+  {
+    icon: 'briefcase',
+    title: 'Kurier i kierowca dostawczy',
+    description: `Paczki, przesyłki, dostawy dla sklepów i restauracji, praca na własnym busie albo na pojeździe powierzonym. Stawka ryczałtu zależy tu od ładowności pojazdu i to jest pierwsza rzecz, którą sprawdzamy.`,
+    points: [
+      'Ustalenie właściwej stawki ryczałtu dla Twojego pojazdu',
+      'Rozliczanie kosztów przy dużym przebiegu i częstym serwisie',
+      'Współpraca z firmami kurierskimi i platformami dostawczymi',
+    ],
+  },
+  {
+    icon: 'truck',
+    title: 'Przewoźnik i firma transportowa',
+    description: `Transport towarów pojazdami o dopuszczalnej masie całkowitej powyżej ${dmc} tony, przewozy krajowe i międzynarodowe, praca dla spedycji. Dochodzą tu licencje, zezwolenia i obsługa kadrowa zatrudnionych kierowców.`,
+    points: [
+      'Rozliczanie przewozów według stawki właściwej dla taboru',
+      'Kadry i płace kierowców zatrudnionych w firmie',
+      'Koszty paliwa, opłat drogowych i serwisu floty',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Firma z flotą i partner flotowy',
+    description: 'Kilka pojazdów, kierowcy na umowach, rozliczenia z platformami prowadzone w imieniu kierowców. Ten model wymaga porządku w dokumentacji i czytelnego rozdzielenia przychodów.',
+    points: [
+      'Pełna obsługa kadrowo-płacowa kierowców',
+      'Rozliczanie pojazdów w leasingu, najmie i po wykupie',
+      'Raportowanie przychodów z podziałem na pojazdy i kierowców',
+    ],
+  },
+  {
+    icon: 'sparkle',
+    title: 'Zaczynasz i nie wiesz, od czego',
+    description: 'Jeżeli dopiero planujesz wyjechać na pierwszy kurs, przeprowadzimy Cię przez formalności w takiej kolejności, żebyś nie kupił kasy fiskalnej przed licencją ani odwrotnie.',
+    points: [
+      'Rejestracja działalności i dobór kodów PKD',
+      'Wsparcie przy kompletowaniu dokumentów do wniosku o licencję',
+      'Ustawienie kasy fiskalnej i zgłoszeń do urzędu',
+    ],
+  },
+];
+
+/**
+ * Zestawienie stawek ryczałtu obejmujące całą branżę. Przewóz osób i lekki
+ * transport towarów stoją w tej samej stawce co pozostałe usługi, a własną
+ * pozycję w ustawie ma wyłącznie tabor o ładowności powyżej progu.
+ */
+const rates = [
+  {
+    what: 'Przewóz osób taksówką oraz przewozy realizowane przez aplikacje',
+    detail: 'taxi, Uber, Bolt, FreeNow, iTaxi, przewozy na zlecenie korporacji',
+    rate: stawkaOsoby,
+    tone: 'neutral',
+  },
+  {
+    what: `Przewóz ładunków pojazdem o ładowności do ${ladownosc} ton`,
+    detail: 'typowy bus kurierski i dostawczy',
+    rate: stawkaOsoby,
+    tone: 'neutral',
+  },
+  {
+    what: `Przewóz ładunków taborem samochodowym o ładowności powyżej ${ladownosc} ton`,
+    detail: 'jedyna pozycja transportowa z własną, niższą stawką w ustawie',
+    rate: stawkaTowary,
+    tone: 'good',
+  },
+  {
+    what: 'Pozostałe usługi transportowe, nieujęte w powyższych pozycjach',
+    detail: 'm.in. przewozy okazjonalne i usługi towarzyszące transportowi',
+    rate: stawkaOsoby,
+    tone: 'neutral',
+  },
+];
+
+/** Trzy rzeczy, które w tej branży najczęściej prowadzą do złej stawki. */
+const rateNotes = [
+  {
+    icon: 'search',
+    title: 'Liczy się ładowność, a nie masa całkowita',
+    body: `To najczęściej mylona rzecz w całej branży. Przepis mówi o ładowności, czyli o tym, ile pojazd może przewieźć, a nie o dopuszczalnej masie całkowitej. Bus o masie całkowitej ${dmc} tony ma zwykle ładowność około 1,2 tony, więc mieści się w stawce ${stawkaOsoby}, a nie ${stawkaTowary}.`,
+  },
+  {
+    icon: 'check-circle',
+    title: 'Znaczenie ma też zestaw z przyczepą',
+    body: `Organy podatkowe wskazują, że rozstrzyga techniczna możliwość przewiezienia ładunku o określonym tonażu, z uwzględnieniem ciągniętej przyczepy lub naczepy. Zestaw, którego łączna ładowność przekracza ${ladownosc} tony, może więc kwalifikować się do niższej stawki, nawet jeżeli sam ciągnik jej nie osiąga.`,
+  },
+  {
+    icon: 'chart',
+    title: 'Różne pojazdy to różne stawki, nie jedna',
+    body: `Stawki nie wybiera się raz dla całej firmy. Jeżeli w poniedziałek wieziesz towar busem o ładowności tony, a we wtorek ciężarówką o ładowności dziesięciu ton, przychód z pierwszego kursu rozliczasz stawką ${stawkaOsoby}, a z drugiego ${stawkaTowary}. Warunkiem jest ewidencja pozwalająca rozdzielić przychody i prowadzimy ją w ramach abonamentu.`,
+  },
+];
+
+/**
+ * Limity wartości pojazdu. Od 2026 r. o limicie decyduje emisja CO2, więc
+ * kierowca jeżdżący typowym dieslem trafia do najniższego z nich - a nie do
+ * kwoty 150 000 zł, którą powtarza większość artykułów w internecie.
+ */
+const carLimits = [
+  {
+    limit: zl(CAR_LIMIT.spalinowy),
+    title: `Spalinowe o emisji ${CO2_THRESHOLD} g/km CO₂ i wyższej`,
+    body: `Tu trafia większość aut benzynowych i wysokoprężnych, bo typowa emisja mieści się w przedziale ${CO2_TYPICAL.min} - ${CO2_TYPICAL.max} g/km. To najniższy z trzech limitów i najczęstszy przypadek w taksówce.`,
+    featured: true,
+  },
+  {
+    limit: zl(CAR_LIMIT.niskoemisyjny),
+    title: `Spalinowe i hybrydowe poniżej ${CO2_THRESHOLD} g/km CO₂`,
+    body: 'Hybrydy plug-in i auta o niskiej emisji. Limit jest o połowę wyższy niż przy zwykłym spalinowym, więc przy droższym pojeździe różnica w podatku bywa odczuwalna.',
+  },
+  {
+    limit: zl(CAR_LIMIT.elektryczny),
+    title: 'Elektryczne i napędzane wodorem',
+    body: 'Najwyższy limit w ustawie, obejmujący także pojazdy napędzane wodorem. Przy większości aut z tej grupy limit nie ogranicza już odpisów, więc do kosztów trafia pełna wartość pojazdu.',
+  },
+];
+
+/** Warianty rozliczania kosztów auta - od najczęstszego do najkorzystniejszego. */
+const carCases = [
+  {
+    icon: 'clock',
+    tone: 'warn',
+    title: 'Auto osobowe używane także prywatnie',
+    body: `Do kosztów podatkowych trafia ${eksploatacja} wydatków eksploatacyjnych, a z faktur odliczysz ${odliczenieMieszane} VAT. To wariant domyślny: obowiązuje wtedy, gdy nie zgłosisz pojazdu jako wykorzystywanego wyłącznie w działalności.`,
+    foot: 'Przy paliwie kupowanym codziennie ta utracona jedna czwarta kosztów i połowa VAT robią w skali roku konkretną kwotę.',
+  },
+  {
+    icon: 'check-circle',
+    tone: 'good',
+    title: 'Auto osobowe tylko do działalności',
+    body: 'Pełne wydatki i pełne odliczenie VAT są możliwe, ale wymagają zgłoszenia pojazdu na formularzu VAT-26, prowadzenia ewidencji przebiegu i regulaminu wykluczającego użytek prywatny. W pracy taksówkarza czy kuriera jest to realne, bo pojazd faktycznie jeździ tylko zarobkowo.',
+    foot: 'Cała trudność leży w dyscyplinie prowadzenia ewidencji. Ustawiamy ją na starcie i przypominamy o niej co miesiąc.',
+  },
+  {
+    icon: 'truck',
+    tone: 'good',
+    title: `Pojazd o masie całkowitej powyżej ${dmc} tony`,
+    body: 'Nie jest samochodem osobowym w rozumieniu ustawy, więc ograniczenia procentowe w ogóle go nie dotyczą. Wydatki eksploatacyjne rozlicza się w całości, a limit wartości pojazdu nie obowiązuje.',
+    foot: 'Dlatego przewoźnik i taksówkarz, mimo tej samej branży, rozliczają koszty według zupełnie innych zasad.',
+  },
+];
+
+const forms = [
+  {
+    icon: 'zap',
+    name: 'Ryczałt',
+    rate: `${stawkaOsoby} lub ${stawkaTowary}`,
+    when: 'Starsze auto, umiarkowany przebieg, niewielkie koszty utrzymania',
+    watch: 'Kosztów nie odliczysz w ogóle, a przy dwóch rodzajach przewozów trzeba rozdzielić przychody',
+  },
+  {
+    icon: 'chart',
+    name: 'Podatek liniowy',
+    rate: stawkaLiniowy,
+    when: 'Duży przebieg, leasing lub amortyzacja auta, wysokie koszty paliwa i serwisu',
+    watch: `Brak kwoty wolnej ${zl(PIT_FREE_AMOUNT)} i składka zdrowotna liczona od dochodu`,
+  },
+  {
+    icon: 'users',
+    name: 'Skala podatkowa',
+    rate: `${pct(PIT_RATE_1)} / ${pct(PIT_RATE_2)}`,
+    when: 'Niższe dochody, wspólne rozliczenie z małżonkiem, ulga na dzieci',
+    watch: `Drugi próg podatkowy powyżej ${zl(PIT_THRESHOLD)} dochodu w skali roku`,
+  },
+];
+
+/** Pomoc przy kasie fiskalnej - to, co realnie robimy, a nie hasła. */
+const cashHelp = [
+  'Ustalamy, jakie urządzenie jest potrzebne przy Twoim modelu pracy',
+  'Zgłaszamy kasę do urzędu skarbowego i pilnujemy terminów fiskalizacji',
+  `Rozliczamy ulgę na zakup kasy: ${pct(KASA_ULGA_RATE)} ceny netto, nie więcej niż ${zl(KASA_ULGA_MAX)} na urządzenie`,
+  'Wiążemy raporty okresowe z ewidencją sprzedaży i pilnujemy ich kompletności',
+];
+
+const scope = [
+  {
+    icon: 'file',
+    title: 'Bieżąca księgowość i deklaracje',
+    description: 'Prowadzimy ewidencję przychodów albo księgę przychodów i rozchodów, wyliczamy zaliczki i przygotowujemy roczne zeznanie z działalności. Deklaracje wysyłamy w terminie urzędowym.',
+    points: [
+      'Ewidencja przychodów z podziałem na stawki ryczałtu i roczny PIT-28',
+      'KPiR, zaliczki PIT oraz roczny PIT-36 lub PIT-36L',
+      'Pełna księgowość spółek wraz z CIT-8 i sprawozdaniem finansowym',
+    ],
+  },
+  {
+    icon: 'printer',
+    title: 'VAT, kasa fiskalna i KSeF',
+    description: 'Rozliczamy raporty z kasy, prowadzimy rejestry VAT i obsługujemy KSeF po stronie faktur kosztowych oraz sprzedaży dla firm.',
+    points: [
+      'JPK_V7M oraz JPK_V7K dla czynnych podatników VAT',
+      'Skrócona deklaracja VAT-12 przy zryczałtowanym VAT dla taksówek',
+      'Rozliczanie raportów okresowych z kasy i ulgi na jej zakup',
+    ],
+  },
+  {
+    icon: 'truck',
+    title: 'Pojazdy i koszty',
+    description: 'Auto jest w tej branży największą pozycją kosztową, więc ustawiamy zasady jego rozliczania na początku współpracy, a nie przy pierwszej kontroli.',
+    points: [
+      'Wprowadzenie pojazdu do ewidencji środków trwałych i amortyzacja',
+      'Rozliczanie leasingu, najmu długoterminowego i wykupu',
+      'Ustawienie zasad odliczania VAT i ujmowania kosztów eksploatacyjnych',
+      'Ewidencja przebiegu i zgłoszenie VAT-26, gdy auto jeździ tylko zarobkowo',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'ZUS, kadry i kontakt z urzędami',
+    description: 'Obsługa ZUS właściciela jest w cenie abonamentu, a kierowców zatrudnionych w firmie rozliczamy od osoby, niezależnie od formy umowy.',
+    points: [
+      'Obsługa ZUS właściciela w cenie abonamentu',
+      'Kadry i płace kierowców na umowie o pracę i cywilnoprawnej',
+      'Kompletowanie dokumentów i wyjaśnień na potrzeby urzędu skarbowego i ZUS',
+    ],
+  },
+];
+
+const benefits = [
+  { icon: 'sparkle', title: 'Paragon zdjęciem z telefonu', description: 'Faktury za paliwo, myjnię czy serwis wysyłasz zdjęciem, a my odczytujemy je automatycznie. Nie musisz zbierać wydruków w schowku ani niczego dowozić.' },
+  { icon: 'printer', title: 'Liczba kursów nie podnosi ceny', description: 'Sprzedaż dla pasażerów rozliczamy z raportu okresowego z kasy, a rozliczenia z platform z zestawień pobieranych z paneli kierowcy. Kilkaset przejazdów to nie kilkaset dokumentów.' },
+  { icon: 'users', title: 'Jeden opiekun kadrowo-księgowy', description: 'Masz jedną osobę, która zna Twój pojazd, umowy i historię rozliczeń. Nie tłumaczysz swojej sytuacji od nowa przy każdym pytaniu.' },
+  { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy wyłącznie przez szyfrowany portal klienta lub zabezpieczoną pocztę. Biuro ma ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
+];
+
+const startupSteps = [
+  { title: 'Policzenie wariantów', description: 'Zanim cokolwiek zgłosimy, szacujemy Twoje przychody i koszty pojazdu, a potem porównujemy ryczałt z rozliczeniem kosztowym. W tej branży to decyzja o największej wadze finansowej.' },
+  { title: 'Wniosek CEIDG-1', description: `Dobieramy kody PKD odpowiadające rodzajowi wykonywanych przewozów, zgodne z klasyfikacją obowiązującą od ${PKD_NOWA_OD}. Przewóz osób i transport towarów to osobne pozycje.` },
+  { title: 'Zgłoszenia do ZUS i urzędu skarbowego', description: 'Ustalamy właściwy kod tytułu ubezpieczenia i sprawdzamy, czy przysługuje Ci ulga na start lub preferencyjne składki.' },
+  { title: 'Decyzja w sprawie VAT', description: 'Ustalamy, czy zaczynasz jako podatnik zwolniony, czy od razu rejestrujesz się do VAT, a przy taksówce liczymy też wariant zryczałtowany i to, ile kosztuje utrata odliczeń.' },
+  { title: 'Kasa fiskalna', description: 'Podpowiadamy, jakie urządzenie ma sens przy Twoim modelu pracy, zgłaszamy je i pilnujemy warunków ulgi na zakup.' },
+  { title: 'Uprawnienia w KSeF, pełnomocnictwo UPL-1 i portal klienta', description: 'Prowadzimy Cię przez nadanie nam uprawnień w KSeF, żeby faktury kosztowe trafiały do nas bez Twojego udziału. UPL-1 to osobny dokument, dzięki któremu podpisujemy za Ciebie deklaracje i JPK.' },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Rozmawiamy o tym, ile jeździsz, czym i dla kogo, oraz jakie ponosisz koszty. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Ustalamy w niej wprost, jak liczymy dokumenty, żeby nie było niespodzianki na pierwszej fakturze.' },
+  { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Ustalamy też, jak będziesz przesyłać raporty z kasy i zestawienia z platform.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów i limitów, przypominamy o dokumentach i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
+];
+
+const faq = [
+  {
+    q: 'Jaka stawka ryczałtu obowiązuje taksówkarza i kierowcę aplikacji?',
+    a: `${stawkaOsoby}. Przewóz osób nie został objęty żadną szczególną stawką, więc stosuje się stawkę przewidzianą dla działalności usługowej niewymienionej w innych pozycjach ustawy. Dotyczy to zarówno klasycznej taksówki, jak i przewozów realizowanych przez Ubera, Bolta czy FreeNow.`,
+  },
+  {
+    q: 'A kurier i przewoźnik?',
+    a: `To zależy od pojazdu. Przewóz ładunków taborem samochodowym o ładowności powyżej ${ladownosc} ton objęty jest stawką ${stawkaTowary}, bo ustawa przewidziała dla niego odrębną pozycję. Przewozy pojazdami o mniejszej ładowności rozlicza się stawką ${stawkaOsoby}, tak samo jak przewóz osób.`,
+  },
+  {
+    q: 'Ładowność czy dopuszczalna masa całkowita?',
+    a: `Ładowność, czyli to, ile pojazd może przewieźć, a nie ile waży razem z ładunkiem. To najczęściej mylona rzecz w tej branży. Bus o dopuszczalnej masie całkowitej ${dmc} tony ma zwykle ładowność około 1,2 tony, więc obowiązuje go stawka ${stawkaOsoby}. Znaczenie ma też techniczna możliwość przewiezienia ładunku z uwzględnieniem ciągniętej przyczepy lub naczepy.`,
+  },
+  {
+    q: 'Mam busa i ciężarówkę. Którą stawkę stosować?',
+    a: `Obie, każdą do właściwych przewozów. Stawki nie wybiera się raz dla całej firmy. Warunkiem jest prowadzenie ewidencji pozwalającej rozdzielić przychody z poszczególnych rodzajów przewozów i prowadzimy ją w ramach abonamentu. Jeżeli sytuacja jest niejednoznaczna, przygotowujemy wniosek o <a href="/cennik#dodatkowe">interpretację indywidualną</a>.`,
+  },
+  {
+    q: 'Ryczałt czy rozliczanie kosztów?',
+    a: `To zależy od tego, ile wydajesz na auto. Przy dużym przebiegu, codziennym tankowaniu i regularnym serwisie rozliczenie kosztowe często wypada lepiej mimo wyższej stawki podatku. Przy mniejszym przebiegu i tanim w utrzymaniu aucie zwykle wygrywa ryczałt. Policzymy oba warianty na Twoich rzeczywistych kosztach z ostatnich miesięcy, a wstępnie możesz to sprawdzić w <a href="/kalkulatory/ryczalt-vs-liniowy">kalkulatorze form opodatkowania</a>.`,
+  },
+  {
+    q: 'Ile z kosztów samochodu mogę rozliczyć?',
+    a: `Przy samochodzie osobowym używanym również prywatnie do kosztów trafia ${eksploatacja} wydatków eksploatacyjnych i odliczysz ${odliczenieMieszane} VAT. Pełne wydatki i cały VAT są możliwe, jeśli pojazd służy wyłącznie działalności, ale wymaga to zgłoszenia auta na formularzu VAT-26, prowadzenia ewidencji przebiegu i regulaminu wykluczającego użytek prywatny. Przy pojazdach o dopuszczalnej masie całkowitej powyżej ${dmc} tony te ograniczenia w ogóle nie obowiązują.`,
+  },
+  {
+    q: 'Czy jest limit wartości auta?',
+    a: `Tak, przy amortyzacji i przy ratach leasingu. Od ${TAX_YEAR} roku limit zależy od emisji CO₂: ${zl(CAR_LIMIT.spalinowy)} przy autach spalinowych o emisji ${CO2_THRESHOLD} g/km i wyższej, ${zl(CAR_LIMIT.niskoemisyjny)} poniżej tego progu oraz ${zl(CAR_LIMIT.elektryczny)} przy elektrycznych i wodorowych. Typowy diesel czy benzyniak emituje ${CO2_TYPICAL.min} - ${CO2_TYPICAL.max} g/km, więc trafia do najniższego limitu. Auta wprowadzone do ewidencji środków trwałych przed ${TAX_YEAR} rokiem zachowują dotychczasowy limit ${zl(CAR_LIMIT_LEGACY)}, ale przy leasingu i najmie takiej ochrony nie ma. Kwotę dla konkretnego auta policzysz w <a href="/kalkulatory/emisji-co2">kalkulatorze emisji CO₂</a>.`,
+  },
+  {
+    q: 'Widziałem informację o limicie 150 000 zł na auto. Która jest prawidłowa?',
+    a: `Obie były prawidłowe, ale w różnym czasie. ${zl(CAR_LIMIT_LEGACY)} to limit sprzed zmiany i nadal obowiązuje dla aut wprowadzonych do ewidencji środków trwałych przed ${TAX_YEAR} rokiem. Dla pojazdów wprowadzanych później limit zależy od emisji CO₂ i przy typowym aucie spalinowym wynosi ${zl(CAR_LIMIT.spalinowy)}. Starsze artykuły podają wyłącznie dawną kwotę, więc przy planowaniu zakupu warto to przeliczyć od nowa.`,
+  },
+  {
+    q: 'Czy taksówkarz musi mieć kasę fiskalną?',
+    a: `Tak, od pierwszego kursu. Przewóz osób taksówkami został wyłączony ze zwolnień z obowiązku ewidencjonowania, więc limit ${limitKasy} tu nie obowiązuje. Przy zakupie kasy przysługuje ulga w wysokości ${pct(KASA_ULGA_RATE)} ceny netto, nie więcej niż ${zl(KASA_ULGA_MAX)} na urządzenie.`,
+  },
+  {
+    q: 'Czy potrzebuję taksometru, jeśli jeżdżę tylko na aplikacjach?',
+    a: 'Zwykle nie, ponieważ przepisy dopuszczają, żeby przy przewozach zlecanych przez aplikację funkcję naliczania opłaty pełniła sama aplikacja. Kasa rejestrująca jest natomiast potrzebna w obu przypadkach. Taksometr z ważną legalizacją pozostaje wymagany, jeśli chcesz zabierać pasażerów z ulicy i z postoju.',
+  },
+  {
+    q: `Co to jest zryczałtowany VAT ${vatTaxi} dla taksówek?`,
+    a: `To rozwiązanie, w którym zamiast stawki ${vatObnizony} odprowadzasz ${vatTaxi}, ale tracisz prawo do odliczenia podatku naliczonego od zakupów, w tym od paliwa i od samego auta. Wybór wymaga wcześniejszego pisemnego zawiadomienia naczelnika urzędu skarbowego i obowiązuje przez co najmniej ${VAT_TAXI_OKRES_MIESIACE} miesięcy. Zamiast pliku JPK składa się wtedy skróconą deklarację VAT-12, co miesiąc, także w miesiącach bez sprzedaży. Ma to sens przy niskich kosztach, a przestaje mieć sens, gdy planujesz zakup auta.`,
+  },
+  {
+    q: `Widziałem informację o stawce ${vatTaxiStary}. Która jest prawidłowa?`,
+    a: `Obowiązuje ${vatTaxi}. W podstawowym brzmieniu przepisu widnieje ${vatTaxiStary}, ale odrębny przepis przejściowy podwyższa tę stawkę. Starsze artykuły podają nieaktualną wartość.`,
+  },
+  {
+    q: 'Czy muszę być czynnym podatnikiem VAT?',
+    a: `Nie od razu. Do momentu przekroczenia limitu sprzedaży ${limitVat} możesz korzystać ze zwolnienia ze względu na wysokość obrotu. Wielu kierowców pracujących samodzielnie w tym limicie się mieści. Pilnujemy go za Ciebie i uprzedzamy, zanim zostanie przekroczony. Obowiązek posiadania kasy fiskalnej jest od tego całkowicie niezależny i w taksówce istnieje także u podatnika zwolnionego.`,
+  },
+  {
+    q: 'Jak rozliczacie wypłaty z Ubera i Bolta?',
+    a: 'Na podstawie zestawień z panelu kierowcy. Przychodem jest kwota przed potrąceniem prowizji, a sama prowizja stanowi koszt. Wypłata na konto jest już kwotą po potrąceniu, więc księgowanie samej wypłaty zaniżałoby zarówno przychód, jak i koszty. Podatek mógłby wyjść prawidłowo, ale przy kontroli takie księgi wyglądają źle.',
+  },
+  {
+    q: 'Mam kilkaset kursów miesięcznie. Czy zapłacę za kilkaset dokumentów?',
+    a: 'Nie. Sprzedaż dla pasażerów rozliczamy na podstawie raportu okresowego z kasy, a nie pojedynczych kursów, więc miesiąc sprzedaży to jeden dokument. Rozliczenie z platformą opieramy na zestawieniu okresowym z panelu kierowcy, a nie na pojedynczych przejazdach. Liczbę dokumentów podnoszą u Ciebie przede wszystkim faktury kosztowe.',
+  },
+  {
+    q: 'Dostałem z platformy zestawienie moich zarobków za rok. Co to znaczy?',
+    a: `Że operator platformy przekazał te dane administracji skarbowej, zgodnie z obowiązkiem raportowania obowiązującym od ${DAC7_OD}. Przy usługach świadczonych osobiście, a więc także przy przewozie osób, nie ma progu liczby transakcji ani kwoty: raportowana jest każda. Sam raport nie oznacza podatku, ale pozwala urzędowi porównać Twoje zarobki z tym, co wykazałeś w rozliczeniu. Jeśli nie masz pewności, czy się zgadza, sprawdzimy to.`,
+  },
+  {
+    q: 'Zatrudniam kierowców. Poprowadzicie kadry?',
+    a: `Tak. Pełna obsługa kadrowo-płacowa pracownika na umowie o pracę kosztuje ${hrMin} zł netto miesięcznie za osobę, a umowa cywilnoprawna bez składek ZUS ${hrZlecenie} zł. W cenie są listy płac, akta osobowe, ewidencja czasu pracy, deklaracje ZUS oraz panel pracownika z paskami wynagrodzeń i wnioskami urlopowymi. Zakres opisujemy w <a href="/kadry-place">ofercie kadr i płac</a>.`,
+  },
+  {
+    q: 'Ile kosztuje księgowość dla kierowcy?',
+    a: `Ryczałt zaczyna się od ${ryczalt} zł netto miesięcznie dla podatnika zwolnionego z VAT przy liczbie do 10 dokumentów. Dla czynnego podatnika VAT jest to ${priceRows[1].price} zł netto, a KPiR od ${kpir} zł netto. Przy rozliczaniu kosztów warto pamiętać, że codzienne tankowanie i faktury serwisowe podnoszą liczbę dokumentów, więc przy porównywaniu form opodatkowania trzeba uwzględnić także różnicę w cenie obsługi.`,
+  },
+  {
+    q: 'Jak przenieść księgowość z obecnego biura?',
+    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+  },
+];
+
+const breadcrumbs = [
+  { label: industriesLabel },
+  { label: 'Księgowość dla kierowców', href: '/ksiegowosc-dla-kierowcow' },
+];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': `${site.url}/ksiegowosc-dla-kierowcow#service`,
+  name: 'Księgowość dla taksówkarzy, kurierów i kierowców',
+  serviceType: 'Usługi księgowe dla branży transportowej',
+  description: 'Obsługa księgowa kierowców taksówek i aplikacji przewozowych, kurierów, przewoźników i firm transportowych. Ryczałt, KPiR i pełna księgowość, dobór stawki ryczałtu, VAT i zryczałtowany VAT dla taksówek, rozliczanie kosztów pojazdu, kasa fiskalna oraz zestawienia z platform.',
+  provider: { '@id': `${site.url}/#organization` },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: site.address.city }],
+  url: `${site.url}/ksiegowosc-dla-kierowcow`,
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'Kierowcy taksówek i aplikacji przewozowych, kurierzy, kierowcy dostawczy, przewoźnicy, firmy transportowe, partnerzy flotowi',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Księgowość dla kierowców i firm transportowych',
+    itemListElement: priceRows
+      .filter((r) => r.price !== null)
+      .map((r) => ({
+        '@type': 'Offer',
+        name: `${r.form}${r.vatLabel ? `, ${r.vatLabel}` : ''}, ${r.docs} dokumentów / mies.`,
+        price: String(r.price),
+        priceCurrency: 'PLN',
+        url: `${site.url}/cennik#kalkulator`,
+      })),
+  },
+};
+---
+<BaseLayout
+  title="Księgowość dla taksówkarzy, kurierów i kierowców"
+  description={`Księgowość dla kierowców taxi, Uber i Bolt, kurierów i przewoźników. Ryczałt ${stawkaOsoby} i ${stawkaTowary}, koszty auta, kasa fiskalna. Od ${ryczalt} zł netto.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Księgowość branżowa"
+    title="Księgowość dla taksówkarzy, kurierów i kierowców"
+    description="Rozliczamy kierowców taksówek i aplikacji przewozowych, kurierów oraz firmy transportowe prowadzące własną działalność. Dobieramy stawkę ryczałtu do rodzaju przewozów, rozliczamy koszty pojazdu i przetwarzamy zestawienia z platform, żebyś nie musiał przepisywać ich ręcznie. Ty jeździsz, a my pilnujemy rozliczeń."
+    breadcrumbs={[{ label: industriesLabel }, { label: 'Księgowość dla kierowców' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&branza=transport" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <!-- ── Dla kogo ──────────────────────────────────────────────────────── -->
+  <section class="section" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Dla kogo</span>
+        <h2>Za kierownicą, ale w zupełnie różnych rozliczeniach</h2>
+        <p>Taksówkarz, kurier na dostawczaku i przewoźnik z ciężarówką pracują w tej samej branży, a rozliczają się według różnych stawek i mają różne obowiązki formalne. Poniżej pięć sytuacji, z którymi spotykamy się najczęściej.</p>
+      </div>
+      <div class="drv-segments">
+        {segments.map((s) => (
+          <article class="drv-segment">
+            <div class="drv-segment__icon"><Icon name={s.icon} size={22}/></div>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+            <ul>
+              {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Stawka ryczałtu ───────────────────────────────────────────────── -->
+  <section class="section section--alt" id="ryczalt">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Ryczałt w transporcie</span>
+        <h2>{stawkaOsoby} czy {stawkaTowary}, czyli o czym naprawdę decyduje Twój pojazd</h2>
+        <p>Ryczałt jest w tej branży najczęściej wybieraną formą opodatkowania, a stawka zależy od tego, co i czym przewozisz. Poniżej pełne zestawienie, bo w internecie te sytuacje rzadko pojawiają się razem, a różnica między nimi to ponad jedna trzecia podatku.</p>
+      </div>
+
+      <div class="drv-rates">
+        <div class="drv-rates__head">
+          <span>Rodzaj przewozu</span>
+          <span class="drv-rates__rate">Stawka</span>
+        </div>
+        {rates.map((r) => (
+          <div class="drv-rates__row">
+            <div class="drv-rates__what">
+              <strong>{r.what}</strong>
+              <small>{r.detail}</small>
+            </div>
+            <div class="drv-rates__rate">
+              <span class={`drv-pill drv-pill--${r.tone}`}>{r.rate}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="drv-notes">
+        {rateNotes.map((n) => (
+          <article class="drv-note-card">
+            <div class="drv-note-card__head">
+              <Icon name={n.icon} size={20}/>
+              <h3>{n.title}</h3>
+            </div>
+            <p>{n.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <p class="drv-note">
+        <Icon name="shield" size={16}/>
+        <span>Nie obiecujemy niższej stawki, bo nie od nas ona zależy. Sprawdzamy dokumenty rejestracyjne Twoich pojazdów, porównujemy je z rodzajem faktycznie wykonywanych przewozów i mówimy wprost, co z nich wynika. Przy nietypowych zestawach albo przy pojeździe z ładownością blisko granicy przygotowujemy wniosek o interpretację indywidualną, a stawkę za jego przygotowanie znajdziesz w <a href="/cennik#dodatkowe">katalogu usług dodatkowych</a>.</span>
+      </p>
+
+      <div class="drv-actions">
+        <a href="/kalkulatory/ryczalt-vs-liniowy" class="btn btn--primary btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Policz swój podatek</span>
+        </a>
+        <a href="/kalkulatory/skladka-zdrowotna" class="btn btn--ghost btn--lg">
+          <Icon name="chart" size={18}/>
+          <span>Sprawdź składkę zdrowotną</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Koszty pojazdu ────────────────────────────────────────────────── -->
+  <section class="section" id="koszty-pojazdu">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Ryczałt czy koszty</span>
+        <h2>Auto to Twój największy koszt, więc od niego zacznijmy</h2>
+        <p>W większości zawodów pytanie o ryczałt kontra rozliczenie kosztowe jest w dużej mierze teoretyczne. U kierowcy nie jest, bo paliwo, serwis, opony, ubezpieczenie i sam pojazd potrafią pochłonąć znaczną część przychodu. Na ryczałcie nie odliczysz z tego ani złotówki.</p>
+      </div>
+
+      <div class="drv-cases">
+        {carCases.map((c) => (
+          <article class={`drv-case drv-case--${c.tone}`}>
+            <div class="drv-case__badge"><Icon name={c.icon} size={16}/><span>{c.title}</span></div>
+            <p>{c.body}</p>
+            <p class="drv-case__foot">{c.foot}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="drv-limits">
+        <div class="drv-limits__head">
+          <span class="eyebrow eyebrow--light">Limit wartości pojazdu</span>
+          <h3>Od {TAX_YEAR} roku o limicie decyduje emisja CO₂</h3>
+          <p>Odpisy amortyzacyjne oraz raty leasingu zalicza się do kosztów tylko do wysokości limitu wartości pojazdu. Powyżej tej kwoty rozlicza się je proporcjonalnie, a reszta przestaje być kosztem podatkowym. To zmiana, o której wiele artykułów jeszcze nie wie: kiedyś limit wynosił {zl(CAR_LIMIT_LEGACY)} dla każdego auta spalinowego, dziś zależy od emisji.</p>
+        </div>
+        <div class="drv-limits__grid">
+          {carLimits.map((l) => (
+            <article class={`drv-limit ${l.featured ? 'drv-limit--featured' : ''}`}>
+              <span class={`drv-limit__value ${l.featured ? 'drv-limit__value--featured' : ''}`}>{l.limit}</span>
+              <h4>{l.title}</h4>
+              <p>{l.body}</p>
+            </article>
+          ))}
+        </div>
+        <p class="drv-limits__foot">
+          Auta wprowadzone do ewidencji środków trwałych przed {TAX_YEAR} rokiem zachowują dotychczasowy limit {zl(CAR_LIMIT_LEGACY)} niezależnie od emisji. Przy leasingu, najmie i dzierżawie takiej ochrony nie ma, bo nowe limity objęły także umowy zawarte wcześniej. Kwotę dla konkretnego pojazdu policzysz w <a href="/kalkulatory/emisji-co2">kalkulatorze emisji CO₂</a>, a pełne rozliczenie umowy w <a href="/kalkulatory/auta-w-leasingu">kalkulatorze auta w leasingu</a>.
+        </p>
+      </div>
+
+      <div class="drv-forms">
+        {forms.map((f) => (
+          <article class="drv-form">
+            <div class="drv-form__head">
+              <div class="drv-form__icon"><Icon name={f.icon} size={20}/></div>
+              <span class="drv-form__rate">{f.rate}</span>
+            </div>
+            <h3>{f.name}</h3>
+            <dl>
+              <dt>Kiedy zwykle wygrywa</dt>
+              <dd>{f.when}</dd>
+              <dt>Na co uważać</dt>
+              <dd>{f.watch}</dd>
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <p class="drv-note">
+        <Icon name="calculator" size={16}/>
+        <span>Kierowca jeżdżący dużo, tankujący codziennie i serwisujący auto co kilka miesięcy często wychodzi lepiej na rozliczeniu kosztowym, mimo że stawka ryczałtu wygląda atrakcyjniej. Kierowca jeżdżący mniej, na starszym i tanim w utrzymaniu aucie, zwykle wychodzi lepiej na ryczałcie. Nie da się tego rozstrzygnąć bez liczb, więc na bezpłatnej konsultacji liczymy oba warianty na Twoich rzeczywistych kosztach z ostatnich miesięcy, razem ze składką zdrowotną, która na każdej z form liczy się inaczej.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── VAT ───────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="vat">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">VAT</span>
+        <h2>Przewóz osób ma {vatObnizony} VAT, ale masz też inną opcję</h2>
+        <p>Usługi taksówek osobowych objęte są obniżoną stawką {vatObnizony}. Obok tego ustawa przewiduje dla taksówkarzy szczególne rozwiązanie, o którym warto wiedzieć, zanim zdecydujesz, jak się rozliczać. Ma ono jedną poważną konsekwencję, którą większość stron pomija.</p>
+      </div>
+
+      <div class="drv-vat">
+        <article class="drv-vat__main">
+          <div class="drv-vat__icon"><Icon name="tag" size={22}/></div>
+          <h3>Zryczałtowany VAT dla taksówek</h3>
+          <p>Świadcząc usługi taksówek osobowych, możesz wybrać opodatkowanie ich zryczałtowaną stawką {vatTaxi} zamiast {vatObnizony}. Warunkiem jest wcześniejsze pisemne zawiadomienie naczelnika urzędu skarbowego, złożone do końca miesiąca poprzedzającego okres, od którego chcesz stosować ryczałt. Raz wybraną formę stosuje się przez co najmniej {VAT_TAXI_OKRES_MIESIACE} miesięcy.</p>
+          <p>Zamiast pliku JPK składa się wtedy skróconą deklarację VAT-12, w której wykazuje się jedynie obrót i podatek należny. Składa się ją co miesiąc, także za miesiące bez sprzedaży.</p>
+          <p>Rozwiązanie dotyczy wyłącznie taksówek osobowych. Ustawa wyłącza z niego wprost:</p>
+          <ul>
+            {VAT_TAXI_RYCZALT_WYLACZENIA.map((w) => <li><Icon name="check" size={14}/>{w}</li>)}
+          </ul>
+        </article>
+        <div class="drv-vat__side">
+          <article class="drv-vat__card drv-vat__card--warn">
+            <div class="drv-vat__badge"><Icon name="search" size={16}/><span>Haczyk, o którym trzeba wiedzieć</span></div>
+            <p>Wybierając ryczałt {vatTaxi}, tracisz prawo do odliczenia podatku naliczonego od zakupów. Nie odliczysz VAT od paliwa, serwisu, opon ani od samego pojazdu. Rozwiązanie ma więc sens przy niskich kosztach, a przestaje mieć sens, gdy planujesz zakup auta albo ponosisz duże wydatki eksploatacyjne.</p>
+            <p class="drv-vat__foot">Zanim złożysz zawiadomienie, liczymy oba warianty na Twoich kosztach z ostatnich miesięcy. Decyzja wiąże na {VAT_TAXI_OKRES_MIESIACE} miesięcy, więc pomyłka jest kosztowna.</p>
+          </article>
+          <article class="drv-vat__card">
+            <div class="drv-vat__badge"><Icon name="file" size={16}/><span>Skąd rozbieżne informacje o stawce</span></div>
+            <p>Spotkasz w internecie zarówno {vatTaxiStary}, jak i {vatTaxi}. Wynika to z tego, że w podstawowym brzmieniu przepisu widnieje {vatTaxiStary}, ale odrębny przepis przejściowy podwyższa ją i obowiązująca stawka wynosi {vatTaxi}. Warto o tym wiedzieć, bo starsze artykuły podają nieaktualną wartość.</p>
+          </article>
+          <article class="drv-vat__card drv-vat__card--good">
+            <div class="drv-vat__badge"><Icon name="check-circle" size={16}/><span>A jeśli nie chcesz wchodzić w VAT</span></div>
+            <p>Do momentu przekroczenia limitu sprzedaży {limitVat} możesz korzystać ze zwolnienia ze względu na wysokość obrotu. Wielu kierowców pracujących samodzielnie w tym limicie się mieści. Pilnujemy go za Ciebie i uprzedzamy, zanim zostanie przekroczony.</p>
+            <p class="drv-vat__foot">Zwolnienie z VAT nie zwalnia z kasy fiskalnej. W taksówce te dwa obowiązki są od siebie całkowicie niezależne.</p>
+          </article>
+        </div>
+      </div>
+
+      <p class="drv-note">
+        <Icon name="chart" size={16}/>
+        <span>Przy transporcie towarów obowiązuje stawka podstawowa {vatPodstawowy}, a przy przewozach międzynarodowych dochodzą reguły dotyczące miejsca świadczenia usługi, które potrafią wyprowadzić rozliczenie poza polski VAT. Jeżeli wozisz za granicę, ustalamy to przed pierwszym kursem, bo korekta wstecz jest znacznie droższa niż jedna rozmowa na starcie.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Kasa fiskalna ─────────────────────────────────────────────────── -->
+  <section class="section" id="kasa-fiskalna">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Kasa fiskalna</span>
+        <h2>Kasa w taksówce jest obowiązkowa, ale nie zawsze musi być taksometr</h2>
+        <p>Przewóz osób taksówkami został wyłączony ze zwolnień z obowiązku ewidencjonowania sprzedaży, więc kasa jest potrzebna od pierwszego kursu, niezależnie od obrotu. Limit {limitKasy}, na który powołują się inne branże, tu nie obowiązuje.</p>
+      </div>
+
+      <div class="drv-cash">
+        <article class="drv-cash__main">
+          <div class="drv-cash__icon"><Icon name="printer" size={22}/></div>
+          <h3>Kasa i taksometr to dwie różne rzeczy</h3>
+          <p>Kasa rejestrująca w wersji online ewidencjonuje sprzedaż i przesyła dane do administracji skarbowej. Taksometr nalicza opłatę za kurs. To dwa osobne urządzenia i dwa osobne obowiązki, choć bywają sprzedawane w jednej obudowie.</p>
+          <p>Przepisy dopuszczają, żeby przy przewozach zlecanych przez aplikację funkcję naliczania opłaty pełniła sama aplikacja, więc kierowca pracujący wyłącznie na zleceniach z platform zwykle nie potrzebuje tradycyjnego taksometru. Kasa jest potrzebna w obu przypadkach.</p>
+          <p>Jeżeli chcesz zabierać pasażerów z ulicy i z postoju, poza aplikacją, taksometr z ważną legalizacją pozostaje wymagany.</p>
+          <ul>
+            {cashHelp.map((h) => <li><Icon name="check" size={14}/>{h}</li>)}
+          </ul>
+        </article>
+        <aside class="drv-docs">
+          <div class="drv-docs__badge"><Icon name="file" size={16}/><span>Ile dokumentów to Twoja sprzedaż</span></div>
+          <h3>Sześćset kursów to jeden dokument, a nie sześćset</h3>
+          <p>To pytanie wraca u nas najczęściej ze wszystkich, więc odpowiadamy od razu. Sprzedaż dla pasażerów rozliczamy na podstawie raportu okresowego z kasy, a nie pojedynczych przejazdów. Rozliczenie z platformą opieramy na zestawieniu okresowym z panelu kierowcy, też zbiorczo.</p>
+          <p>Cena obsługi zależy u nas od liczby dokumentów księgowych w miesiącu, więc liczba kursów nie przekłada się na nią wprost. Podnoszą ją przede wszystkim faktury kosztowe i to o nie pytamy przy wycenie.</p>
+          <a href="#cennik" class="btn-arrow drv-docs__link">
+            <span>Zobacz, jak liczymy dokumenty</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Formalności i platformy ───────────────────────────────────────── -->
+  <section class="section section--alt" id="formalnosci">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Formalności</span>
+        <h2>Licencja, platformy i dane, które trafiają do urzędu</h2>
+        <p>Poza podatkami są dwie rzeczy, o które kierowcy pytają najczęściej. Pierwsza to kolejność formalności przy starcie, druga to co administracja skarbowa już o nich wie.</p>
+      </div>
+
+      <div class="drv-callout">
+        <div class="drv-callout__icon"><Icon name="shield" size={22}/></div>
+        <div>
+          <h3>Licencja na przewóz osób</h3>
+          <p>Przewóz osób wymaga licencji wydawanej przez organ właściwy dla miejsca prowadzenia działalności. Dotyczy to również kierowców pracujących wyłącznie przez aplikacje, ponieważ pośrednicy mogą zlecać przewozy tylko przedsiębiorcom posiadającym licencję. Do wniosku potrzebne są między innymi zaświadczenie o niekaralności, badania lekarskie i psychologiczne oraz tytuł prawny do pojazdu.</p>
+          <p>Nie jesteśmy kancelarią transportową i nie prowadzimy postępowań licencyjnych, ale podpowiadamy, w jakiej kolejności to załatwiać, żeby nie ponosić kosztów przed czasem. Rejestracja działalności i zgłoszenia podatkowe leżą już w całości po naszej stronie.</p>
+        </div>
+      </div>
+
+      <div class="drv-platforms">
+        <article class="drv-platform">
+          <div class="drv-platform__head">
+            <Icon name="calculator" size={20}/>
+            <h3>Wypłata to nie jest Twój przychód</h3>
+          </div>
+          <p>Kwota, która wpływa na konto, jest już pomniejszona o prowizję i opłaty potrącone przez platformę. Przychodem jest kwota przed potrąceniem, a prowizja stanowi koszt. Zaksięgowanie samej wypłaty zaniża jednocześnie przychód i koszty, co przy kontroli wygląda źle, nawet jeżeli podatek wyszedł prawidłowo.</p>
+          <p>Pracujemy na zestawieniach pobieranych z paneli kierowcy, więc nie musisz niczego przepisywać ani sumować.</p>
+        </article>
+        <article class="drv-platform">
+          <div class="drv-platform__head">
+            <Icon name="globe" size={20}/>
+            <h3>Dane raportowane przez platformy</h3>
+          </div>
+          <p>Od {DAC7_OD} operatorzy platform mają obowiązek przekazywać administracji skarbowej dane o osobach, które za ich pośrednictwem zarabiają. Przy usługach świadczonych osobiście, a więc także przy przewozie osób, nie obowiązuje żaden próg liczby transakcji ani kwoty. Raporty trafiają do urzędu do {DAC7_RAPORT_DO} za rok poprzedni, a kopię zestawienia otrzymuje również kierowca.</p>
+          <p>Sam raport nie oznacza jeszcze podatku, ale pozwala porównać wysokość zarobków z tym, co wykazałeś w rozliczeniu. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy zgadza się z Twoimi deklaracjami, sprawdzimy to na bezpłatnej konsultacji. Ten sam obowiązek opisujemy szerzej przy <a href="/ksiegowosc-dla-e-commerce#raportowanie">sprzedaży na platformach</a>, bo obie grupy podlegają dokładnie tym samym przepisom.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakres obsługi ────────────────────────────────────────────────── -->
+  <section class="section" id="zakres">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Co robimy w ramach stałej współpracy</h2>
+        <p>Bierzemy na siebie cały kalendarz obowiązków podatkowych, w ramach jednego abonamentu i bez dopłat za rzeczy, które uważamy za standard nowoczesnego biura. Całość prowadzimy zdalnie, więc <a href="/ksiegowosc-online">sprawdź, jak wygląda współpraca online</a>, jeśli nie chcesz tracić kursów na dojazd do biura.</p>
+      </div>
+      <div class="drv-scope">
+        {scope.map((s) => (
+          <article class="drv-scope__item">
+            <div class="drv-scope__icon"><Icon name={s.icon} size={20}/></div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+              <ul>
+                {s.points.map((p) => <li><Icon name="check" size={14}/>{p}</li>)}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="drv-actions">
+        <a href="/ksiegowosc" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Pełny zakres księgowości</span>
+        </a>
+        <a href="/kadry-place" class="btn btn--ghost btn--lg">
+          <Icon name="users" size={18}/>
+          <span>Oferta kadr i płac</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dlaczego Taxun ────────────────────────────────────────────────── -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="drv-benefits">
+        <div>
+          <span class="eyebrow">Dlaczego Taxun</span>
+          <h2>Rozliczenia bez wysiadania z&nbsp;auta</h2>
+          <p class="lede">W tej pracy nie ma miejsca ani czasu na wizyty w biurze rachunkowym, a rozmowa telefoniczna często musi poczekać do końca kursu. Dlatego oparliśmy współpracę na portalu klienta dostępnym o każdej porze oraz na standardzie czasu odpowiedzi, którego pilnujemy w godzinach roboczych.</p>
+          <div class="drv-benefits__stats">
+            <Stats items={[
+              { label: 'Gwarantowana terminowość rozliczeń', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi w godzinach roboczych', value: 4, suffix: ' h' },
+              { label: 'Procesy prowadzone w pełni online', value: 100, suffix: '%' },
+              { label: 'Dostępność portalu klienta', value: '24/7' },
+            ]} />
+          </div>
+          <a href="/o-nas#zobowiazania" class="btn-arrow drv-benefits__link">
+            <span>Poznaj nasze zobowiązania</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+        </div>
+        <ul class="drv-benefits__list">
+          {benefits.map((b) => (
+            <li>
+              <div class="drv-benefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Zakładanie firmy ──────────────────────────────────────────────── -->
+  <section class="section" id="zakladanie-firmy">
+    <div class="container">
+      <div class="drv-startup">
+        <div class="drv-startup__head">
+          <span class="eyebrow">Zakładanie firmy</span>
+          <h2>Zaczynasz? Ustawmy formalności we właściwej kolejności</h2>
+          <p class="lede">W tej branży kolejność ma znaczenie finansowe. Zakup kasy przed uzyskaniem licencji albo wybór formy opodatkowania przed policzeniem kosztów pojazdu potrafi kosztować kilka tysięcy złotych. Przechodzimy przez to razem, krok po kroku.</p>
+        </div>
+
+        <ol class="drv-steps">
+          {startupSteps.map((s, i) => (
+            <li class="drv-step">
+              <span class="drv-step__num">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="drv-startup__cols">
+          <div class="drv-startup__col drv-startup__col--primary">
+            <span class="drv-startup__pill drv-startup__pill--primary">jednoosobowa działalność</span>
+            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
+            <p>Spotykamy się online i przechodzimy przez wniosek CEIDG-1 razem: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, decyzja o VAT i kody PKD. Podpisujesz i wysyłasz sam, bo pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.</p>
+          </div>
+          <div class="drv-startup__col">
+            <span class="drv-startup__pill">spółka</span>
+            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
+            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: kapitał, udziały, zarząd, policzone warianty CIT i przejście przez wzorzec umowy w S24. Umowę i wniosek o wpis podpisują oraz składają wspólnicy i zarząd - w rejestracji nie jesteśmy pełnomocnikiem. Przy umowie o obsługę zaliczamy kwotę na poczet pierwszej faktury.</p>
+          </div>
+        </div>
+
+        <a href="/wycena?tryb=zalozenie&branza=transport" class="btn btn--accent btn--lg drv-startup__cta">
+          <span>Załóż firmę z Taxun</span>
+          <Icon name="arrow-right" size={18}/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cennik ────────────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="cennik">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje księgowość dla kierowcy</h2>
+        <p>Cały cennik jest publiczny i nie stosujemy widełek ani prośby o kontakt w celu poznania ceny. Cena zależy od liczby dokumentów księgowych w miesiącu, a nie od liczby kursów.</p>
+      </div>
+
+      <div class="drv-price">
+        <div class="drv-price__head">
+          <span>Forma rozliczenia</span>
+          <span>Typowa sytuacja</span>
+          <span class="drv-price__amount">Cena netto / mies.</span>
+        </div>
+        {priceRows.map((r) => (
+          <div class="drv-price__row">
+            <span class="drv-price__form">
+              <strong>{r.form}</strong>
+              <small>{r.docs} dokumentów{r.vatLabel ? `, ${r.vatLabel}` : ''}</small>
+            </span>
+            <span class="drv-price__situation">{r.situation}</span>
+            <span class="drv-price__amount"><strong>{r.price === null ? 'wycena indyw.' : `${fmt.format(r.price)} zł`}</strong></span>
+          </div>
+        ))}
+      </div>
+
+      <p class="drv-note">
+        <Icon name="file" size={16}/>
+        <span>Do limitu dokumentów wliczamy faktury kosztowe, wyciągi bankowe, listy płac oraz zapisy dotyczące środków trwałych i amortyzacji. Nie wliczamy pojedynczych kursów ani przejazdów: sprzedaż dla pasażerów to jeden dokument miesięcznie, na podstawie raportu okresowego z kasy, a rozliczenie z platformą opieramy na zestawieniu okresowym z panelu kierowcy. Deklaracje wysyłane do urzędów też nie wchodzą do limitu. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.</span>
+      </p>
+
+      <p class="drv-note">
+        <Icon name="search" size={16}/>
+        <span>Warto o tym pamiętać przy wyborze formy opodatkowania, bo działa to również na Twoją niekorzyść. Kierowca tankujący codziennie i zbierający faktury za serwis, myjnię i opłaty drogowe łatwo przekracza trzydzieści dokumentów miesięcznie, więc przechodząc z ryczałtu na KPiR trzeba doliczyć do rachunku także różnicę w cenie obsługi. Mówimy o tym wprost przed podpisaniem umowy, a nie po pierwszej fakturze. Obsługa kadrowa kierowców zaczyna się od {hrZlecenie} zł netto miesięcznie za osobę przy umowie cywilnoprawnej bez składek ZUS i od {hrMin} zł przy umowie o pracę.</span>
+      </p>
+
+      <div class="drv-actions">
+        <a href="/cennik" class="btn btn--primary btn--lg">
+          <Icon name="tag" size={18}/>
+          <span>Zobacz pełny cennik</span>
+        </a>
+        <a href="/wycena?tryb=przeniesienie&branza=transport" class="btn btn--ghost btn--lg">
+          <Icon name="calculator" size={18}/>
+          <span>Wyceń swoją działalność</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Jak pracujemy"
+    title="Jak wygląda start współpracy"
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęściej zadawane pytania o księgowość dla kierowców"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o rozliczeniach Twojej firmy"
+    description="Jeśli jeździsz na aplikacjach, prowadzisz taksówkę, rozwozisz paczki albo dopiero planujesz start, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje przychody i koszty, policzymy formy opodatkowania i powiemy wprost, co da się uprościć. Bez zobowiązań i sprzedażowego nacisku."
+    primaryHref="/wycena?tryb=przeniesienie&branza=transport"
+  />
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); flex-shrink: 0; }
+
+/* ── Wspólne elementy ─────────────────────────────────────────────────── */
+.drv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+.drv-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1.125rem 1.375rem;
+  background: var(--accent-50);
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-900);
+}
+.drv-note :global(svg) { color: var(--accent-700); flex-shrink: 0; margin-top: 4px; }
+.drv-note a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+.drv-callout {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.drv-callout__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.drv-callout h3 { font-size: 1.1875rem; margin-bottom: 0.5rem; }
+.drv-callout p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.drv-callout p + p { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  .drv-callout { flex-direction: column; gap: 1rem; }
+}
+
+.drv-pill {
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.drv-pill--good { background: var(--accent-500); color: var(--ink-950); }
+.drv-pill--neutral { background: var(--ink-100); color: var(--ink-800); }
+
+/* ── Dla kogo ─────────────────────────────────────────────────────────── */
+.drv-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) {
+  /* Sześć kolumn układa pięć kart po trzy w rzędzie, a dwie ostatnie
+     rozkładają się symetrycznie w drugim wierszu. */
+  .drv-segments { grid-template-columns: repeat(6, 1fr); }
+  .drv-segments > * { grid-column: span 2; }
+  .drv-segments > :nth-child(4) { grid-column: 2 / span 2; }
+  .drv-segments > :nth-child(5) { grid-column: 4 / span 2; }
+}
+.drv-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.drv-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.drv-segment__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.drv-segment h3 { font-size: 1.125rem; }
+.drv-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.drv-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.drv-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.drv-segment li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Stawki ryczałtu ──────────────────────────────────────────────────── */
+.drv-rates {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.drv-rates__head,
+.drv-rates__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.drv-rates__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.drv-rates__row { border-bottom: 1px solid var(--border-subtle); }
+.drv-rates__row:last-child { border-bottom: none; }
+.drv-rates__what strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; line-height: 1.45; }
+.drv-rates__what small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 4px; line-height: 1.5; }
+.drv-rates__rate { text-align: right; }
+
+.drv-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 980px) { .drv-notes { grid-template-columns: repeat(3, 1fr); } }
+.drv-note-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.drv-note-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.drv-note-card__head h3 { font-size: 1.0625rem; }
+.drv-note-card :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.drv-note-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Koszty pojazdu ───────────────────────────────────────────────────── */
+.drv-cases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .drv-cases { grid-template-columns: repeat(3, 1fr); } }
+.drv-case {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.drv-case--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.drv-case--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.drv-case__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.drv-case__badge :global(svg) { flex-shrink: 0; }
+.drv-case--good .drv-case__badge { background: var(--accent-100); color: var(--accent-700); }
+.drv-case--warn .drv-case__badge { background: #FEF3C7; color: #92400E; }
+.drv-case p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.drv-case__foot {
+  /* `auto` dosuwa stopkę do dołu karty, więc separatory w rzędzie stoją
+     równo mimo różnej długości opisów. */
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+.drv-limits {
+  margin-top: 1.75rem;
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  color: var(--text-on-dark);
+}
+.drv-limits__head { max-width: 72ch; }
+.drv-limits__head h3 { color: var(--white); font-size: clamp(1.25rem, 2.5vw, 1.625rem); margin: 0.5rem 0 0.75rem; }
+.drv-limits__head p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.drv-limits__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 900px) { .drv-limits__grid { grid-template-columns: repeat(3, 1fr); } }
+.drv-limit {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.drv-limit--featured { border-color: var(--accent-500); background: rgba(16,185,129,0.1); }
+.drv-limit__value {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.1);
+  color: var(--white);
+  white-space: nowrap;
+}
+.drv-limit__value--featured { background: var(--accent-500); color: var(--ink-950); }
+.drv-limit h4 { color: var(--white); font-size: 1rem; font-family: var(--font-display); }
+.drv-limit p { font-size: 0.875rem; color: var(--text-on-dark-muted); line-height: 1.65; }
+.drv-limits__foot {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.9375rem;
+  color: var(--text-on-dark-muted);
+  line-height: 1.75;
+}
+.drv-limits__foot a { color: var(--accent-400); text-decoration: underline; text-underline-offset: 3px; }
+
+.drv-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 980px) { .drv-forms { grid-template-columns: repeat(3, 1fr); } }
+.drv-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.drv-form:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.drv-form__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.drv-form__icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.drv-form__rate {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-700);
+  text-align: right;
+  line-height: 1.3;
+}
+.drv-form h3 { font-size: 1.1875rem; }
+.drv-form dl { margin-top: 0.25rem; }
+.drv-form dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.drv-form dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; margin-top: 0.25rem; }
+.drv-form dd + dt { margin-top: 0.875rem; padding-top: 0.875rem; border-top: 1px solid var(--border-subtle); }
+
+/* ── VAT ──────────────────────────────────────────────────────────────── */
+.drv-vat {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .drv-vat { grid-template-columns: 1.05fr 1fr; align-items: start; } }
+.drv-vat__main {
+  background: var(--ink-900);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  color: var(--text-on-dark);
+}
+.drv-vat__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(16,185,129,0.16);
+  color: var(--accent-400);
+  display: grid; place-items: center;
+  margin-bottom: 1.125rem;
+}
+.drv-vat__main h3 { color: var(--white); font-size: 1.25rem; margin-bottom: 0.75rem; }
+.drv-vat__main p { font-size: 0.9375rem; color: var(--text-on-dark-muted); line-height: 1.75; }
+.drv-vat__main p + p { margin-top: 0.875rem; }
+.drv-vat__main ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+.drv-vat__main li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-on-dark);
+  line-height: 1.5;
+}
+.drv-vat__main li :global(svg) { color: var(--accent-400); flex-shrink: 0; margin-top: 5px; }
+.drv-vat__side { display: grid; gap: 1.25rem; }
+.drv-vat__card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.drv-vat__card--good { border-color: var(--accent-200); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.drv-vat__card--warn { border-color: #FDE68A; background: linear-gradient(180deg, #FFFBEB, var(--white)); }
+.drv-vat__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+  line-height: 1.35;
+}
+.drv-vat__badge :global(svg) { flex-shrink: 0; }
+.drv-vat__card--good .drv-vat__badge { background: var(--accent-100); color: var(--accent-700); }
+.drv-vat__card--warn .drv-vat__badge { background: #FEF3C7; color: #92400E; }
+.drv-vat__card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.drv-vat__foot {
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+/* ── Kasa fiskalna ────────────────────────────────────────────────────── */
+.drv-cash {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .drv-cash { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+.drv-cash__main {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+}
+.drv-cash__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 1.125rem;
+}
+.drv-cash__main h3 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+.drv-cash__main p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.drv-cash__main p + p { margin-top: 0.75rem; }
+.drv-cash__main ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.drv-cash__main li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.drv-cash__main li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 5px; }
+
+.drv-docs {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+}
+.drv-docs__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  margin-bottom: 0.875rem;
+}
+.drv-docs__badge :global(svg) { flex-shrink: 0; }
+.drv-docs h3 { font-size: 1.1875rem; margin-bottom: 0.625rem; }
+.drv-docs p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7; }
+.drv-docs p + p { margin-top: 0.75rem; }
+.drv-docs__link { margin-top: 1.25rem; }
+
+/* ── Platformy ────────────────────────────────────────────────────────── */
+.drv-platforms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 900px) { .drv-platforms { grid-template-columns: repeat(2, 1fr); } }
+.drv-platform {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+}
+.drv-platform__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.drv-platform__head h3 { font-size: 1.0625rem; }
+.drv-platform :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.drv-platform p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.drv-platform p + p { margin-top: 0.75rem; }
+.drv-platform a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Zakres obsługi ───────────────────────────────────────────────────── */
+.drv-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 980px) { .drv-scope { grid-template-columns: repeat(2, 1fr); } }
+.drv-scope__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.drv-scope__item:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.drv-scope__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.drv-scope__item h3 { font-size: 1.0625rem; margin-bottom: 0.375rem; }
+.drv-scope__item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.drv-scope__item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+}
+.drv-scope__item li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.drv-scope__item li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+/* ── Dlaczego Taxun ───────────────────────────────────────────────────── */
+.drv-benefits {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .drv-benefits { grid-template-columns: 1fr; } }
+.drv-benefits .lede { margin-top: 1rem; }
+.drv-benefits__stats { margin-top: 2rem; }
+.drv-benefits__link { margin-top: 1.75rem; }
+.drv-benefits__list {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.drv-benefits__list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.drv-benefits__list li:hover { border-color: var(--ink-100); box-shadow: var(--shadow-sm); }
+.drv-benefits__icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+}
+.drv-benefits__list h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.drv-benefits__list p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Zakładanie firmy ─────────────────────────────────────────────────── */
+.drv-startup {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 3rem);
+}
+.drv-startup__head { max-width: 70ch; }
+.drv-startup__head .lede { margin-top: 1rem; }
+.drv-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+@media (min-width: 980px) { .drv-steps { grid-template-columns: repeat(3, 1fr); } }
+.drv-step {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.drv-step__num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-700);
+  background: var(--accent-100);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: 2px;
+}
+.drv-step h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.drv-step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+.drv-startup__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .drv-startup__cols { grid-template-columns: repeat(2, 1fr); } }
+.drv-startup__col {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.drv-startup__col--primary {
+  background: linear-gradient(180deg, var(--accent-50), var(--white));
+  border-color: var(--accent-200);
+}
+.drv-startup__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.drv-startup__pill--primary { background: var(--accent-500); color: var(--ink-950); }
+.drv-startup__col h3 { font-size: 1.1875rem; }
+.drv-startup__col p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
+.drv-startup__cta { margin-top: 1.75rem; }
+
+/* ── Cennik ───────────────────────────────────────────────────────────── */
+.drv-price {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.drv-price__head,
+.drv-price__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+}
+.drv-price__head {
+  background: var(--ink-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.drv-price__row { border-bottom: 1px solid var(--border-subtle); }
+.drv-price__row:last-child { border-bottom: none; }
+.drv-price__form strong { display: block; color: var(--text-strong); font-weight: 600; font-size: 0.9375rem; }
+.drv-price__form small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.drv-price__situation { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.5; }
+.drv-price__amount { text-align: right; }
+.drv-price__amount strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .drv-price__head { display: none; }
+  .drv-price__row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.375rem;
+  }
+  .drv-price__situation { grid-column: 1 / -1; }
+}
+</style>

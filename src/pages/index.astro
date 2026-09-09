@@ -1,0 +1,392 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HomeHero from '../components/HomeHero.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import WhyChoose from '../components/WhyChoose.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+import { hourlyRate, hrLowest, hrMin, setupFees, startsFrom } from '../data/pricing';
+
+const services = [
+  {
+    icon: 'calculator',
+    title: `Księgowość - od ${startsFrom('ryczalt')} zł / mies.`,
+    description: 'Ryczałt, KPiR i pełna księgowość spółek. KSeF, OCR, JPK_V7, VAT-UE, ZUS właściciela i roczne PIT/CIT zawsze w cenie pakietu.',
+    features: [`Ryczałt od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł, KH od ${startsFrom('fk')} zł`, 'KSeF, OCR i portal klienta w cenie', 'JPK_V7, VAT-UE i KSeF bez dopłat', 'Księgowość prowadzona online, bez wizyt w biurze'],
+    href: '/ksiegowosc',
+    cta: 'Zobacz zakres księgowości',
+  },
+  {
+    icon: 'users',
+    title: `Kadry i płace - od ${hrMin} zł / pracownik`,
+    description: 'Pełna obsługa pracownika w jednej stałej cenie. Listy płac, deklaracje ZUS, akta osobowe, PIT-11 i panel pracownika.',
+    features: [`Umowa o pracę: ${hrMin} zł / mies. / osobę`, `Zlecenie / dzieło: od ${hrLowest} zł / osobę`, 'Wsparcie przy zatrudnianiu cudzoziemców', 'Panel pracownika z paskami i wnioskami'],
+    href: '/kadry-place',
+    cta: 'Poznaj ofertę kadr i płac',
+  },
+  {
+    icon: 'sparkle',
+    title: 'Zakładanie firmy - konsultacja przed startem',
+    description: `Otwierasz JDG albo spółkę? Spotykamy się online i przechodzimy przez formularz razem: policzone warianty opodatkowania, kod tytułu w ZUS, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF. Wniosek podpisujesz i wysyłasz sam - w rejestracji nie jesteśmy pełnomocnikiem. ${setupFees.jdg} zł przy działalności, ${setupFees.s24} zł przy spółce, a przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury.`,
+    features: ['Policzone warianty: ryczałt, skala, liniowy albo CIT', 'Wspólne wypełnienie CEIDG-1 albo przejście przez S24', 'ZUS, US, VAT-R i VAT-UE oraz uprawnienia w KSeF', `Zaliczamy kwotę na poczet abonamentu przy umowie w ciągu ${setupFees.creditWithinDays} dni`],
+    href: '/ksiegowosc#zakladanie-firmy',
+    cta: 'Umów konsultację',
+    featured: true,
+  },
+  {
+    icon: 'headset',
+    title: 'Wsparcie i konsultacje',
+    description: 'Przedstawiamy analizę i rekomendację przy wyborze lub zmianie formy opodatkowania. Wspieramy w kontaktach z US i ZUS, przygotowując dokumentację i wyjaśnienia. Odpowiadamy na bieżące pytania księgowe.',
+    features: ['Wybór lub zmiana formy opodatkowania', 'Wsparcie w komunikacji z US, ZUS i CEIDG', 'Odpowiedzi na bieżące pytania kadrowo-księgowe', `Konsultacja księgowa (ad hoc), odpowiedź w ciągu 24 godzin: ${hourlyRate} zł / godz.`],
+    href: '/kontakt',
+    cta: 'Zapytaj o konsultację',
+  },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja na start', description: 'Zanim cokolwiek podpiszesz, rozmawiamy o tym, jak działa Twoja firma i czy możemy Ci realnie pomóc. Bez zobowiązań lub sprzedażowego nacisku.' },
+  { title: 'Wycena i umowa', description: 'Przygotowujemy transparentną ofertę z cennikiem gwarantowanym przez 12 miesięcy. Bez ukrytych kosztów.' },
+  { title: 'Płynny onboarding', description: 'Przejmujemy dokumenty od poprzedniego biura. Konfigurujemy panel klienta i e-fakturowanie.' },
+  { title: 'Stała obsługa', description: 'Pracujemy w tle: pilnujemy terminów, raportujemy wyniki i jesteśmy w stałym kontakcie z klientem.' },
+];
+
+const guarantees = [
+  { icon: 'clock', title: 'Szybki kontakt', description: 'Nie zostawiamy wiadomości bez odpowiedzi. Oddzwaniamy i odpisujemy na bieżąco.' },
+  { icon: 'check-circle', title: 'Zero opóźnień z naszej strony', description: 'Dotrzymujemy terminów. Jeśli będziemy potrzebować czegoś od Ciebie - odezwiemy się niezwłocznie.' },
+  { icon: 'tag', title: 'Cennik na 12 miesięcy', description: 'Cennik z dnia zawarcia umowy obowiązuje przez rok.' },
+  { icon: 'shield', title: 'Cennik bez ukrytych pozycji', description: 'Wszystkie koszty są jasno określone w naszym cenniku.' },
+];
+
+const homeSchema = [
+  {
+    '@type': 'WebPage',
+    '@id': 'https://taxun.pl/#webpage',
+    url: 'https://taxun.pl/',
+    name: 'Taxun - biuro rachunkowe online dla JDG i spółek',
+    description: 'Nowoczesne biuro rachunkowe online z KSeF, OCR i portalem klienta w cenie. Transparentny cennik, przejrzyste zasady i wysoki poziom świadczonych usług.',
+    inLanguage: 'pl-PL',
+    isPartOf: { '@id': 'https://taxun.pl/#website' },
+    about: { '@id': 'https://taxun.pl/#organization' },
+    primaryImageOfPage: 'https://taxun.pl/og-image.png',
+  },
+  {
+    '@type': 'Service',
+    name: 'Księgowość online',
+    serviceType: 'Księgowość (KPiR, ryczałt, księgi handlowe)',
+    provider: { '@id': 'https://taxun.pl/#organization' },
+    areaServed: { '@type': 'Country', name: 'Polska' },
+    url: 'https://taxun.pl/ksiegowosc',
+  },
+  {
+    '@type': 'Service',
+    name: 'Kadry i płace',
+    serviceType: 'Outsourcing kadrowo-płacowy',
+    provider: { '@id': 'https://taxun.pl/#organization' },
+    areaServed: { '@type': 'Country', name: 'Polska' },
+    url: 'https://taxun.pl/kadry-place',
+  },
+];
+---
+<BaseLayout
+  title="Biuro rachunkowe online dla JDG i spółek | Taxun Kraków"
+  description={`Księgowość online dla JDG i spółek. KSeF, OCR i portal klienta w cenie. Ryczałt od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł, spółki od ${startsFrom('fk')} zł. Kraków, cała Polska.`}
+  schema={homeSchema}
+>
+  <HomeHero />
+
+  <section class="section services">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Nasze usługi</span>
+        <h2>Kompleksowa obsługa Twojej firmy w&nbsp;jednym miejscu</h2>
+        <p>Od bieżącej księgowości i kadr po doraźne wsparcie w codziennych sytuacjach - w&nbsp;tym wszystkim możemy Cię wesprzeć. Dzięki jasnemu podziałowi obowiązków każdy może się skupić na tym, w&nbsp;czym jest najlepszy.</p>
+      </div>
+      <div class="services__grid">
+        {services.map((s) => <ServiceCard {...s} />)}
+      </div>
+    </div>
+  </section>
+
+  <WhyChoose />
+
+  <!-- Public guarantees strip -->
+  <section class="section section--alt" id="gwarancje">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Nasze gwarancje</span>
+        <h2>Oferujemy konkrety, zamiast marketingowych obietnic</h2>
+      </div>
+      <div class="guarantees-strip">
+        {guarantees.map((g) => (
+          <article class="guarantee-card reveal">
+            <div class="guarantee-card__icon"><Icon name={g.icon} size={22}/></div>
+            <p class="guarantee-card__title">{g.title}</p>
+            <p>{g.description}</p>
+          </article>
+        ))}
+      </div>
+      <p class="guarantees-strip__more">
+        <a href="/o-nas#zobowiazania" class="btn-arrow">
+          <span>Zobacz nasze zobowiązania</span>
+          <svg class="arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Risk-reversal - co zmniejsza ryzyko zmiany biura -->
+  <section class="section" id="bez-ryzyka">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zanim podejmiesz decyzję</span>
+        <h2>Sprawdź, co możesz z nami zyskać</h2>
+        <p>Wiemy, że zmiana biura rachunkowego to poważna decyzja. Chcemy, aby był to dobry wybór.</p>
+      </div>
+      <div class="risk-grid">
+        <article class="risk-card">
+          <div class="risk-card__icon"><Icon name="check-circle" size={22}/></div>
+          <h3>Bezpłatna konsultacja przed decyzją</h3>
+          <p>Zanim cokolwiek podpiszesz, porozmawiamy o tym, jak działa Twoja firma i w jaki sposób możemy Ci realnie pomóc. Bez zobowiązań i sprzedażowego nacisku.</p>
+        </article>
+        <article class="risk-card">
+          <div class="risk-card__icon"><Icon name="check-circle" size={22}/></div>
+          <h3>Bezpłatne przejęcie dokumentacji</h3>
+          <p>Oferujemy wsparcie w wypowiedzeniu umowy z poprzednim biurem, odbiorze dokumentacji i uzyskaniu przez nas pełnomocnictw. Standardowo trwa to od 7 do 14 dni. Nie musisz się obawiać o przerwy w rozliczeniach.</p>
+        </article>
+        <article class="risk-card">
+          <div class="risk-card__icon"><Icon name="check-circle" size={22}/></div>
+          <h3>Łatwe zakończenie współpracy</h3>
+          <p>Umowa na czas nieokreślony, miesięczny okres wypowiedzenia, bez opłat za wyjście i bez zwrotu rabatów. Jeśli kiedyś zdecydujesz się odejść, przekażemy naszym następcom komplet dokumentów, bez opłaty za przekazanie.</p>
+        </article>
+        <article class="risk-card">
+          <div class="risk-card__icon"><Icon name="check-circle" size={22}/></div>
+          <h3>Rozpoczęcie współpracy bez chaosu</h3>
+          <p>Prowadzimy cały proces przeniesienia od odebrania dokumentów po uruchomienie portalu klienta. Jeśli coś wymaga Twojej uwagi, kontaktujemy się niezwłocznie.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {/*
+    Sekcja odpowiada na pytanie, które pada przed każdą rozmową, a którego
+    konkurencja na stronie głównej nie podejmuje. Kwoty biorą się z pricing.ts,
+    więc nie mogą rozjechać się z cennikiem ani z kreatorem wyceny. Celowo bez
+    nagłówków niższego rzędu: to jeden wywód, a nie lista.
+  */}
+  <section class="section section--tight" id="ile-kosztuje">
+    <div class="container">
+      <div class="pricing-explainer">
+        <span class="eyebrow">Cennik</span>
+        <h2>Ile kosztuje biuro rachunkowe i od czego zależy cena</h2>
+        <p>
+          Cena obsługi księgowej nie bierze się z wielkości firmy ani z jej obrotu, tylko
+          z tego, ile pracy wymaga miesięczne rozliczenie. Składają się na nią trzy rzeczy:
+          forma księgowości, liczba dokumentów w miesiącu i to, czy jesteś czynnym
+          podatnikiem VAT. Ryczałt ewidencjonowany zaczyna się u nas od {startsFrom('ryczalt')} zł
+          netto miesięcznie przy dziesięciu dokumentach bez VAT, KPiR od {startsFrom('kpir')} zł,
+          a pełna księgowość spółki od {startsFrom('fk')} zł. Wyższy próg dokumentów oznacza
+          wyższą stawkę, ale zawsze z tabeli, którą widzisz na stronie, a nie z kwoty
+          ustalanej indywidualnie po rozmowie.
+        </p>
+        <p>
+          Druga część rachunku to rzeczy, za które nie bierzemy dopłaty. KSeF, OCR dokumentów,
+          JPK_V7, portal klienta, składki ZUS właściciela jednoosobowej działalności i roczne
+          zeznanie z działalności są w abonamencie - kosztują tyle samo przy dziesięciu
+          dokumentach co przy stu pięćdziesięciu. Osobno wyceniamy kadry i płace, od {hrMin} zł
+          netto miesięcznie za pracownika na umowie o pracę, bo ten koszt rośnie z każdą
+          kolejną osobą w zespole, a nie z liczbą faktur.
+        </p>
+        <p>
+          Trzecia część to moduły specjalne i na nie warto patrzeć przy porównywaniu ofert.
+          Procedura VAT OSS, ewidencja IP Box, każdy kanał sprzedaży ponad pierwszy czy import
+          usług w firmie zwolnionej z VAT to stała dopłata miesięczna, bo wymagają tyle samo
+          pracy przy dwudziestu dokumentach co przy dwustu. Wypisujemy je osobno, zamiast
+          wliczać w cenę pakietu, żeby nie płacił za nie ktoś, kogo nie dotyczą. Cennik z dnia
+          zawarcia umowy obowiązuje przez dwanaście miesięcy, więc stawka, na którą się
+          umawiamy, nie zmienia się w trakcie roku.
+        </p>
+        <p>
+          Jeżeli chcesz poznać liczbę jeszcze przed rozmową, <a href="/wycena">kreator wyceny</a> przeprowadzi
+          Cię przez te same pytania, które zadalibyśmy przez telefon: forma
+          prawna, sposób opodatkowania, VAT, liczba dokumentów i zatrudnienie. Na końcu
+          dostajesz orientacyjną kwotę razem z rozpisaniem, z czego wynika. To wyliczenie
+          z publicznego cennika, a nie oferta: ostateczną stawkę potwierdzamy po analizie
+          zgłoszenia, przed podpisaniem umowy. Jeśli nie wiesz
+          jeszcze, która forma opodatkowania będzie dla Ciebie najlepsza, zaznacz to
+          w formularzu - policzymy najtańszy wariant z tych, które przy Twoich odpowiedziach
+          wchodzą w grę, i oznaczymy kwotę jako wyjściową. Pełne tabele dla każdego progu
+          dokumentów, listę modułów i katalog usług dodatkowych zebraliśmy
+          w <a href="/cennik">cenniku</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps items={process} description="Proponujemy czytelne kroki i jasne terminy. Na każdym etapie wiesz, co się dzieje i kiedy - bez papierologii, bez chaosu, bez znikających ludzi po podpisaniu umowy." />
+
+  <!-- Local SEO - Kraków positioning -->
+  <section class="section section--tight">
+    <div class="container">
+      <div class="local-block">
+        <div>
+          <span class="eyebrow">Biuro rachunkowe online</span>
+          <h2>Wsparcie księgowe na terenie całej Polski</h2>
+          <p><strong>Biuro rachunkowe z Krakowa, obsługujące firmy online w całej Polsce.</strong> Działamy w 100% zdalnie, więc bez względu na to, gdzie prowadzisz działalność, otrzymasz ten sam standard obsługi: portal klienta 24/7, jednego opiekuna i standardowo odpowiedź w 4 godziny robocze.</p>
+          <p>Zobacz, jak w praktyce wygląda <a href="/ksiegowosc-online">księgowość online</a> - od przekazania pierwszej faktury po zamknięcie miesiąca. Jeśli prowadzisz firmę w Małopolsce, więcej o obsłudze lokalnej piszemy na stronie <a href="/biuro-rachunkowe-krakow">biuro rachunkowe Kraków</a>.</p>
+          <div class="local-block__cta">
+            <a href="/wycena" class="btn btn--accent">
+              <span>Zapytaj o wycenę księgowości</span>
+              <Icon name="arrow-right" size={16}/>
+            </a>
+            <a href="/o-nas" class="btn btn--ghost">
+              <Icon name="sparkle" size={16}/>
+              <span>Kto prowadzi Taxun</span>
+            </a>
+          </div>
+        </div>
+        <aside class="local-block__card">
+          <div class="local-block__pin"><Icon name="pin" size={20}/></div>
+          <strong>{site.name}</strong>
+          <p>{site.address.city} | obsługa w całej Polsce</p>
+          <p>{site.hours}<br/><a href={`tel:${site.phoneHref}`}>{site.phoneDisplay}</a></p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <CTA />
+</BaseLayout>
+
+<style>
+.services__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+@media (min-width: 720px) {
+  .services__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Guarantees strip */
+.guarantees-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.guarantee-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.guarantee-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.guarantee-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.75rem;
+}
+.guarantee-card .guarantee-card__title {
+  font-size: 1rem;
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin-bottom: 0.375rem;
+}
+.guarantee-card p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+.guarantees-strip__more { margin-top: 1.5rem; text-align: center; }
+.guarantees-strip__more a { color: var(--accent-700); }
+
+/* Risk-reversal grid */
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) { .risk-grid { grid-template-columns: repeat(2, 1fr); } }
+.risk-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-500);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.risk-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50); color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.25rem;
+}
+.risk-card h3 { font-size: 1.0625rem; }
+.risk-card p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+
+/* Local Kraków block */
+/* Jedna kolumna tekstu o czytelnej długości wiersza - sekcja jest wywodem
+   do przeczytania, a nie siatką kart. */
+.pricing-explainer {
+  max-width: 68ch;
+  margin-inline: auto;
+}
+.pricing-explainer h2 { margin-bottom: 1rem; }
+.pricing-explainer p + p { margin-top: 1rem; }
+.pricing-explainer a {
+  color: var(--accent-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.local-block {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+}
+.local-block p { margin-top: 1rem; max-width: 56ch; line-height: 1.6; color: var(--text); }
+.local-block p a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.local-block__cta {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.local-block__card {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.local-block__card strong { font-size: 1.0625rem; color: var(--text-strong); }
+.local-block__card p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; margin: 0; }
+.local-block__card a { color: var(--accent-700); }
+.local-block__pin {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-500);
+  color: var(--ink-950);
+  display: grid; place-items: center;
+  margin-bottom: 0.5rem;
+}
+@media (max-width: 800px) {
+  .local-block { grid-template-columns: 1fr; }
+}
+</style>

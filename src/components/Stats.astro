@@ -1,0 +1,76 @@
+---
+/**
+ * `note` to podpis pod etykietą - miejsce na warunek, bez którego liczba nad
+ * nim jest obietnicą szerszą niż umowa (np. „100% terminowości” obowiązuje
+ * przy dokumentach dostarczonych w terminie).
+ */
+interface Stat { label: string; value: number | string; suffix?: string; prefix?: string; note?: string }
+interface Props { items: Stat[]; variant?: 'light' | 'dark' | 'accent' }
+const { items, variant = 'light' } = Astro.props;
+---
+<div class={`stats stats--${variant}`}>
+  {items.map((s) => (
+    <div class="stats__item">
+      <div class="stats__value">
+        {typeof s.value === 'number' ? (
+          <span
+            data-count={s.value}
+            data-suffix={s.suffix || ''}
+            data-prefix={s.prefix || ''}
+            aria-label={`${s.prefix || ''}${s.value}${s.suffix || ''}`}
+          >{`${s.prefix || ''}${s.value}${s.suffix || ''}`}</span>
+        ) : (
+          <span>{s.value}</span>
+        )}
+      </div>
+      <div class="stats__label">{s.label}</div>
+      {s.note && <div class="stats__note">{s.note}</div>}
+    </div>
+  ))}
+</div>
+
+<style>
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+.stats__item { position: relative; padding-left: 1.25rem; }
+.stats__item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.5rem;
+  width: 3px; height: 2.25rem;
+  background: var(--accent-500);
+  border-radius: 3px;
+}
+.stats__value {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text-strong);
+}
+.stats__label {
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.stats__note {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.stats--dark .stats__value { color: var(--white); }
+.stats--dark .stats__label { color: var(--text-on-dark-muted); }
+.stats--dark .stats__note { color: var(--text-on-dark-muted); }
+.stats--accent .stats__item::before { background: var(--white); }
+.stats--accent .stats__value { color: var(--ink-950); }
+.stats--accent .stats__label { color: rgba(6,17,42,0.7); }
+.stats--accent .stats__note { color: rgba(6,17,42,0.6); }
+</style>

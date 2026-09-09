@@ -1,0 +1,608 @@
+---
+/**
+ * Baner zgód - jedyny włącznik narzędzi zewnętrznych na stronie.
+ *
+ * Opis każdej kategorii musi odpowiadać temu, co faktycznie robi kod: lista
+ * ciasteczek pochodzi z tego pliku, a decyzję wykonuje `lib/consent.ts` razem
+ * z rejestrem w `lib/consent-integrations.ts`. Dopisanie narzędzia w rejestrze
+ * bez opisu tutaj oznaczałoby, że użytkownik zgadza się na coś, o czym nie wie.
+ */
+import { CONSENT_CATEGORIES, CONSENT_TTL_DAYS, CONSENT_TTL_MS, STORAGE_KEY } from '../lib/consent';
+
+const categories = Object.keys(CONSENT_CATEGORIES) as Array<keyof typeof CONSENT_CATEGORIES>;
+
+// Termin ważności zgody bierzemy z silnika, żeby tabela nie rozjechała się
+// z tym, jak długo wybór faktycznie obowiązuje.
+const consentRetention = CONSENT_TTL_DAYS === 365 ? '1 rok' : `${CONSENT_TTL_DAYS} dni`;
+
+// Tag Google Ads jest konfigurowany tylko przy ustawionym PUBLIC_GOOGLE_ADS_ID
+// (patrz components/GoogleTag.astro), więc opis kategorii marketingowej musi
+// zależeć od tej samej zmiennej - inaczej baner obiecywałby coś innego, niż
+// robi kod.
+const adsEnabled = ((import.meta.env.PUBLIC_GOOGLE_ADS_ID as string | undefined) || '').trim() !== '';
+
+const cookieData = {
+  necessary: {
+    title: 'Niezbędne',
+    description: 'Wymagane do działania strony i zabezpieczeń (reCAPTCHA). Nie można ich wyłączyć.',
+    note: null,
+    cookies: [
+      { name: 'taxun-consent-v1', vendor: 'Taxun', purpose: 'Przechowuje preferencje dotyczące plików cookies', retention: consentRetention },
+      { name: '_GRECAPTCHA', vendor: 'Google reCAPTCHA', purpose: 'Ochrona przed spamem i botami', retention: '6 miesięcy' },
+    ],
+  },
+  analytics: {
+    title: 'Analityczne',
+    description: 'Pomagają nam zrozumieć, jak odwiedzający korzystają ze strony (Google Analytics 4 i Vercel Speed Insights).',
+    note: 'Bez tej zgody Google Analytics nie zapisuje żadnych plików cookies ani identyfikatorów i nie rozpoznaje Cię przy kolejnej wizycie - dostaje wyłącznie anonimowe, zbiorcze trafienie o wyświetleniu strony. Zgoda włącza pełny pomiar: cookies _ga i rozróżnianie powracających użytkowników. Vercel Speed Insights uruchamiamy dopiero po zgodzie; mierzy czas wczytywania i nie zapisuje cookies. Źródło wejścia zapamiętujemy tylko na czas jednej wizyty i tylko za Twoją zgodą.',
+    cookies: [
+      { name: '_ga', vendor: 'Google Analytics', purpose: 'Rozróżnianie użytkowników', retention: '2 lata' },
+      { name: '_ga_*', vendor: 'Google Analytics', purpose: 'Przechowywanie stanu sesji', retention: '2 lata' },
+      { name: 'taxun-source-v1', vendor: 'Taxun', purpose: 'Źródło wejścia na stronę (pamięć sesji, nie ciasteczko)', retention: 'do zamknięcia karty' },
+    ],
+  },
+  marketing: {
+    title: 'Marketingowe',
+    description: 'Używane do wyświetlania spersonalizowanych reklam i śledzenia skuteczności kampanii.',
+    note: adsEnabled
+      ? 'Prowadzimy kampanie w Google Ads i mierzymy, które z nich kończą się próbą kontaktu: wysłaniem formularza albo kliknięciem w nasz numer telefonu. Nic innego nie jest w ten sposób mierzone - samo przeglądanie stron nie jest raportowane do Google Ads. Bez tej zgody Google nie zapisuje cookies _gcl_*, nie kojarzy Twojej wizyty z kliknięciem w reklamę i nie wykorzystuje danych do rozliczenia ani personalizacji kampanii. Nie sprzedajemy ani nie udostępniamy tych danych w innym celu.'
+      : 'Nie prowadzimy dziś kampanii reklamowych i nie ładujemy żadnego tagu reklamowego. Twój wybór przekazujemy Google w trybie zgody, więc obowiązuje od razu, gdyby taka kampania kiedyś ruszyła.',
+    cookies: adsEnabled
+      ? [
+          { name: '_gcl_au', vendor: 'Google Ads', purpose: 'Powiązanie kliknięcia w reklamę ze zgłoszeniem z formularza', retention: '90 dni' },
+          { name: '_gcl_aw', vendor: 'Google Ads', purpose: 'Zapamiętanie identyfikatora kliknięcia w reklamę (gclid)', retention: '90 dni' },
+        ]
+      : [],
+  },
+};
+---
+
+{/*
+  O widoczności banera decydujemy tutaj, w trakcie parsowania dokumentu, a nie
+  w skrypcie doładowywanym z sieci.
+
+  Wcześniej baner startował z `hidden`, `opacity: 0` i zsunięty w dół, a pokazywał
+  go dopiero `taxun.js`. Na telefonie zajmuje ponad połowę okna, więc to on jest
+  największym elementem treści - i przez to LCP czekał na pobranie i wykonanie
+  skryptu, zamiast wypaść razem z pierwszym renderowaniem. W pomiarze różnica
+  wynosiła kilka sekund: przy tym samym FCP baner wchodził jako kandydat LCP
+  grubo później, a wjeżdżanie płynnym przejściem przez połowę ekranu psuło
+  dodatkowo Speed Index.
+
+  Skrypt jest `is:inline` i bez importów, więc Astro wstawia go wprost do
+  dokumentu - wykonuje się, zanim przeglądarka dojdzie do znaczników banera,
+  więc osoba z zapisaną zgodą nie zobaczy mignięcia. Przy wyłączonym
+  JavaScripcie atrybut nie zostanie ustawiony i baner się nie pokaże - tak samo
+  jak dotąd, bo i tak nie byłoby czym go obsłużyć ani co włączyć.
+*/}
+<script is:inline define:vars={{ consentKey: STORAGE_KEY, consentTtl: CONSENT_TTL_MS }}>
+  (function () {
+    var decided = false;
+    try {
+      var raw = window.localStorage.getItem(consentKey);
+      var parsed = raw ? JSON.parse(raw) : null;
+      decided = !!(parsed && typeof parsed.timestamp === 'number'
+        && Date.now() - parsed.timestamp < consentTtl && parsed.choices);
+    } catch (err) {
+      // Brak dostępu do localStorage - traktujemy jak brak decyzji.
+    }
+    document.documentElement.dataset.consent = decided ? 'set' : 'none';
+  })();
+</script>
+
+{/* role="region" z etykietą - bez tego treść banera leży poza jakimkolwiek
+    punktem orientacyjnym strony i czytniki ekranu gubią ją przy nawigacji. */}
+<div id="cookie-consent-banner" class="cookie-banner"
+     role="region" aria-labelledby="cookie-banner-title">
+  <div class="cookie-banner__content">
+    <div class="cookie-banner__copy">
+      <p id="cookie-banner-title" class="cookie-banner__title">Szanujemy Twoją prywatność</p>
+      <p class="cookie-banner__text">
+        Używamy plików cookies, aby zapewnić podstawowe funkcje strony (niezbędne) oraz - jeśli się zgodzisz - analizować ruch{adsEnabled ? ' i mierzyć skuteczność naszych reklam' : ''}. Bez Twojej zgody nie zapisujemy na Twoim urządzeniu żadnych plików cookies analitycznych{adsEnabled ? ' ani reklamowych' : ''} i nie rozpoznajemy Cię przy kolejnej wizycie. Możesz wybrać, które kategorie akceptujesz.
+      </p>
+    </div>
+    <div class="cookie-banner__actions">
+      <button type="button" class="btn btn--accent" data-action="accept">
+        Akceptuję wszystkie
+      </button>
+      <button type="button" class="btn btn--ghost-light" data-action="reject">
+        Tylko niezbędne
+      </button>
+      <button type="button" class="btn-arrow" data-action="preferences">
+        <span>Ustawienia</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="cookie-consent-modal" class="cookie-modal" hidden role="dialog" aria-labelledby="cookie-modal-title" aria-modal="true">
+  <div class="cookie-modal__overlay" data-action="close"></div>
+  <div class="cookie-modal__dialog">
+    <div class="cookie-modal__header">
+      <p id="cookie-modal-title" class="cookie-modal__title">Ustawienia prywatności</p>
+      <button type="button" class="cookie-modal__close" data-action="close" aria-label="Zamknij">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="cookie-modal__body">
+      <p class="cookie-modal__description">
+        Zarządzaj swoimi preferencjami dotyczącymi plików cookies. Możesz włączyć lub wyłączyć poszczególne kategorie (z wyjątkiem niezbędnych, które są wymagane do działania strony).
+      </p>
+      
+      <div class="cookie-categories">
+        {categories.map((cat) => {
+          const catData = cookieData[cat];
+          const isRequired = CONSENT_CATEGORIES[cat].required;
+          
+          return (
+            <div class="cookie-category">
+              <div class="cookie-category__header">
+                <div>
+                  <p class="cookie-category__title">{catData.title}</p>
+                  <p class="cookie-category__description">{catData.description}</p>
+                  {catData.note && <p class="cookie-category__note">{catData.note}</p>}
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    data-category={cat}
+                    checked={isRequired}
+                    disabled={isRequired}
+                  />
+                  <span class="toggle__slider"></span>
+                </label>
+              </div>
+              
+              {catData.cookies.length > 0 && (
+                <details class="cookie-category__details">
+                  <summary>
+                    Pliki cookies ({catData.cookies.length})
+                  </summary>
+                  <table class="cookie-table">
+                    <thead>
+                      <tr>
+                        <th>Nazwa</th>
+                        <th>Dostawca</th>
+                        <th>Cel</th>
+                        <th>Ważność</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catData.cookies.map((cookie) => (
+                        <tr>
+                          <td><code>{cookie.name}</code></td>
+                          <td>{cookie.vendor}</td>
+                          <td>{cookie.purpose}</td>
+                          <td>{cookie.retention}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+    <div class="cookie-modal__footer">
+      <button type="button" class="btn btn--ghost" data-action="save">
+        Zapisz preferencje
+      </button>
+      <button type="button" class="btn btn--accent" data-action="accept">
+        Akceptuję wszystkie
+      </button>
+    </div>
+  </div>
+</div>
+
+{/*
+  Zachowanie banera mieszka w `lib/cookie-banner.ts` i startuje z jedynego
+  skryptu klienckiego strony (`BaseLayout.astro`). Osobny `<script>` w tym
+  komponencie byłby kolejnym punktem wejścia bundlera, czyli kolejnym żądaniem
+  i kolejnym wspólnym plikiem doładowywanym dopiero po jego sparsowaniu.
+*/}
+
+<style>
+  /* Domyślnie schowany: pokazuje go dopiero atrybut ustawiony w dokumencie
+     (patrz skrypt nad znacznikami). Dzięki temu baner maluje się razem
+     z pierwszym renderowaniem, a nie po dojściu skryptu z sieci. */
+  .cookie-banner {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: rgba(10, 26, 53, 0.98);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  :global(:root[data-consent='none']) .cookie-banner {
+    display: block;
+  }
+
+  /* Animujemy tylko zniknięcie - wjazd musiałby się odbyć po pierwszym
+     renderowaniu, a to jest dokładnie to, czego chcemy uniknąć. */
+  .cookie-banner.is-leaving {
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform var(--transition-base), opacity var(--transition-base);
+  }
+  
+  .cookie-banner__content {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  
+  /* Poniżej tej szerokości kolumna z tekstem robi się zbyt wąska,
+     żeby akcje mieściły się obok niej w jednym wierszu. */
+  @media (max-width: 960px) {
+    .cookie-banner__content {
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+  }
+  
+  .cookie-banner__title {
+    font-size: var(--text-xl);
+    font-family: var(--font-display);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: var(--white);
+    margin: 0 0 0.5rem;
+  }
+  
+  .cookie-banner__text {
+    font-size: 0.9375rem;
+    color: var(--text-on-dark-muted);
+    margin: 0;
+    max-width: 65ch;
+    line-height: var(--leading-relaxed);
+  }
+  
+  .cookie-banner__actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  
+  /* Baner ma ciemne tło, więc przycisk odrzucenia używa wariantu "light".
+     Wcześniej `.btn--ghost` (ciemny tekst na przezroczystym tle) był
+     niewidoczny do momentu najechania kursorem, gdy dopiero pojawiało się
+     jasne tło. Zgodnie z wymogami zgody cookies przycisk odmowy musi być
+     tak samo czytelny jak przycisk akceptacji. */
+  .cookie-banner__actions .btn--ghost-light {
+    background: rgb(255 255 255 / 0.08);
+    border-color: rgb(255 255 255 / 0.4);
+    color: var(--white);
+  }
+
+  .cookie-banner__actions .btn--ghost-light:hover {
+    background: rgb(255 255 255 / 0.18);
+    border-color: rgb(255 255 255 / 0.6);
+  }
+
+  .cookie-banner__actions .btn--ghost-light:focus-visible {
+    outline: 2px solid var(--white);
+    outline-offset: 2px;
+  }
+
+  /* Domyślny `.btn-arrow` (accent-600, na hover jeszcze ciemniejszy accent-700)
+     ma zbyt niski kontrast na ciemnym tle banera. Dodatkowo jako goły link
+     obok dwóch pigułek nie trzymał ich wysokości ani linii bazowej, więc
+     dostaje ten sam box co `.btn` - pozostając wizualnie akcją trzeciorzędną. */
+  .cookie-banner__actions .btn-arrow {
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius-full);
+    border: 1px solid transparent;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--accent-400);
+    transition: gap var(--transition-fast), color var(--transition-fast),
+      background var(--transition-base);
+  }
+
+  .cookie-banner__actions .btn-arrow:hover {
+    gap: 0.65rem;
+    color: var(--accent-200);
+    background: rgb(255 255 255 / 0.06);
+  }
+
+  .cookie-banner__actions .btn-arrow:focus-visible {
+    outline: 2px solid var(--accent-400);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 560px) {
+    .cookie-banner__actions {
+      flex-direction: column;
+      width: 100%;
+    }
+    .cookie-banner__actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .cookie-banner__actions .btn-arrow {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  /* Modal */
+  .cookie-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  
+  .cookie-modal.is-visible {
+    display: flex;
+  }
+  
+  .cookie-modal__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+  }
+  
+  .cookie-modal.is-visible .cookie-modal__overlay {
+    opacity: 1;
+  }
+  
+  .cookie-modal__dialog {
+    position: relative;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    max-width: 720px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-xl);
+    transform: scale(0.95) translateY(20px);
+    opacity: 0;
+    transition: transform var(--transition-base), opacity var(--transition-base);
+  }
+  
+  .cookie-modal.is-visible .cookie-modal__dialog {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  
+  .cookie-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .cookie-modal__title {
+    font-size: var(--text-2xl);
+    font-family: var(--font-display);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-strong);
+  }
+  
+  .cookie-modal__close {
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: color var(--transition-fast), background var(--transition-fast);
+  }
+  
+  .cookie-modal__close:hover {
+    color: var(--text-strong);
+    background: var(--surface-alt);
+  }
+  
+  .cookie-modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+  
+  .cookie-modal__description {
+    color: var(--text-muted);
+    margin: 0 0 1.5rem;
+    line-height: var(--leading-relaxed);
+  }
+  
+  .cookie-categories {
+    display: grid;
+    gap: 1rem;
+  }
+  
+  .cookie-category {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1.25rem;
+  }
+  
+  .cookie-category__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  
+  .cookie-category__title {
+    font-size: var(--text-lg);
+    font-family: var(--font-display);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+    color: var(--text-strong);
+  }
+  
+  .cookie-category__description {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: var(--leading-relaxed);
+  }
+  
+  .cookie-category__note {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+    line-height: var(--leading-relaxed);
+  }
+
+  .cookie-category__details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+  }
+  
+  .cookie-category__details summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--accent-700);
+    font-weight: 600;
+    list-style: none;
+    user-select: none;
+  }
+  
+  .cookie-category__details summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .cookie-category__details summary:hover {
+    color: var(--accent-text);
+  }
+  
+  .cookie-table {
+    width: 100%;
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    border-collapse: collapse;
+  }
+  
+  .cookie-table th {
+    text-align: left;
+    padding: 0.5rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .cookie-table td {
+    padding: 0.5rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  
+  .cookie-table code {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: var(--accent-700);
+    background: var(--accent-50);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-xs);
+  }
+  
+  .cookie-modal__footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    justify-content: flex-end;
+  }
+  
+  @media (max-width: 560px) {
+    .cookie-modal__footer {
+      flex-direction: column-reverse;
+    }
+    .cookie-modal__footer .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  /* Toggle switch */
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .toggle__slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--border-strong);
+    border-radius: 26px;
+    transition: background var(--transition-fast);
+  }
+  
+  .toggle__slider::before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background: var(--white);
+    border-radius: 50%;
+    transition: transform var(--transition-fast);
+  }
+  
+  .toggle input:checked + .toggle__slider {
+    background: var(--accent-500);
+  }
+  
+  .toggle input:checked + .toggle__slider::before {
+    transform: translateX(22px);
+  }
+  
+  .toggle input:disabled + .toggle__slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .toggle input:focus-visible + .toggle__slider {
+    outline: 2px solid var(--accent-500);
+    outline-offset: 2px;
+  }
+</style>

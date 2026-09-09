@@ -1,0 +1,215 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import { TAX_YEAR, KASA_LIMIT_ROCZNY, KASA_TERMIN_MIESIACE, DAYS_IN_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl } from '../../lib/format';
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/limitu-kasy-fiskalnej#webpage',
+  name: `Kalkulator limitu kasy fiskalnej ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator limitu zwolnienia z kasy fiskalnej na ${TAX_YEAR} r. Limit ${zl(KASA_LIMIT_ROCZNY)}, proporcjonalny dla firm rozpoczynających sprzedaż w trakcie roku.`,
+  url: 'https://taxun.pl/kalkulatory/limitu-kasy-fiskalnej',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Jaki jest limit zwolnienia z kasy fiskalnej w ${TAX_YEAR} roku?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Limit zwolnienia z kasy fiskalnej wynosi ${zl(KASA_LIMIT_ROCZNY)} obrotu rocznie na rzecz osób fizycznych nieprowadzących działalności i rolników ryczałtowych. Po jego przekroczeniu masz ${KASA_TERMIN_MIESIACE} miesiące na wprowadzenie kasy.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się limit kasy dla firmy rozpoczynającej w trakcie roku?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Limit jest proporcjonalny do liczby dni prowadzenia sprzedaży: ${zl(KASA_LIMIT_ROCZNY)} × liczba dni od rozpoczęcia do końca roku ÷ ${DAYS_IN_YEAR}. Im później w roku startujesz, tym niższy limit.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Kto musi mieć kasę fiskalną bez względu na limit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Niektóre branże są objęte obowiązkiem ewidencji od pierwszej sprzedaży, niezależnie od obrotu - m.in. usługi fryzjerskie, kosmetyczne, gastronomia, naprawa pojazdów, sprzedaż części samochodowych, paliw czy sprzętu elektronicznego.',
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator limitu kasy fiskalnej ${TAX_YEAR}`}
+  description={`Sprawdź, czy musisz mieć kasę fiskalną. Limit ${zl(KASA_LIMIT_ROCZNY)}, a dla firm startujących w trakcie roku - proporcjonalny. Liczy się w przeglądarce, bez wysyłania danych.`}
+  metaTitle={`Kalkulator limitu kasy fiskalnej ${TAX_YEAR}`}
+  metaDescription={`Bezpłatny kalkulator limitu zwolnienia z kasy fiskalnej ${TAX_YEAR}. Limit ${zl(KASA_LIMIT_ROCZNY)}, proporcjonalny przy starcie w trakcie roku. Bez logowania.`}
+  breadcrumbLabel="Limit kasy fiskalnej"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="kasa-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="kf-kiedy">
+          Początek sprzedaży dla osób fizycznych
+        </label>
+        <div class="calc-field__input">
+          <select id="kf-kiedy">
+            <option value="rok" selected>Od początku roku (lub wcześniej)</option>
+            <option value="trakcie">Rozpoczęta w trakcie {TAX_YEAR} r.</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field" id="kf-data-field" hidden>
+        <label for="kf-data">
+          Data rozpoczęcia sprzedaży
+        </label>
+        <div class="calc-field__input">
+          <input type="date" id="kf-data" min={`${TAX_YEAR}-01-01`} max={`${TAX_YEAR}-12-31`} value={`${TAX_YEAR}-06-01`}/>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="kf-obrot">
+          Obrót na rzecz osób fizycznych
+          <small>sprzedaż detaliczna w {TAX_YEAR} r.</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="kf-obrot" min="0" step="500" value="12000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Twój limit zwolnienia z kasy</div>
+      <div class="calc-result__value">
+        <span id="kf-limit">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        <strong id="kf-status">-</strong> <span id="kf-pozostalo"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Limit bazowy</span>
+          <span class="calc-breakdown__value">{zl(KASA_LIMIT_ROCZNY)}</span>
+        </div>
+        <div class="calc-breakdown__row" id="kf-dni-row" hidden>
+          <span class="calc-breakdown__label">Dni sprzedaży do końca roku</span>
+          <span class="calc-breakdown__value" id="kf-dni">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Twój obrót</span>
+          <span class="calc-breakdown__value" id="kf-obrot-val">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wykorzystanie limitu</span>
+          <span class="calc-breakdown__value" id="kf-proc">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Kiedy musisz mieć kasę fiskalną</h2>
+    <p>Kasę fiskalną musisz wprowadzić, gdy prowadzisz <strong>sprzedaż na rzecz osób fizycznych nieprowadzących działalności gospodarczej</strong> (i rolników ryczałtowych) i przekroczysz limit obrotu.</p>
+
+    <h3>Limit</h3>
+    <ul>
+      <li><strong>{zl(KASA_LIMIT_ROCZNY)}</strong> rocznie - dla firm działających od początku roku.</li>
+      <li><strong>Proporcjonalnie</strong> - dla firm rozpoczynających sprzedaż w trakcie roku: {zl(KASA_LIMIT_ROCZNY)} × liczba dni do końca roku ÷ {DAYS_IN_YEAR}.</li>
+      <li>Po przekroczeniu limitu masz <strong>{KASA_TERMIN_MIESIACE} miesiące</strong> (licząc od końca miesiąca przekroczenia) na instalację kasy.</li>
+    </ul>
+
+    <h3>Obowiązek bez względu na limit</h3>
+    <p>Część działalności wymaga kasy od pierwszej złotówki, m.in.:</p>
+    <ul>
+      <li>usługi fryzjerskie, kosmetyczne, kosmetologiczne,</li>
+      <li>gastronomia i catering (stacjonarne),</li>
+      <li>naprawa pojazdów i wulkanizacja, sprzedaż części samochodowych,</li>
+      <li>dostawa paliw, sprzętu elektronicznego, wyrobów tytoniowych i alkoholu,</li>
+      <li>usługi prawnicze i doradztwa podatkowego (z wyjątkami).</li>
+    </ul>
+
+    <h3>Co nie wlicza się do limitu</h3>
+    <p>Do limitu liczy się tylko sprzedaż dla osób fizycznych - sprzedaż na rzecz firm (B2B, na fakturę z NIP) oraz dostawy zwolnione przedmiotowo nie obciążają limitu kasy.</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> rozporządzenie Ministra Finansów w sprawie zwolnień z obowiązku prowadzenia ewidencji przy zastosowaniu kas rejestrujących, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Nie masz pewności, czy Twoja branża wymaga kasy? <a href="/kontakt" style="color: var(--accent-700)">Sprawdzimy to w bezpłatnej konsultacji</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { TAX_YEAR, KASA_LIMIT_ROCZNY as LIMIT_ROCZNY, DAYS_IN_YEAR } from '../../lib/tax-constants';
+
+  const YEAR_END = new Date(`${TAX_YEAR}-12-31`);
+  const YEAR_START = `${TAX_YEAR}-01-01`;
+
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const kiedy = ($('kf-kiedy') as HTMLSelectElement).value;
+    const obrot = Math.max(0, Number(($('kf-obrot') as HTMLInputElement).value) || 0);
+
+    const dataField = document.getElementById('kf-data-field')!;
+    const dniRow = document.getElementById('kf-dni-row')!;
+
+    let limit = LIMIT_ROCZNY;
+    if (kiedy === 'trakcie') {
+      dataField.hidden = false;
+      dniRow.hidden = false;
+      const startStr = ($('kf-data') as HTMLInputElement).value;
+      const start = startStr ? new Date(startStr) : new Date(YEAR_START);
+      let dni = Math.round((YEAR_END.getTime() - start.getTime()) / 86400000) + 1; // włącznie
+      dni = Math.min(DAYS_IN_YEAR, Math.max(1, dni));
+      limit = (LIMIT_ROCZNY * dni) / DAYS_IN_YEAR;
+      $span('kf-dni').textContent = `${dni} dni`;
+    } else {
+      dataField.hidden = true;
+      dniRow.hidden = true;
+    }
+
+    const proc = limit > 0 ? Math.min(999, (obrot / limit) * 100) : 0;
+    const przekroczony = obrot >= limit;
+    const pozostalo = limit - obrot;
+
+    $span('kf-limit').textContent = kiedy === 'trakcie' ? fmt2.format(limit) : fmt0.format(Math.round(limit));
+    $span('kf-obrot-val').textContent = fmtMoney2(obrot);
+    $span('kf-proc').textContent = `${proc.toFixed(0)}%`;
+
+    if (przekroczony) {
+      $span('kf-status').textContent = 'Limit przekroczony - kasa fiskalna wymagana.';
+      $span('kf-pozostalo').textContent = ` Przekroczenie o ${fmtMoney2(obrot - limit)}.`;
+    } else {
+      $span('kf-status').textContent = 'Zwolnienie z kasy - na razie bez obowiązku.';
+      $span('kf-pozostalo').textContent = ` Do limitu pozostało ${fmtMoney2(pozostalo)}.`;
+    }
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#kasa-calc input, #kasa-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

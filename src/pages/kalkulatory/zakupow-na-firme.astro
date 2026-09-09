@@ -1,0 +1,227 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  VAT_RATES, VAT_RATE, INCOME_TAX_OPTIONS, PIT_RATE_LINIOWY,
+  VAT_MIXED_DEDUCT, AMORT_NISKOCENNE, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct, num } from '../../lib/format';
+
+// Przykład w opisie liczony z tych samych stawek co kalkulator
+const przykladNetto = 10000;
+const przykladVat = przykladNetto * VAT_RATE;
+const przykladBrutto = przykladNetto + przykladVat;
+const przykladOszczednosc = przykladNetto * PIT_RATE_LINIOWY;
+const przykladRealny = przykladBrutto - przykladVat - przykladOszczednosc;
+const przykladUdzial = przykladRealny / przykladBrutto;
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/zakupow-na-firme#webpage',
+  name: `Kalkulator zakupów na firmę ${TAX_YEAR}`,
+  description: 'Bezpłatny kalkulator realnego kosztu zakupu na firmę. Pokazuje, ile odzyskasz z VAT i podatku dochodowego oraz jaki jest faktyczny koszt netto.',
+  url: 'https://taxun.pl/kalkulatory/zakupow-na-firme',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Ile realnie kosztuje zakup na firmę?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Realny koszt zakupu to cena brutto pomniejszona o VAT, który odliczysz (jeśli jesteś czynnym podatnikiem VAT), oraz o podatek dochodowy zaoszczędzony dzięki zaliczeniu wydatku do kosztów. Przy stawce ${pct(VAT_RATE)} VAT i podatku liniowym ${pct(PIT_RATE_LINIOWY)} faktyczny koszt to często ok. ${num(przykladUdzial * 100, 0, 0)}% ceny brutto.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy na ryczałcie zakup na firmę się opłaca?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Na ryczałcie ewidencjonowanym wydatki nie pomniejszają podatku, bo podatek liczy się od przychodu. Jeśli jesteś czynnym podatnikiem VAT, możesz jednak odliczyć VAT od zakupu.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Kiedy mogę odliczyć VAT od zakupu firmowego?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `VAT odliczasz, gdy jesteś czynnym podatnikiem VAT, a zakup służy działalności opodatkowanej. Wyjątkiem są wydatki z ograniczonym odliczeniem (np. samochody osobowe - ${pct(VAT_MIXED_DEDUCT)}) oraz zakupy zwolnione z VAT.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title="Kalkulator zakupów na firmę"
+  description="Sprawdź realny koszt zakupu na firmę po odliczeniu VAT i podatku dochodowego. Zobacz, ile faktycznie wydajesz z własnej kieszeni. Liczy się w przeglądarce."
+  metaTitle="Kalkulator zakupów na firmę - koszt po VAT"
+  metaDescription={`Bezpłatny kalkulator zakupów na firmę ${TAX_YEAR}. Policz realny koszt po odliczeniu VAT i podatku dochodowego. Bez logowania.`}
+  breadcrumbLabel="Zakupy na firmę"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="zakup-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="zk-brutto">
+          Kwota zakupu brutto
+          <small>z faktury, z VAT</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="zk-brutto" min="0" step="100" value="12300" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zk-vat">
+          Stawka VAT
+        </label>
+        <div class="calc-field__input">
+          <select id="zk-vat">
+            {VAT_RATES.map((o) => (
+              <option value={o.value} selected={o.value === VAT_RATE}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zk-vatowiec">
+          Status VAT
+        </label>
+        <div class="calc-field__input">
+          <select id="zk-vatowiec">
+            <option value="tak" selected>Czynny podatnik VAT (odliczam VAT)</option>
+            <option value="nie">Zwolniony z VAT (nie odliczam)</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zk-podatek">
+          Forma opodatkowania
+        </label>
+        <div class="calc-field__input">
+          <select id="zk-podatek">
+            {INCOME_TAX_OPTIONS.map((o) => (
+              <option value={o.value} selected={o.value === PIT_RATE_LINIOWY}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Realny koszt zakupu</div>
+      <div class="calc-result__value">
+        <span id="zk-real">-</span> <small>zł z Twojej kieszeni</small>
+      </div>
+      <div class="calc-result__sub">
+        Odzyskujesz łącznie: <strong id="zk-odzysk">-</strong>. <span id="zk-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wartość netto</span>
+          <span class="calc-breakdown__value" id="zk-netto">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">VAT z faktury</span>
+          <span class="calc-breakdown__value" id="zk-vatval">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">VAT do odliczenia</span>
+          <span class="calc-breakdown__value" id="zk-vatodl">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Koszt podatkowy (KUP)</span>
+          <span class="calc-breakdown__value" id="zk-kup">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Oszczędność na podatku dochodowym</span>
+          <span class="calc-breakdown__value" id="zk-podosz">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Ile realnie kosztuje zakup na firmę</h2>
+    <p>„Kupię na firmę, to odliczę” - ale ile dokładnie? Zakup firmowy obniża dwa podatki: <strong>VAT</strong> (jeśli jesteś vatowcem) i <strong>podatek dochodowy</strong> (jeśli rozliczasz koszty). Kalkulator pokazuje, ile zostaje realnie z Twojej kieszeni.</p>
+
+    <h3>Jak to liczymy</h3>
+    <ul>
+      <li><strong>Netto i VAT</strong> - rozbijamy kwotę brutto na wartość netto i VAT wg wybranej stawki.</li>
+      <li><strong>Odliczenie VAT</strong>{` - czynny podatnik VAT odzyskuje VAT (zakładamy ${pct(1)} odliczenia; dla aut osobowych obowiązuje ${pct(VAT_MIXED_DEDUCT)} - użyj `}<a href="/kalkulatory/auta-w-leasingu">kalkulatora auta w leasingu</a>).</li>
+      <li><strong>Koszt podatkowy</strong> - dla vatowca kosztem jest wartość netto, dla zwolnionego z VAT - cała kwota brutto.</li>
+      <li><strong>Oszczędność dochodowa</strong> - koszt podatkowy × stawka podatku. Na ryczałcie wynosi {zl(0)}.</li>
+    </ul>
+
+    <h3>Przykład</h3>
+    <p>{`Laptop za ${zl(przykladBrutto)} brutto (${pct(VAT_RATE)} VAT), podatek liniowy ${pct(PIT_RATE_LINIOWY)}, vatowiec: odliczasz ${zl(przykladVat)} VAT, kosztem jest ${zl(przykladNetto)} netto, co daje ${zl(przykladOszczednosc)} oszczędności na PIT. Realny koszt: `}<strong>{zl(przykladRealny)}</strong>{` zamiast ${zl(przykladBrutto)}.`}</p>
+
+    <h3>O czym pamiętać</h3>
+    <ul>
+      <li>{`Środki trwałe powyżej ${zl(AMORT_NISKOCENNE)} netto zwykle amortyzuje się w czasie, a nie jednorazowo (oszczędność rozkłada się na lata).`}</li>
+      <li>Zakup musi mieć związek z działalnością - fiskus może zakwestionować wydatki prywatne.</li>
+      <li>Niektóre wydatki są wyłączone z kosztów (np. reprezentacja) lub z odliczenia VAT.</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> ustawa o PIT (koszty uzyskania przychodów), ustawa o VAT (art. 86), <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Masz wątpliwość, czy dany wydatek jest kosztem? <a href="/kontakt" style="color: var(--accent-700)">Zapytaj nas w bezpłatnej konsultacji</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('zk-brutto') as HTMLInputElement).value) || 0;
+    const vatRate = Number(($('zk-vat') as HTMLSelectElement).value);
+    const vatowiec = ($('zk-vatowiec') as HTMLSelectElement).value === 'tak';
+    const stawka = Number(($('zk-podatek') as HTMLSelectElement).value);
+
+    const netto = brutto / (1 + vatRate);
+    const vat = brutto - netto;
+    const vatOdliczony = vatowiec ? vat : 0;
+    // Dla vatowca kosztem jest netto; dla zwolnionego - brutto (VAT wchodzi w koszt)
+    const kup = vatowiec ? netto : brutto;
+    const oszczednoscPodatek = kup * stawka;
+
+    const odzysk = vatOdliczony + oszczednoscPodatek;
+    const realnyKoszt = brutto - odzysk;
+
+    $span('zk-real').textContent = fmt0.format(Math.round(realnyKoszt));
+    $span('zk-odzysk').textContent = fmtMoney0(odzysk);
+    $span('zk-netto').textContent = fmtMoney2(netto);
+    $span('zk-vatval').textContent = fmtMoney2(vat);
+    $span('zk-vatodl').textContent = fmtMoney2(vatOdliczony);
+    $span('zk-kup').textContent = fmtMoney2(kup);
+    $span('zk-podosz').textContent = fmtMoney2(oszczednoscPodatek);
+
+    $span('zk-note').textContent = stawka === 0
+      ? 'Na ryczałcie wydatek nie obniża podatku dochodowego.'
+      : (!vatowiec ? 'Jako zwolniony z VAT nie odliczasz VAT - kosztem jest cała kwota brutto.' : '');
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#zakup-calc input, #zakup-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+  calculate();
+</script>

@@ -1,0 +1,236 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  AMORT_RATES, AMORT_JEDNORAZOWA_LIMIT, AMORT_JEDNORAZOWA_LIMIT_EUR,
+  AMORT_NISKOCENNE, AMORT_DEGRESYWNY_WSP, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, num, pctOf } from '../../lib/format';
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/amortyzacji#webpage',
+  name: `Kalkulator amortyzacji ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator amortyzacji środków trwałych na ${TAX_YEAR} r. Metoda liniowa, degresywna, jednorazowa (de minimis) i niskocenne środki trwałe.`,
+  url: 'https://taxun.pl/kalkulatory/amortyzacji',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się amortyzację liniową?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Roczny odpis amortyzacyjny w metodzie liniowej to wartość początkowa środka trwałego pomnożona przez roczną stawkę amortyzacji z Wykazu (np. ${pctOf(20)} dla środków transportu, ${pctOf(30)} dla komputerów). Odpis miesięczny to 1/12 odpisu rocznego.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Ile wynosi limit jednorazowej amortyzacji w ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Limit jednorazowej amortyzacji w ramach pomocy de minimis w ${TAX_YEAR} r. wynosi ${zl(AMORT_JEDNORAZOWA_LIMIT)} (równowartość ${num(AMORT_JEDNORAZOWA_LIMIT_EUR)} euro). Mogą z niej korzystać mali podatnicy i rozpoczynający działalność, dla środków trwałych z grup 3 - 8 KŚT, z wyłączeniem samochodów osobowych.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Kiedy można zaliczyć zakup jednorazowo w koszty?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Środki trwałe o wartości początkowej do ${zl(AMORT_NISKOCENNE)} można zaliczyć bezpośrednio w koszty w miesiącu oddania do używania, bez wprowadzania do ewidencji amortyzacji.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator amortyzacji ${TAX_YEAR}`}
+  description="Policz odpisy amortyzacyjne środka trwałego: metoda liniowa, degresywna, jednorazowa i niskocenne. Roczny i miesięczny odpis oraz okres. Liczy się w przeglądarce."
+  metaTitle={`Kalkulator amortyzacji ${TAX_YEAR} - liniowa i degresywna`}
+  metaDescription={`Bezpłatny kalkulator amortyzacji środków trwałych ${TAX_YEAR}. Metoda liniowa, degresywna i jednorazowa do ${zl(AMORT_JEDNORAZOWA_LIMIT)}. Bez logowania.`}
+  breadcrumbLabel="Amortyzacja"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="amort-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="am-wartosc">
+          Wartość początkowa
+          <small>netto, środka trwałego</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="am-wartosc" min="0" step="1000" value="60000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="am-metoda">
+          Metoda amortyzacji
+        </label>
+        <div class="calc-field__input">
+          <select id="am-metoda">
+            <option value="liniowa" selected>Liniowa</option>
+            <option value="degresywna">Degresywna (×2,0)</option>
+            <option value="jednorazowa">Jednorazowa (de minimis)</option>
+            <option value="niskocenne">{`Niskocenne (≤ ${zl(AMORT_NISKOCENNE)})`}</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field" id="am-stawka-field">
+        <label for="am-stawka">
+          Roczna stawka amortyzacji
+          <small>z Wykazu stawek</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="am-stawka">
+            {AMORT_RATES.map((r) => (
+              <option value={r.value} selected={r.value === 20}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Odpis w pierwszym roku</div>
+      <div class="calc-result__value">
+        <span id="am-rok1">-</span> <small>zł / rok</small>
+      </div>
+      <div class="calc-result__sub">
+        Odpis miesięczny: <strong id="am-miesiac">-</strong>. <span id="am-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wartość początkowa</span>
+          <span class="calc-breakdown__value" id="am-wartosc-val">-</span>
+        </div>
+        <div class="calc-breakdown__row" id="am-stawka-row">
+          <span class="calc-breakdown__label">Roczny odpis liniowy</span>
+          <span class="calc-breakdown__value" id="am-liniowy">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Okres amortyzacji</span>
+          <span class="calc-breakdown__value" id="am-okres">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak działa amortyzacja środków trwałych</h2>
+    <p>Amortyzacja to rozłożenie kosztu zakupu środka trwałego w czasie. Co miesiąc (lub rok) część wartości trafia w koszty podatkowe jako odpis amortyzacyjny.</p>
+
+    <h3>Metody</h3>
+    <ul>
+      <li><strong>Liniowa</strong> - równe odpisy wg stawki z Wykazu przez cały okres. Najprostsza i najczęstsza.</li>
+      <li><strong>Degresywna</strong> - przyspieszona: w pierwszych latach odpis liczony stawką ×{num(AMORT_DEGRESYWNY_WSP, 1, 1)} od wartości netto, później przejście na liniową. Tylko maszyny i urządzenia (grupy 3 - 6 i 8 KŚT) oraz środki transportu - <strong>bez samochodów osobowych</strong> i budynków.</li>
+      <li><strong>Jednorazowa (de minimis)</strong> - cały odpis w roku oddania do używania, do limitu <strong>{zl(AMORT_JEDNORAZOWA_LIMIT)}</strong> ({TAX_YEAR}). Dla małych podatników i rozpoczynających, grupy 3 - 8 KŚT bez aut osobowych.</li>
+      <li><strong>Niskocenne</strong> - środki do <strong>{zl(AMORT_NISKOCENNE)}</strong> można wrzucić w koszty od razu, bez ewidencji amortyzacji.</li>
+    </ul>
+
+    <h3>Przykładowe stawki liniowe</h3>
+    <table>
+      <thead>
+        <tr><th>Środek trwały</th><th>Stawka roczna</th></tr>
+      </thead>
+      <tbody>
+        {AMORT_RATES.map((r) => (
+          <tr><td>{r.name.charAt(0).toUpperCase() + r.name.slice(1)}</td><td>{pctOf(r.value)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> ustawa o PIT (art. 22a - 22o, Wykaz rocznych stawek amortyzacyjnych), <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Dobierzemy najkorzystniejszą metodę amortyzacji dla Twoich środków trwałych w ramach <a href="/ksiegowosc" style="color: var(--accent-700)">obsługi księgowej</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { AMORT_JEDNORAZOWA_LIMIT, AMORT_NISKOCENNE, AMORT_DEGRESYWNY_WSP } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const wartosc = Number(($('am-wartosc') as HTMLInputElement).value) || 0;
+    const metoda = ($('am-metoda') as HTMLSelectElement).value;
+    const stawkaPct = Number(($('am-stawka') as HTMLSelectElement).value);
+    const stawka = stawkaPct / 100;
+
+    const stawkaField = document.getElementById('am-stawka-field')!;
+    const stawkaRow = document.getElementById('am-stawka-row')!;
+    const needsRate = metoda === 'liniowa' || metoda === 'degresywna';
+    stawkaField.hidden = !needsRate;
+    stawkaRow.hidden = !needsRate;
+
+    const liniowyRoczny = wartosc * stawka;
+
+    let rok1 = 0;
+    let miesiac = 0;
+    let okres = '';
+    let note = '';
+
+    if (metoda === 'liniowa') {
+      rok1 = liniowyRoczny;
+      miesiac = liniowyRoczny / 12;
+      okres = stawkaPct > 0 ? `${(100 / stawkaPct).toFixed(1).replace('.', ',')} lat` : '-';
+    } else if (metoda === 'degresywna') {
+      rok1 = wartosc * stawka * AMORT_DEGRESYWNY_WSP;
+      miesiac = rok1 / 12;
+      okres = 'zmienny (przyspieszony)';
+      note = `Pierwszy rok liczony stawką ×${AMORT_DEGRESYWNY_WSP.toString().replace('.', ',')}; w kolejnych latach odpis maleje. Nie dla aut osobowych i budynków.`;
+    } else if (metoda === 'jednorazowa') {
+      rok1 = Math.min(wartosc, AMORT_JEDNORAZOWA_LIMIT);
+      miesiac = rok1; // jednorazowo
+      okres = wartosc <= AMORT_JEDNORAZOWA_LIMIT ? '1 rok (jednorazowo)' : 'reszta liniowo w kolejnych latach';
+      note = wartosc > AMORT_JEDNORAZOWA_LIMIT
+        ? `Powyżej limitu ${fmtMoney0(AMORT_JEDNORAZOWA_LIMIT)} - nadwyżkę ${fmtMoney0(wartosc - AMORT_JEDNORAZOWA_LIMIT)} amortyzujesz dalej.`
+        : 'Cała wartość w koszty w roku zakupu (de minimis).';
+    } else {
+      // niskocenne
+      if (wartosc <= AMORT_NISKOCENNE) {
+        rok1 = wartosc;
+        miesiac = wartosc;
+        okres = 'jednorazowo w koszty';
+        note = `Wartość ≤ ${fmtMoney0(AMORT_NISKOCENNE)} - bezpośrednio w koszty, bez amortyzacji.`;
+      } else {
+        rok1 = 0;
+        miesiac = 0;
+        okres = 'nie dotyczy';
+        note = `Powyżej ${fmtMoney0(AMORT_NISKOCENNE)} - wymaga amortyzacji (wybierz inną metodę).`;
+      }
+    }
+
+    $span('am-rok1').textContent = fmt0.format(Math.round(rok1));
+    $span('am-miesiac').textContent = fmtMoney2(miesiac);
+    $span('am-wartosc-val').textContent = fmtMoney2(wartosc);
+    $span('am-liniowy').textContent = fmtMoney2(liniowyRoczny);
+    $span('am-okres').textContent = okres;
+    $span('am-note').textContent = note;
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#amort-calc input, #amort-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

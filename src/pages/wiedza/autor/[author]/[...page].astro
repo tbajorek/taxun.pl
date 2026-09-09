@@ -1,0 +1,130 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import PageHero from '../../../../components/PageHero.astro';
+import CTA from '../../../../components/CTA.astro';
+import BlogArchive from '../../../../components/BlogArchive.astro';
+import AuthorBox from '../../../../components/AuthorBox.astro';
+import {
+  articleCount,
+  authorPath,
+  collectCategories,
+  collectTags,
+  getPostsByAuthor,
+  getSortedPosts,
+  POSTS_PER_PAGE,
+} from '../../../../lib/blog';
+import { getTeamMember, personSchema, personSchemaId, team, type TeamMember } from '../../../../data/team';
+import { site } from '../../../../data/site';
+
+/**
+ * Archiwum artykułów jednego autora, z paginacją.
+ * Strona 1: /wiedza/autor/<id>, kolejne: /wiedza/autor/<id>/2 itd.
+ * Generujemy tylko autorów, którzy mają choć jeden artykuł - bez pustych stron w indeksie.
+ */
+export const getStaticPaths: GetStaticPaths = async ({ paginate }) => {
+  const posts = await getSortedPosts();
+  return team.flatMap((member) => {
+    const authored = getPostsByAuthor(posts, member.id);
+    if (!authored.length) return [];
+    return paginate(authored, {
+      params: { author: member.id },
+      props: { member },
+      pageSize: POSTS_PER_PAGE,
+    });
+  });
+};
+
+interface Props { page: any; member: TeamMember }
+const { page, member } = Astro.props;
+
+const allPosts = await getSortedPosts();
+const author = getTeamMember(member.id);
+const categories = collectCategories(allPosts);
+const popularTags = collectTags(allPosts);
+
+const hrefFor = (p: number) => authorPath(author.id, p);
+const breadcrumbs = [
+  { label: 'Wiedza', href: '/wiedza' },
+  { label: author.name, ...(page.currentPage > 1 ? { href: authorPath(author.id) } : {}) },
+  ...(page.currentPage > 1 ? [{ label: `Strona ${page.currentPage}` }] : []),
+];
+
+const orgId = `${site.url}/#organization`;
+const profilePageSchema = {
+  '@type': 'ProfilePage',
+  '@id': `${site.url}${authorPath(author.id)}#profile`,
+  name: `${author.name} - artykuły w bazie wiedzy Taxun`,
+  url: `${site.url}${authorPath(author.id)}`,
+  inLanguage: 'pl-PL',
+  isPartOf: { '@id': `${site.url}/#website` },
+  mainEntity: { '@id': personSchemaId(author, site.url) },
+  hasPart: page.data.map((p: (typeof allPosts)[number]) => ({
+    '@type': 'BlogPosting',
+    headline: p.data.title,
+    description: p.data.description,
+    url: `${site.url}/wiedza/${p.id}`,
+    datePublished: p.data.pubDate.toISOString(),
+    dateModified: (p.data.updatedDate ?? p.data.pubDate).toISOString(),
+    author: { '@id': personSchemaId(author, site.url) },
+  })),
+};
+
+// Założyciel ma już węzeł Person w grafie BaseLayout - nie dublujemy go.
+const schema = author.isFounder
+  ? [profilePageSchema]
+  : [personSchema(author, site.url, orgId), profilePageSchema];
+
+const total = page.total;
+const title = page.currentPage > 1
+  ? `${author.name} - artykuły, strona ${page.currentPage} | Taxun`
+  : `${author.name} - artykuły | Taxun`;
+
+/** Numer strony w opisie - bez niego kolejne strony listy mają opis identyczny z pierwszą. */
+const pageSuffix = page.currentPage > 1 ? ` Strona ${page.currentPage} z ${page.lastPage}.` : '';
+---
+<BaseLayout
+  title={title}
+  description={`Wszystkie artykuły, których autorem jest ${author.name} (${author.jobTitle}) w bazie wiedzy Taxun.${pageSuffix}`}
+  schema={schema}
+  breadcrumbs={breadcrumbs}
+>
+  {page.url.prev && <link slot="head" rel="prev" href={new URL(page.url.prev, site.url).toString()} />}
+  {page.url.next && <link slot="head" rel="next" href={new URL(page.url.next, site.url).toString()} />}
+
+  <PageHero
+    eyebrow="Autor"
+    title={`Artykuły: ${author.name}`}
+    description={`${author.jobTitle}. ${author.shortBio} Łącznie ${articleCount(total)} w bazie wiedzy Taxun.`}
+    breadcrumbs={breadcrumbs}
+  />
+
+  <section class="section">
+    <div class="container">
+      <BlogArchive
+        posts={page.data}
+        currentPage={page.currentPage}
+        lastPage={page.lastPage}
+        total={total}
+        hrefFor={hrefFor}
+        categories={categories}
+        popularTags={popularTags}
+        emptyMessage={`${author.name} nie opublikował(a) jeszcze żadnego artykułu.`}
+      />
+
+      <div class="author-archive__box">
+        <AuthorBox author={author} showArchiveLink={false} />
+      </div>
+    </div>
+  </section>
+
+  <CTA
+    variant="dark"
+    title="Masz pytanie do konkretnego artykułu?"
+    description="Standardowo odpowiadamy na maile i oddzwaniamy w ciągu 4 godzin roboczych. Bez zobowiązań."
+  />
+</BaseLayout>
+
+<style>
+.author-archive__box { max-width: 780px; margin: 0 auto; }
+</style>

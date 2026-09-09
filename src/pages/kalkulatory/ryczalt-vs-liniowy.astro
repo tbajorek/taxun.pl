@@ -1,0 +1,339 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  RYCZALT_RATES, TAX_YEAR, PIT_FREE_AMOUNT, PIT_THRESHOLD, PIT_RATE_1, PIT_RATE_2,
+  PIT_RATE_LINIOWY, ZUS_PREF_MONTHS, IP_BOX_RATE, RYCZALT_HEALTH_DEDUCT_RATE,
+  RYCZALT_IT, RYCZALT_USLUGI, DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct } from '../../lib/format';
+
+// Orientacyjny dochód, powyżej którego liniówka zaczyna wygrywać ze skalą:
+// próg drugiej stawki plus zapłacone składki, które pomniejszają podstawę.
+const progLiniowki = 130000;
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/ryczalt-vs-liniowy#webpage',
+  name: 'Kalkulator: ryczałt vs podatek liniowy vs skala',
+  description: 'Porównaj trzy formy opodatkowania JDG w 2026 r. Wpisz przychód i koszty, zobacz, która opcja jest najkorzystniejsza.',
+  url: 'https://taxun.pl/kalkulatory/ryczalt-vs-liniowy',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Ryczałt czy podatek liniowy - co się bardziej opłaca w ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Ryczałt zwykle wygrywa przy niskich kosztach uzyskania przychodu i niskiej stawce (${pct(RYCZALT_USLUGI)} lub ${pct(RYCZALT_IT)}). Podatek liniowy ${pct(PIT_RATE_LINIOWY)} opłaca się przy wysokich dochodach i znaczących kosztach. Skala podatkowa bywa najlepsza przy niskich i średnich dochodach lub przy korzystaniu z ulg rodzinnych i wspólnego rozliczenia.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy na ryczałcie można odliczyć koszty?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Nie. Ryczałt od przychodów ewidencjonowanych nalicza podatek od przychodu, bez pomniejszania o koszty. Można jednak odliczyć od przychodu zapłacone składki społeczne ZUS i ${pct(RYCZALT_HEALTH_DEDUCT_RATE)} zapłaconej składki zdrowotnej. Koszty firmowe nadal wychodzą z konta, więc pomniejszają to, co realnie zostaje w kieszeni - po prostu nie obniżają podatku.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Od jakiego dochodu opłaca się podatek liniowy?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Orientacyjnie podatek liniowy ${pct(PIT_RATE_LINIOWY)} zaczyna być korzystniejszy od skali powyżej ok. ${zl(PIT_THRESHOLD)} - ${zl(progLiniowki)} rocznego dochodu, gdy nie korzystasz z ulgi prorodzinnej ani wspólnego rozliczenia z małżonkiem.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title="Ryczałt vs liniowy vs skala - który podatek się opłaca?"
+  description={`Wpisz roczny przychód i koszty - pokażemy, która forma opodatkowania zostawi w Twojej kieszeni najwięcej. Z aktualnymi stawkami składek zdrowotnych ${TAX_YEAR}.`}
+  metaTitle={`Kalkulator: ryczałt, liniowy czy skala ${TAX_YEAR}`}
+  metaDescription={`Porównaj trzy formy opodatkowania JDG na ${TAX_YEAR} rok: ryczałt, podatek liniowy i skalę. Liczymy gotówkę po podatku i składce zdrowotnej.`}
+  breadcrumbLabel="Ryczałt vs liniowy"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="form-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="przychod">
+          Roczny przychód
+          <small>całkowita sprzedaż netto, w PLN</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="przychod" min="0" step="1000" value="240000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / rok</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="koszty">
+          Roczne koszty
+          <small>na ryczałcie nie obniżają podatku</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="koszty" min="0" step="1000" value="24000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / rok</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ryczalt-stawka">
+          Stawka ryczałtu
+          <small>zależna od PKWiU usługi</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="ryczalt-stawka">
+            {RYCZALT_RATES.map((r) => (
+              <option value={r.value} selected={r.value === 0.12}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zus-tryb">
+          Wariant ZUS
+          <small>składki społeczne</small>
+        </label>
+        <div class="calc-field__input">
+          <select id="zus-tryb">
+            <option value="ulga">Ulga na start (tylko zdrowotna)</option>
+            <option value="preferencyjny" selected>{`ZUS preferencyjny (${ZUS_PREF_MONTHS} mies.)`}</option>
+            <option value="pelny">Pełny ZUS</option>
+            <option value="malyplus">Mały ZUS Plus</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-comparison" id="comparison">
+      <article class="calc-comparison__card" data-form="ryczalt">
+        <div class="calc-comparison__head">
+          <span class="calc-comparison__name">Ryczałt</span>
+          <span class="calc-comparison__badge">Najlepiej</span>
+        </div>
+        <div class="calc-comparison__amount">
+          <span data-net>-</span> <small>zł / rok netto</small>
+        </div>
+        <div class="calc-comparison__sub">
+          PIT: <span data-pit>-</span> · Zdrowotna: <span data-zd>-</span>
+        </div>
+      </article>
+      <article class="calc-comparison__card" data-form="liniowy">
+        <div class="calc-comparison__head">
+          <span class="calc-comparison__name">{`Podatek liniowy ${pct(PIT_RATE_LINIOWY)}`}</span>
+          <span class="calc-comparison__badge">Najlepiej</span>
+        </div>
+        <div class="calc-comparison__amount">
+          <span data-net>-</span> <small>zł / rok netto</small>
+        </div>
+        <div class="calc-comparison__sub">
+          PIT: <span data-pit>-</span> · Zdrowotna: <span data-zd>-</span>
+        </div>
+      </article>
+      <article class="calc-comparison__card" data-form="skala">
+        <div class="calc-comparison__head">
+          <span class="calc-comparison__name">{`Skala ${pct(PIT_RATE_1)} / ${pct(PIT_RATE_2)}`}</span>
+          <span class="calc-comparison__badge">Najlepiej</span>
+        </div>
+        <div class="calc-comparison__amount">
+          <span data-net>-</span> <small>zł / rok netto</small>
+        </div>
+        <div class="calc-comparison__sub">
+          PIT: <span data-pit>-</span> · Zdrowotna: <span data-zd>-</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Najkorzystniejsza forma w Twoim przypadku</div>
+      <div class="calc-result__value">
+        <span id="best-form">{`Ryczałt ${pct(RYCZALT_IT)}`}</span>
+      </div>
+      <div class="calc-result__sub">
+        Różnica vs. najgorsza opcja: <strong id="best-diff">-</strong> rocznie.
+        <span id="best-explainer"></span>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak rozumieć wynik?</h2>
+    <p>Kalkulator pokazuje <strong>realnie pozostałą w portfelu kwotę po roku</strong> - przychód minus koszty, minus PIT, minus składka zdrowotna, minus składki społeczne ZUS (jeśli pełny ZUS, mały ZUS Plus albo preferencyjny). Nie uwzględnia ulgi IP Box, ulgi B+R, kwoty wolnej PIT-37/PIT-36 z innych dochodów ani PPK.</p>
+
+    <h3>Koszty na ryczałcie - podatek to jedno, portfel to drugie</h3>
+    <p>Na ryczałcie koszty <strong>nie pomniejszają podstawy opodatkowania</strong> - podatek płacisz od przychodu. To jednak nie znaczy, że koszty znikają: faktury i tak opłacasz z firmowego konta. Dlatego w porównaniu odejmujemy je od wyniku każdej formy, również ryczałtu. Bez tego przy przychodzie 240 000 zł i kosztach 230 000 zł ryczałt pokazywałby blisko 189 000 zł na plusie, choć w rzeczywistości wychodzisz na minus.</p>
+    <p>Praktyczny wniosek: im wyższe koszty w stosunku do przychodu, tym mocniej ryczałt traci. Przy kosztach rzędu 90% przychodu podatek liczony od pełnej kwoty sprzedaży potrafi zjeść całą marżę.</p>
+
+    <h3>Kiedy ryczałt jest najlepszy</h3>
+    <ul>
+      <li>Niskie koszty uzyskania przychodu (typowo poniżej 10 - 15% przychodu).</li>
+      <li>Stabilna stawka {pct(RYCZALT_USLUGI)} lub {pct(RYCZALT_IT)}, czyli między innymi usługi związane z oprogramowaniem i najem. Doradztwo, reklama i projektowanie mają własne, wyższe stawki.</li>
+      <li>Brak istotnych ulg rodzinnych do skorzystania (skala daje {zl(PIT_FREE_AMOUNT)} kwoty wolnej).</li>
+    </ul>
+
+    <h3>Kiedy podatek liniowy jest najlepszy</h3>
+    <ul>
+      <li>Dochód powyżej ~{zl(progLiniowki)} rocznie (poniżej skala bywa korzystniejsza).</li>
+      <li>Wysokie koszty uzyskania przychodu (powyżej 30% przychodu).</li>
+      <li>Brak małżonka do wspólnego rozliczenia i brak ulgi prorodzinnej.</li>
+    </ul>
+
+    <h3>Kiedy skala podatkowa jest najlepsza</h3>
+    <ul>
+      <li>Niskie / średnie dochody (do ~{zl(PIT_THRESHOLD)} rocznie - w drugim progu {pct(PIT_RATE_2)} staje się dotkliwa).</li>
+      <li>Plan korzystania z ulgi prorodzinnej, wspólnego rozliczenia, ulgi rehabilitacyjnej.</li>
+      <li>Wysokie odliczalne koszty (skala pozwala odliczyć całość).</li>
+    </ul>
+
+    <h3>Co kalkulator <em>nie</em> uwzględnia (a my w konsultacji - tak)</h3>
+    <ul>
+      <li><strong>IP Box</strong> - dla programistów może obniżyć PIT do {pct(IP_BOX_RATE)} od kwalifikowanych dochodów. Wymaga ewidencji.</li>
+      <li><strong>Wspólne rozliczenie z małżonkiem</strong> - często radykalnie zmienia opłacalność skali.</li>
+      <li><strong>Inne źródła dochodów</strong> - emerytura, etat, najem - wpływają na próg {zl(PIT_THRESHOLD)}.</li>
+      <li><strong>Wybór wariantu ZUS w trakcie roku</strong> - ulga na start → preferencyjny → mały ZUS Plus.</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>, <a href="https://www.zus.pl/baza-wiedzy/skladki-wskazniki-odsetki/skladki/wysokosc-skladek-na-ubezpieczenia-spoleczne" rel="noopener" target="_blank">{`ZUS - składki ${TAX_YEAR}`}</a>, ustawa o PIT, ustawa o zryczałtowanym podatku dochodowym.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Wynik jest szacunkowy. Pełną analizę pod kątem ulg, kosztów pośrednich i prognozy 12-miesięcznej zrobimy w <a href="/kontakt" style="color: var(--accent-700)">bezpłatnej konsultacji</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import {
+    ZUS_PREF_SOCIAL, ZUS_FULL_SOCIAL_FP, MALY_ZUS_PLUS_EST,
+    HEALTH_MIN_YEAR, HEALTH_RATE, HEALTH_RATE_LINIOWY, HEALTH_LINIOWY_DEDUCT_LIMIT,
+    HEALTH_RYCZALT, RYCZALT_TIER_LIMITS, RYCZALT_HEALTH_DEDUCT_RATE,
+    PIT_THRESHOLD, PIT_KWOTA_ZMNIEJSZAJACA, PIT_RATE_1, PIT_RATE_2, PIT_RATE_LINIOWY,
+  } from '../../lib/tax-constants';
+
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function zusSocialAnnual(): number {
+    const tryb = ($('zus-tryb') as HTMLSelectElement).value;
+    if (tryb === 'ulga') return 0;
+    if (tryb === 'preferencyjny') return ZUS_PREF_SOCIAL * 12;
+    if (tryb === 'malyplus') return MALY_ZUS_PLUS_EST * 12;
+    return ZUS_FULL_SOCIAL_FP * 12;
+  }
+
+  function ryczaltZdrowotnaAnnual(przychod: number): number {
+    if (przychod <= RYCZALT_TIER_LIMITS.tier1) return HEALTH_RYCZALT.tier1 * 12;
+    if (przychod <= RYCZALT_TIER_LIMITS.tier2) return HEALTH_RYCZALT.tier2 * 12;
+    return HEALTH_RYCZALT.tier3 * 12;
+  }
+
+  function calcRyczalt(przychod: number, koszty: number, stawka: number, zusSocial: number) {
+    const zdrow = ryczaltZdrowotnaAnnual(przychod);
+    // podstawa ryczałtu = przychód - składki społeczne ZUS - część składki zdrowotnej
+    // (koszty firmowe nie wchodzą do podstawy - ryczałt liczy się od przychodu)
+    const podstawa = Math.max(0, przychod - zusSocial - zdrow * RYCZALT_HEALTH_DEDUCT_RATE);
+    const pit = podstawa * stawka;
+    // ...ale z konta i tak wychodzą, więc pomniejszają to, co zostaje w kieszeni
+    const net = przychod - koszty - zusSocial - zdrow - pit;
+    return { pit, zdrow, zusSocial, net };
+  }
+
+  function calcLiniowy(przychod: number, koszty: number, zusSocial: number) {
+    const dochod = Math.max(0, przychod - koszty - zusSocial);
+    // składka zdrowotna liniowy: 4,9% dochodu, nie mniej niż roczne minimum
+    const zdrowAnnual = Math.max(dochod * HEALTH_RATE_LINIOWY, HEALTH_MIN_YEAR);
+    // podatek liniowy od (dochód - odliczona zdrowotna do limitu rocznego)
+    const zdrowOdliczalna = Math.min(zdrowAnnual, HEALTH_LINIOWY_DEDUCT_LIMIT);
+    const podstawa = Math.max(0, dochod - zdrowOdliczalna);
+    const pit = podstawa * PIT_RATE_LINIOWY;
+    const net = przychod - koszty - zusSocial - zdrowAnnual - pit;
+    return { pit, zdrow: zdrowAnnual, zusSocial, net };
+  }
+
+  function calcSkala(przychod: number, koszty: number, zusSocial: number) {
+    const dochod = Math.max(0, przychod - koszty - zusSocial);
+    // składka zdrowotna dla skali: 9% dochodu, nie mniej niż roczne minimum
+    const zdrowAnnual = Math.max(dochod * HEALTH_RATE, HEALTH_MIN_YEAR);
+    // PIT po skali: 12% do progu 120 000 zł, 32% od nadwyżki, minus kwota zmniejszająca
+    // podatek (3 600 zł). Próg 120 000 zł dotyczy podstawy opodatkowania, nie dochodu
+    // pomniejszonego o kwotę wolną - dlatego kwotę wolną odejmujemy od podatku, nie od podstawy.
+    const podstawa = dochod;
+    let pit = 0;
+    if (podstawa <= PIT_THRESHOLD) {
+      pit = Math.max(0, podstawa * PIT_RATE_1 - PIT_KWOTA_ZMNIEJSZAJACA);
+    } else {
+      pit = PIT_THRESHOLD * PIT_RATE_1 - PIT_KWOTA_ZMNIEJSZAJACA + (podstawa - PIT_THRESHOLD) * PIT_RATE_2;
+    }
+    const net = przychod - koszty - zusSocial - zdrowAnnual - pit;
+    return { pit, zdrow: zdrowAnnual, zusSocial, net };
+  }
+
+  function calculate() {
+    const przychod = Number(($('przychod') as HTMLInputElement).value) || 0;
+    const koszty = Number(($('koszty') as HTMLInputElement).value) || 0;
+    const stawka = Number(($('ryczalt-stawka') as HTMLSelectElement).value);
+    const zusSocial = zusSocialAnnual();
+
+    const ryczalt = calcRyczalt(przychod, koszty, stawka, zusSocial);
+    const liniowy = calcLiniowy(przychod, koszty, zusSocial);
+    const skala = calcSkala(przychod, koszty, zusSocial);
+
+    const results = { ryczalt, liniowy, skala };
+
+    (['ryczalt', 'liniowy', 'skala'] as const).forEach((form) => {
+      const r = results[form];
+      const card = document.querySelector<HTMLElement>(`.calc-comparison__card[data-form="${form}"]`);
+      if (!card) return;
+      card.querySelector<HTMLElement>('[data-net]')!.textContent = fmt0.format(Math.round(r.net));
+      card.querySelector<HTMLElement>('[data-pit]')!.textContent = fmtMoney0(r.pit);
+      card.querySelector<HTMLElement>('[data-zd]')!.textContent = fmtMoney0(r.zdrow);
+    });
+
+    const best = (['ryczalt', 'liniowy', 'skala'] as const).reduce(
+      (acc, k) => (results[k].net > acc.value ? { key: k, value: results[k].net } : acc),
+      { key: 'ryczalt' as const, value: -Infinity }
+    );
+    const worst = (['ryczalt', 'liniowy', 'skala'] as const).reduce(
+      (acc, k) => (results[k].net < acc.value ? { key: k, value: results[k].net } : acc),
+      { key: 'ryczalt' as const, value: Infinity }
+    );
+
+    document.querySelectorAll<HTMLElement>('.calc-comparison__card').forEach((card) => {
+      card.classList.toggle('is-best', card.dataset.form === best.key);
+    });
+
+    const names: Record<string, string> = {
+      ryczalt: `Ryczałt ${Math.round(stawka * 1000) / 10}%`,
+      liniowy: 'Podatek liniowy 19%',
+      skala: 'Skala podatkowa 12/32%',
+    };
+    $span('best-form').textContent = names[best.key];
+    const diff = Math.round(best.value - worst.value);
+    $span('best-diff').textContent = diff > 0 ? `+${fmtMoney0(diff)}` : `${fmtMoney0(diff)}`;
+    const explainer: Record<string, string> = {
+      ryczalt: ' - przy niskich kosztach ryczałt zwykle wygrywa.',
+      liniowy: ' - wysokie dochody przy znaczących kosztach.',
+      skala: ' - niski/średni dochód lub plan na ulgi rodzinne.',
+    };
+    $span('best-explainer').textContent = explainer[best.key];
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#form-calc input, #form-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+
+  calculate();
+</script>

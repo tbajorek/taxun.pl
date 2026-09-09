@@ -1,0 +1,45 @@
+# Kontrola kompletności zasobów generowanych.
+#
+# Oryginały zdjęć nie są commitowane: `npm run covers` koduje z nich warianty
+# i przenosi je do `.originals/`, poza gitem. CI nie ma więc z czego odtworzyć
+# brakującego pliku - może tylko sprawdzić, czy commit jest kompletny.
+#
+# To ta sama komenda, którą uruchamia hak pre-commit. Przebieg jest po to, żeby
+# złapać commit zrobiony z pominięciem haka (`git commit -n`, edycja przez
+# interfejs GitHuba, świeży klon bez `npm install`).
+name: Zasoby generowane
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Zdjęcia i kroje
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pobranie repozytorium
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Zależności
+        run: npm ci
+
+      # Kroje potrafi odtworzyć, bo pliki .ttf są commitowane. Zdjęcia tylko
+      # sprawdza - i o to chodzi: brak wariantu ma być błędem, a nie cichym
+      # sześciominutowym kodowaniem przy każdym deploymencie.
+      - name: Kompletność zasobów
+        run: npm run check:assets

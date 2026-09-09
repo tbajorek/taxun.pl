@@ -1,0 +1,394 @@
+@import './tokens.css';
+
+/*
+ * Kroje hostowane u nas, nie z Google Fonts.
+ *
+ * Arkusz z fonts.googleapis.com blokował pierwsze renderowanie i wymagał DNS
+ * plus TLS do dwóch obcych domen, zanim w ogóle ruszyło pobieranie samych
+ * plików. Przy okazji każde wejście na stronę wysyłało adres IP czytelnika do
+ * Google - dla biura rachunkowego to niepotrzebne przekazanie danych.
+ *
+ * Pliki to fonty zmienne (jeden plik obsługuje całą oś grubości) obcięte do
+ * znaków, których używa polska strona: podstawowa łacina, Latin Extended-A,
+ * typograficzna interpunkcja, waluty i symbole. Procedura i sposób
+ * odtworzenia: docs/fonts.md. Zakres znaków pilnuje `npm run check:fonts`.
+ *
+ * `font-display: swap` pokazuje tekst od razu krojem zastępczym; dopasowane
+ * metryki niżej sprawiają, że podmiana nie przesuwa treści.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../assets/fonts/inter-variable-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('../assets/fonts/plus-jakarta-sans-variable-latin.woff2') format('woff2');
+}
+
+/*
+ * Kroje zastępcze z metrykami dociągniętymi do docelowych.
+ *
+ * `font-display: swap` pokazuje tekst natychmiast krojem systemowym, ale ten
+ * ma inne proporcje - w momencie podmiany akapity zmieniały wysokość i treść
+ * podskakiwała (zmierzone CLS 0,049). `size-adjust` wyrównuje szerokość znaków,
+ * a nadpisania ascent/descent - wysokość wiersza, więc podmiana zmienia sam
+ * rysunek liter, nie układ strony.
+ *
+ * Współczynniki policzone z metryk plików, które wysyłamy, i ze zmierzonej
+ * szerokości reprezentatywnego polskiego tekstu względem Ariala. Wymienione
+ * kroje mają praktycznie identyczne szerokości znaków (xWidthAvg 913/911/913,
+ * a Arimo i Liberation Sans są metrycznie zgodne z Arialem), więc jedna wartość
+ * obsługuje Windowsa, macOS-a, Androida, ChromeOS-a i Linuksa. Gdy żadnego nie
+ * ma, przeglądarka bierze kolejny krój z listy - bez dopasowania, ale poprawnie.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('Roboto'), local('Helvetica Neue'), local('Helvetica'), local('Arimo'), local('Liberation Sans');
+  size-adjust: 106.5%;
+  ascent-override: 90.96%;
+  descent-override: 22.65%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans Fallback';
+  src: local('Arial'), local('Roboto'), local('Helvetica Neue'), local('Helvetica'), local('Arimo'), local('Liberation Sans');
+  size-adjust: 101.4%;
+  ascent-override: 102.37%;
+  descent-override: 21.89%;
+  line-gap-override: 0%;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text);
+  background: var(--surface);
+  overflow-x: hidden;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+img, svg, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h1 { font-size: clamp(2.25rem, 5vw, var(--text-6xl)); letter-spacing: -0.03em; }
+h2 { font-size: clamp(1.875rem, 3.5vw, var(--text-4xl)); }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+p { line-height: var(--leading-relaxed); color: var(--text-muted); }
+
+::selection { background: var(--accent-200); color: var(--ink-900); }
+
+:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 clamp(1.5rem, 5vw, 2rem);
+}
+.container--wide { max-width: var(--container-wide); }
+.container--narrow { max-width: var(--container-narrow); }
+
+.section {
+  padding: clamp(4rem, 9vw, 7rem) 0;
+}
+.section--tight { padding: clamp(3rem, 6vw, 4.5rem) 0; }
+.section--alt { background: var(--surface-alt); }
+.section--dark { background: var(--ink-900); color: var(--text-on-dark); }
+.section--dark h1, .section--dark h2, .section--dark h3, .section--dark h4 { color: var(--white); }
+.section--dark p { color: var(--text-on-dark-muted); }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  margin-bottom: 1rem;
+}
+.eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 2px;
+  background: var(--accent-500);
+  border-radius: 2px;
+}
+.section--dark .eyebrow { color: var(--accent-400); }
+/* Eyebrow na ciemnym panelu wstawionym w jasną sekcję. `.section--dark` tu nie
+   pomaga, bo ciemne jest samo pudełko, a nie cała sekcja, a domyślny
+   `--accent-text` nie ma na takim tle wystarczającego kontrastu. */
+.eyebrow--light { color: var(--accent-400); }
+
+.section-header {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto clamp(3rem, 5vw, 4.5rem);
+}
+.section-header.text-left { text-align: left; margin-inline: 0; }
+.section-header p {
+  margin-top: 1rem;
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+}
+/* Odnośnik w opisie sekcji musi się odróżniać od tekstu - domyślne `a`
+   w tym serwisie dziedziczy kolor i nie ma podkreślenia, więc link
+   wpleciony w zdanie byłby nie do odróżnienia od reszty akapitu. */
+.section-header p a {
+  color: var(--accent-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lede {
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-base), box-shadow var(--transition-base), color var(--transition-base);
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/*
+ * Na wąskich ekranach etykieta przycisku ma się złamać, a nie wyjechać poza
+ * ekran. `nowrap` ucinał najdłuższe etykiety (CTA, box autora) - strona nie
+ * przewijała się przy tym w poziomie, bo nadrzędny kontener przycinał nadmiar,
+ * więc czytelnik po prostu nie widział końca napisu.
+ */
+@media (max-width: 600px) {
+  .btn {
+    white-space: normal;
+    line-height: 1.25;
+    max-width: 100%;
+    text-align: center;
+  }
+}
+.btn--lg { padding: 1.0625rem 1.875rem; font-size: 1rem; }
+.btn--sm { padding: 0.625rem 1.125rem; font-size: 0.875rem; }
+.btn--block { width: 100%; }
+
+/*
+ * Palcem trafia się gorzej niż kursorem: iOS i Android zalecają 44 px
+ * wysokości celu dotyku. Reguła stoi po modyfikatorach `.btn--*`, żeby objęła
+ * też mniejsze warianty. Na myszy zostaje kompaktowy układ.
+ */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+}
+
+.btn--primary {
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+.btn--primary:hover {
+  background: var(--ink-800);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn--accent {
+  background: var(--accent-500);
+  color: var(--ink-950);
+  box-shadow: var(--shadow-md);
+}
+.btn--accent:hover {
+  background: var(--accent-400);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--ink-900);
+  border-color: var(--border-strong);
+}
+.btn--outline:hover {
+  border-color: var(--ink-900);
+  background: var(--ink-50);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink-900);
+}
+.btn--ghost:hover { background: var(--ink-50); }
+
+.btn--white {
+  background: var(--white);
+  color: var(--ink-900);
+}
+.btn--white:hover { background: var(--ink-50); box-shadow: var(--shadow-md); }
+
+.btn--ghost-light {
+  background: rgb(255 255 255 / 0.1);
+  backdrop-filter: blur(12px);
+  color: var(--white);
+  border-color: rgb(255 255 255 / 0.25);
+}
+.btn--ghost-light:hover { background: rgb(255 255 255 / 0.16); }
+
+.btn-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  font-size: 0.9375rem;
+  transition: gap var(--transition-fast), color var(--transition-fast);
+}
+.btn-arrow:hover { gap: 0.65rem; color: var(--accent-800); }
+.btn-arrow .arrow {
+  transition: transform var(--transition-fast);
+  width: 16px; height: 16px;
+}
+
+/* Utility */
+/* Przyciski pod nagłówkiem strony - dotąd trzymały się tylko na odstępach
+   między tagami, przez co na wąskich ekranach kleiły się do siebie. */
+.page-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.grid { display: grid; gap: var(--space-6); }
+.grid--2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid--3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid--4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+.text-center { text-align: center; }
+.flex { display: flex; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Breadcrumbs - layout base (colors set per context via scoped styles) */
+.breadcrumbs ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Reveal animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

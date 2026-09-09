@@ -1,0 +1,359 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import Stats from '../components/Stats.astro';
+import { hrPricing, hrMin } from '../data/pricing';
+const fmt = new Intl.NumberFormat('pl-PL');
+
+const services = [
+  {
+    icon: 'file',
+    title: 'Dokumentacja kadrowa',
+    description: 'Przygotowujemy umowy, prowadzimy akta osobowe i pilnujemy obowiązków pracodawcy wynikających z Kodeksu pracy. W razie kontroli PIP jesteśmy do Twojej dyspozycji.',
+    features: ['Umowy o pracę, zlecenie, dzieło i B2B', 'Akta osobowe w wersji elektronicznej', 'Świadectwa pracy i dokumentacja zgodna z RODO', 'Wsparcie przy kontrolach PIP'],
+    href: '/cennik',
+    cta: 'Zobacz ceny obsługi kadrowej',
+  },
+  {
+    icon: 'calculator',
+    title: 'Listy płac i naliczanie wynagrodzeń',
+    description: 'Co miesiąc przygotowujemy gotowe listy płac uwzględniające PPK, nadgodziny i zwolnienia lekarskie. Pracownicy mają dostęp do swoich pasków wynagrodzeń w panelu online.',
+    features: ['Naliczanie wynagrodzeń i premii', 'Rozliczanie nadgodzin i ekwiwalentów urlopowych', 'Paski wynagrodzeń w panelu pracownika', 'Obsługa wypłat zarówno w PLN, jak i walutach obcych'],
+    href: '/cennik',
+    cta: 'Sprawdź koszt list płac',
+    featured: true,
+  },
+  {
+    icon: 'shield',
+    title: 'ZUS, PIT-11 i kontrole',
+    description: 'Składamy wszystkie wymagane deklaracje ZUS, raportujemy PIT-11 i PIT-4R oraz obsługujemy wnioski e-ZLA i urlopy macierzyńskie. W razie kontroli ZUS lub urzędu skarbowego kompletujemy dokumentację kadrowo-płacową i przygotowujemy wyjaśnienia.',
+    features: ['Deklaracje ZUS DRA, RCA i RSA', 'PIT-11, PIT-4R i IFT-1R', 'Wnioski A1, e-ZLA i urlopy macierzyńskie', 'Udział w kontroli US / ZUS'],
+    href: '/cennik',
+    cta: 'Zobacz cennik obsługi ZUS',
+  },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja', description: 'Rozmawiamy o tym, jak wygląda Twój zespół i jakich procesów potrzebujesz. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Przejęcie dokumentacji', description: 'Przejmujemy akta pracownicze, weryfikujemy ich kompletność i ustalamy harmonogram wypłat.' },
+  { title: 'Onboarding pracowników', description: 'Każdy pracownik może otrzymać opcjonalnie dostęp do panelu online z paskami wynagrodzeń i wnioskami urlopowymi.' },
+  { title: 'Stała obsługa', description: 'Listy płac, deklaracje ZUS i bieżące sprawy kadrowe - pilnujemy terminów i jesteśmy w stałym kontakcie.' },
+];
+
+const faq = [
+  { q: 'Czy obsługujecie zatrudnianie cudzoziemców?', a: 'Tak. Przeprowadzamy całą procedurę: od oświadczenia o powierzeniu pracy po zezwolenie na pracę typu A i B. Pomagamy też w uzyskaniu numeru PESEL i prowadzimy dokumentację w języku polskim i angielskim.' },
+  { q: 'Ilu pracowników możecie obsłużyć?', a: 'Pracujemy zarówno z firmami zatrudniającymi pierwszego pracownika, jak i z większymi organizacjami liczącymi kilkadziesiąt lub więcej osób. Liczba pracowników nie wpływa na jakość ani terminowość obsługi.' },
+  { q: 'Jak wygląda wasze wsparcie dla PPK?', a: 'Pomagamy w obsłudze PPK na każdym etapie, od wyboru instytucji finansowej i rejestracji pracowników po miesięczne deklaracje i monitorowanie wpłat. Pracownicy mają dostęp do swoich danych w panelu online.' },
+  { q: 'Jak chronicie dane osobowe pracowników?', a: 'Dokumenty i dane kadrowe wymieniamy wyłącznie przez szyfrowany portal. Dostęp do akt mają tylko wyznaczone osoby, a wszystkie procesy są zgodne z wymogami RODO. Biuro posiada ubezpieczenie OC.' },
+  { q: 'Czy doradzicie w sprawie benefitów pozapłacowych?', a: 'Tak. Pomagamy ocenić skutki podatkowe kart sportowych, prywatnej opieki medycznej, samochodów służbowych i bonów świątecznych. Pokazujemy realny koszt danego benefitu dla pracodawcy i pracownika.' },
+];
+
+const breadcrumbs = [{ label: 'Usługi' }, { label: 'Kadry i płace', href: '/kadry-place' }];
+
+const serviceSchema = {
+  '@type': 'Service',
+  '@id': 'https://taxun.pl/kadry-place#service',
+  name: 'Kadry i płace - outsourcing kadrowo-płacowy',
+  serviceType: 'Outsourcing kadrowo-płacowy',
+  description: `Obsługa kadrowo-płacowa od ${hrMin} zł netto za pracownika. Listy płac, deklaracje ZUS DRA/RCA/RSA, PIT-11, PPK i panel pracownika w cenie.`,
+  provider: { '@id': 'https://taxun.pl/#organization' },
+  areaServed: [{ '@type': 'Country', name: 'Polska' }, { '@type': 'City', name: 'Kraków' }],
+  url: 'https://taxun.pl/kadry-place',
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Pakiety kadrowe Taxun',
+    itemListElement: hrPricing.map((h) => ({
+      '@type': 'Offer',
+      name: h.name,
+      price: String(h.price),
+      priceCurrency: 'PLN',
+      url: 'https://taxun.pl/cennik#kadry',
+    })),
+  },
+};
+
+const benefits = [
+  { icon: 'lock', title: 'Pełna zgodność z prawem pracy', description: 'Aktualizujemy umowy i regulaminy zgodnie z bieżącymi zmianami w Kodeksie Pracy.' },
+  { icon: 'sparkle', title: 'Panel pracownika online', description: 'Paski wynagrodzeń, wnioski urlopowe i dokumenty kadrowe dostępne dla każdego pracownika przez całą dobę.' },
+  { icon: 'heart', title: 'Obsługa pracowników zagranicznych', description: 'Zatrudniamy i rozliczamy pracowników z Ukrainy, Białorusi, Indii i innych krajów. Dokumenty wystawiamy w języku polskim i angielskim.' },
+  { icon: 'globe', title: 'Wsparcie przy PPK', description: 'Wspieramy w obsłudze PPK i obsługujemy miesięczne deklaracje oraz wpłaty.' },
+];
+---
+<BaseLayout
+  title={`Kadry i płace dla firm - od ${hrMin} zł za pracownika`}
+  description={`Obsługa kadrowo-płacowa od ${hrMin} zł netto za pracownika. Listy płac, deklaracje ZUS, akta osobowe, PIT-11, PPK i panel pracownika w cenie.`}
+  schema={serviceSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Usługa"
+    title="Kadry i płace, którym ufa Twój zespół"
+    description="Zajmujemy się listami płac, aktami osobowymi i deklaracjami ZUS. Ty skupiasz się na prowadzeniu firmy, a my pilnujemy, żeby kadry były dobrze zaopiekowane."
+    breadcrumbs={[{ label: 'Usługi' }, { label: 'Kadry i płace' }]}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena?tryb=przeniesienie&uslugi=kadry" class="btn btn--accent btn--lg">
+        <span>Wyceń obsługę zespołu</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Cennik</span>
+      </a>
+    </div>
+  </PageHero>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Zakres obsługi</span>
+        <h2>Kadry, płace i ZUS - od umowy po świadectwo pracy</h2>
+        <p>Przejmujemy pełną odpowiedzialność za stronę formalną zatrudnienia. Obsługujemy cały cykl życia pracownika w firmie. Działamy kompleksowo i zgodnie z obowiązującymi przepisami.</p>
+      </div>
+      <div class="kpgrid">
+        {services.map((s) => <ServiceCard {...s} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="kpcols">
+        <div>
+          <span class="eyebrow">Co nas wyróżnia</span>
+          <h2>Obsługa kadrowa działająca bez zakłóceń</h2>
+          <p class="lede">Każdy pracownik ma dostęp do panelu online, w którym pobiera paski wynagrodzeń i składa wnioski urlopowe. Ty akceptujesz je bez zbędnej papierologii.</p>
+          <div style="margin-top:2rem">
+            <Stats items={[
+              { label: 'Procesy w pełni online', value: 100, suffix: '%' },
+              { label: 'Standardowy czas odpowiedzi na zapytania', value: 4, suffix: ' h' },
+              { label: 'Panel pracownika online', value: '24/7' },
+            ]} />
+          </div>
+        </div>
+        <ul class="kpbenefits">
+          {benefits.map((b) => (
+            <li>
+              <div class="kpbenefits__icon"><Icon name={b.icon} size={20}/></div>
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Cennik kadr</span>
+        <h2>Stała stawka, brak ukrytych dopłat</h2>
+        <p>Płacisz wyłącznie za aktualnie zatrudnione osoby. W cenie zawarta jest pełna dokumentacja kadrowa, panel pracownika i deklaracje ZUS.</p>
+      </div>
+      <div class="kp-pricing">
+        {hrPricing.map((h) => (
+          <div class="kp-pricing__row">
+            <div class="kp-pricing__name">
+              <strong>{h.name}</strong>
+              {h.note && <small>{h.note}</small>}
+            </div>
+            <div class="kp-pricing__price">
+              <strong>{fmt.format(h.price)} zł</strong>
+              <small>netto / mies. / osobę</small>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Industry / team-size callouts -->
+  <section class="section section--alt" id="dla-kogo">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Elastyczne kadry</span>
+        <h2>Obsługa kadrowa dopasowana do wielkości zespołu</h2>
+        <p>Obsługa kadrowa jednoosobowej firmy wygląda inaczej niż w przypadku kilkudziesięciu pracowników. Poniżej pokazujemy, jak pracujemy na różnych etapach rozwoju firmy.</p>
+      </div>
+      <div class="hr-segments">
+        <article class="hr-segment">
+          <div class="hr-segment__label">do 5 osób</div>
+          <h3>Mała firma / startup</h3>
+          <p>Pełna obsługa kadrowo-płacowa bez zbędnych komplikacji. Pomagamy przy pierwszym zatrudnieniu i prowadzimy całą dokumentację za Ciebie.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Wsparcie przy pierwszym zatrudnieniu (regulamin pracy, BHP)</li>
+            <li><Icon name="check" size={14}/>PPK - od konfiguracji po miesięczne deklaracje</li>
+            <li><Icon name="check" size={14}/>Panel pracownika z paskami i wnioskami online</li>
+          </ul>
+        </article>
+        <article class="hr-segment hr-segment--featured">
+          <div class="hr-segment__label">5 - 50 osób</div>
+          <h3>Rosnąca firma / średnia</h3>
+          <p>Obsługujemy onboarding i offboarding pracowników oraz pilnujemy terminów wypłat i deklaracji ZUS. Wspieramy też przy reorganizacjach i kontrolach.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Workflow akceptacji wniosków przez przełożonych</li>
+            <li><Icon name="check" size={14}/>Pakiet benefitów (karty sportowe, opieka medyczna, ESOP)</li>
+            <li><Icon name="check" size={14}/>Audyt i przygotowanie do kontroli PIP / ZUS</li>
+          </ul>
+        </article>
+        <article class="hr-segment">
+          <div class="hr-segment__label">50+ osób</div>
+          <h3>Duża organizacja</h3>
+          <p>Przy większych zespołach przydzielamy dedykowanego opiekuna i dostosowujemy procesy do specyfiki firmy. Ściśle współpracujemy z Twoim działem HR, żeby nic nie wypadło pomiędzy.</p>
+          <ul>
+            <li><Icon name="check" size={14}/>Dedykowany opiekun z szybkim czasem reakcji</li>
+            <li><Icon name="check" size={14}/>Miesięczne raporty kadrowe: rotacja, koszty osobowe, urlopy</li>
+            <li><Icon name="check" size={14}/>Audyt dokumentacji i przygotowanie do kontroli PIP i ZUS</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <ProcessSteps items={process} eyebrow="Rozpoczęcie współpracy" title="Jak przebiega przejęcie obsługi kadrowej" />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Często zadawane pytania - kadry i płace"
+    items={faq}
+  />
+
+  <CTA
+    title="Terminowe wypłaty i porządek w kadrach - od pierwszego miesiąca"
+    description="Pokażemy konkretne oszczędności czasu i ryzyka, jakie zyska Twoja firma po przeniesieniu kadr i płac do Taxun."
+    primaryHref="/wycena?tryb=przeniesienie&uslugi=kadry"
+  />
+</BaseLayout>
+
+<style>
+.kpgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 900px) {
+  .kpgrid { grid-template-columns: repeat(3, 1fr); }
+}
+.kpcols {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .kpcols { grid-template-columns: 1fr; }
+}
+.kpcols .lede { margin-top: 1rem; max-width: 56ch; }
+.kpbenefits {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.kpbenefits li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.kpbenefits__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.kpbenefits h3 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.kpbenefits p { font-size: 0.9375rem; color: var(--text-muted); }
+
+.kp-pricing {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  max-width: 760px;
+  margin: 0 auto;
+}
+.kp-pricing__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
+}
+.kp-pricing__row:last-of-type { border-bottom: none; }
+.kp-pricing__name strong { display: block; font-weight: 600; color: var(--text-strong); }
+.kp-pricing__name small { display: block; font-size: 0.8125rem; color: var(--text-subtle); margin-top: 2px; }
+.kp-pricing__price { text-align: right; }
+.kp-pricing__price strong {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+}
+.kp-pricing__price small { display: block; font-size: 0.75rem; color: var(--text-subtle); margin-top: 2px; }
+
+/* HR segments */
+.hr-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 900px) { .hr-segments { grid-template-columns: repeat(3, 1fr); } }
+.hr-segment {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.hr-segment:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.hr-segment--featured { border-color: var(--accent-300); background: linear-gradient(180deg, var(--accent-50), var(--white)); }
+.hr-segment__label {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-100);
+  color: var(--text-muted);
+}
+.hr-segment--featured .hr-segment__label { background: var(--accent-500); color: var(--ink-950); }
+.hr-segment h3 { font-size: 1.125rem; }
+.hr-segment > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.hr-segment ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.375rem;
+}
+.hr-segment li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.hr-segment li svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+</style>

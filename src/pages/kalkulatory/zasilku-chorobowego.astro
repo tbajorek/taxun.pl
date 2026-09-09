@@ -1,0 +1,244 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  SICK_RATE_STANDARD, SICK_RATE_FULL, SICK_RATE_HOSPITAL, SICK_PERIOD_DAYS, SICK_PERIOD_DAYS_LONG,
+  SICK_EMPLOYER_DAYS, SICK_EMPLOYER_DAYS_50PLUS, SICK_EMPLOYER_AGE, SICK_BREAK_DAYS,
+  ZASILEK_ZUS_POMNIEJSZENIE, ZASILEK_DZIELNIK, ZASILEK_MIESIECY_PODSTAWY, TAX_YEAR, DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { pct } from '../../lib/format';
+
+const podstawaUdzial = 1 - ZASILEK_ZUS_POMNIEJSZENIE;
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/zasilku-chorobowego#webpage',
+  name: `Kalkulator zasiłku chorobowego ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator zasiłku chorobowego i wynagrodzenia chorobowego. Liczy podstawę wymiaru i kwotę zasiłku dla stawek ${pct(SICK_RATE_STANDARD)} i ${pct(SICK_RATE_FULL)}.`,
+  url: 'https://taxun.pl/kalkulatory/zasilku-chorobowego',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Jak liczy się podstawę zasiłku chorobowego?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Podstawę zasiłku stanowi przeciętne miesięczne wynagrodzenie z ${ZASILEK_MIESIECY_PODSTAWY} miesięcy poprzedzających chorobę, pomniejszone o składki ZUS pracownika (${pct(ZASILEK_ZUS_POMNIEJSZENIE)}). Kwotę dzienną zasiłku liczy się dzieląc tę podstawę przez ${ZASILEK_DZIELNIK} i mnożąc przez stawkę procentową.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Ile wynosi zasiłek chorobowy - ${pct(SICK_RATE_STANDARD)} czy ${pct(SICK_RATE_FULL)}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Standardowy zasiłek chorobowy to ${pct(SICK_RATE_STANDARD)} podstawy. ${pct(SICK_RATE_FULL)} przysługuje m.in. za czas choroby w okresie ciąży, wypadku w drodze do lub z pracy oraz badań i zabiegów dla dawców komórek, tkanek i narządów.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Czy zasiłek chorobowy w ciąży liczy się według dni?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Tak. W ciąży zasiłek liczy się tak samo jak przy każdej innej chorobie - za każdy dzień kalendarzowy niezdolności do pracy, razem z sobotami, niedzielami i świętami. Ciąża zmienia dwie rzeczy: stawkę (${pct(SICK_RATE_FULL)} podstawy zamiast ${pct(SICK_RATE_STANDARD)}) oraz długość okresu zasiłkowego (${SICK_PERIOD_DAYS_LONG} dni zamiast ${SICK_PERIOD_DAYS}). Sposób liczenia dnia pozostaje ten sam: podstawa podzielona przez ${ZASILEK_DZIELNIK} i pomnożona przez stawkę procentową.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Kto wypłaca chorobowe - pracodawca czy ZUS?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Przez pierwsze ${SICK_EMPLOYER_DAYS} dni choroby w roku (${SICK_EMPLOYER_DAYS_50PLUS} dni dla osób po ${SICK_EMPLOYER_AGE}. roku życia) wynagrodzenie chorobowe wypłaca pracodawca. Od ${SICK_EMPLOYER_DAYS + 1}. dnia (lub ${SICK_EMPLOYER_DAYS_50PLUS + 1}. dnia) świadczenie wypłaca ZUS jako zasiłek chorobowy.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator zasiłku chorobowego ${TAX_YEAR}`}
+  description="Policz wysokość zasiłku chorobowego i wynagrodzenia chorobowego. Wpisz przeciętne wynagrodzenie i liczbę dni - pokażemy podstawę i kwotę. Liczy się w przeglądarce."
+  metaTitle={`Kalkulator zasiłku chorobowego ${TAX_YEAR}`}
+  metaDescription={`Bezpłatny kalkulator zasiłku chorobowego ${TAX_YEAR}. Podstawa wymiaru, stawka dzienna i kwota zasiłku ${pct(SICK_RATE_STANDARD)} lub ${pct(SICK_RATE_FULL)}. Bez logowania.`}
+  breadcrumbLabel="Zasiłek chorobowy"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="chor-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="ch-brutto">
+          Przeciętne wynagrodzenie brutto
+          <small>{`średnia z ${ZASILEK_MIESIECY_PODSTAWY} mies., w PLN`}</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ch-brutto" min="0" step="100" value="6500" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł / mies.</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ch-dni">
+          Liczba dni choroby
+          <small>dni kalendarzowe</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="ch-dni" min="0" max="366" step="1" value="10" inputmode="numeric"/>
+          <span class="calc-field__suffix">dni</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="ch-stawka">
+          Stawka zasiłku
+        </label>
+        <div class="calc-field__input">
+          <select id="ch-stawka">
+            <option value={SICK_RATE_STANDARD} data-okres={SICK_PERIOD_DAYS} selected>{`${pct(SICK_RATE_STANDARD)} - standardowa choroba`}</option>
+            <option value={SICK_RATE_FULL} data-okres={SICK_PERIOD_DAYS_LONG} data-ciaza="1">{`${pct(SICK_RATE_FULL)} - choroba w okresie ciąży`}</option>
+            <option value={SICK_RATE_FULL} data-okres={SICK_PERIOD_DAYS}>{`${pct(SICK_RATE_FULL)} - wypadek w drodze do/z pracy, dawca`}</option>
+            <option value={SICK_RATE_HOSPITAL} data-okres={SICK_PERIOD_DAYS}>{`${pct(SICK_RATE_HOSPITAL)} - za czas pobytu w szpitalu (wybrane przypadki)`}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Zasiłek za podany okres</div>
+      <div class="calc-result__value">
+        <span id="ch-kwota">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Stawka dzienna: <strong id="ch-dzienna">-</strong> za każdy dzień choroby.
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Wynagrodzenie brutto</span>
+          <span class="calc-breakdown__value" id="ch-base-brutto">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Pomniejszenie o ZUS (${pct(ZASILEK_ZUS_POMNIEJSZENIE)})`}</span>
+          <span class="calc-breakdown__value" id="ch-zus">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Podstawa wymiaru zasiłku</span>
+          <span class="calc-breakdown__value" id="ch-podstawa">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">{`Podstawa dzienna (÷ ${ZASILEK_DZIELNIK})`}</span>
+          <span class="calc-breakdown__value" id="ch-podstawa-dz">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Okres zasiłkowy w tym przypadku</span>
+          <span class="calc-breakdown__value" id="ch-okres">-</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="calc-hint calc-hint--warn" id="ch-hint" hidden></p>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy zasiłek chorobowy</h2>
+    <p>{`Zasiłek chorobowy (i wynagrodzenie chorobowe za pierwsze dni) liczy się od `}<strong>podstawy wymiaru</strong>{` - przeciętnego miesięcznego wynagrodzenia z ${ZASILEK_MIESIECY_PODSTAWY} miesięcy przed chorobą, pomniejszonego o składki ZUS pracownika (${pct(ZASILEK_ZUS_POMNIEJSZENIE)}).`}</p>
+
+    <h3>Wzór</h3>
+    <ul>
+      <li><strong>Podstawa</strong>{` = wynagrodzenie brutto × ${pct(podstawaUdzial)} (po odjęciu ${pct(ZASILEK_ZUS_POMNIEJSZENIE)} ZUS).`}</li>
+      <li><strong>Stawka dzienna</strong>{` = podstawa ÷ ${ZASILEK_DZIELNIK} × procent (${pct(SICK_RATE_HOSPITAL)}, ${pct(SICK_RATE_STANDARD)} albo ${pct(SICK_RATE_FULL)}).`}</li>
+      <li><strong>Zasiłek</strong> = stawka dzienna × liczba dni choroby (kalendarzowych, łącznie z weekendami).</li>
+    </ul>
+
+    <h3>Stawki</h3>
+    <table>
+      <thead>
+        <tr><th>Sytuacja</th><th>Stawka</th><th>Okres zasiłkowy</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Standardowa choroba</td><td>{SICK_RATE_STANDARD * 100}%</td><td>{SICK_PERIOD_DAYS} dni</td></tr>
+        <tr><td>Choroba w okresie ciąży</td><td>{SICK_RATE_FULL * 100}%</td><td>{SICK_PERIOD_DAYS_LONG} dni</td></tr>
+        <tr><td>Wypadek w drodze do/z pracy</td><td>{SICK_RATE_FULL * 100}%</td><td>{SICK_PERIOD_DAYS} dni</td></tr>
+        <tr><td>Badania i zabiegi dawcy</td><td>{SICK_RATE_FULL * 100}%</td><td>{SICK_PERIOD_DAYS} dni</td></tr>
+        <tr><td>Pobyt w szpitalu (wybrane przypadki)</td><td>{SICK_RATE_HOSPITAL * 100}%</td><td>{SICK_PERIOD_DAYS} dni</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Ciąża - te same dni, inna stawka i dłuższy limit</h3>
+    <p>Tak, w ciąży zasiłek liczy się <strong>dokładnie tak samo</strong> jak przy każdej innej chorobie: dzień po dniu, według dni kalendarzowych, razem z sobotami, niedzielami i świętami. Nie ma tu przeliczania na tygodnie ani miesiące - to dopiero przy <a href="/kalkulatory/zasilku-macierzynskiego">zasiłku macierzyńskim</a>, gdzie urlopy liczy się w tygodniach.</p>
+    <p>Ciąża zmienia dwie rzeczy:</p>
+    <ul>
+      <li><strong>Stawkę</strong>{` - ${pct(SICK_RATE_FULL)} podstawy zamiast ${pct(SICK_RATE_STANDARD)}, i to od pierwszego dnia.`} Dotyczy to również wynagrodzenia chorobowego wypłacanego przez pracodawcę za pierwsze {SICK_EMPLOYER_DAYS} dni.</li>
+      <li><strong>Okres zasiłkowy</strong> - {SICK_PERIOD_DAYS_LONG} dni zamiast standardowych {SICK_PERIOD_DAYS}. Tyle samo przysługuje przy gruźlicy.</li>
+    </ul>
+    <p>{`Warunek jest jeden: zwolnienie musi mieć kod „B” albo lekarz musi w inny sposób potwierdzić, że niezdolność do pracy przypada na okres ciąży. Bez tego pracodawca i ZUS naliczą ${pct(SICK_RATE_STANDARD)}.`}</p>
+
+    <h3>Kto wypłaca i jak długo</h3>
+    <ul>
+      <li><strong>Pracodawca</strong>{` - wynagrodzenie chorobowe za pierwsze ${SICK_EMPLOYER_DAYS} dni w roku (${SICK_EMPLOYER_DAYS_50PLUS} dni dla osób po ${SICK_EMPLOYER_AGE}. roku życia).`}</li>
+      <li><strong>ZUS</strong> - zasiłek chorobowy od {SICK_EMPLOYER_DAYS + 1}. dnia (lub {SICK_EMPLOYER_DAYS_50PLUS + 1}. dnia). Okres zasiłkowy to maksymalnie {SICK_PERIOD_DAYS} dni, a przy ciąży i gruźlicy {SICK_PERIOD_DAYS_LONG} dni. {` Do limitu wliczają się wszystkie okresy choroby, o ile przerwa między nimi nie przekroczyła ${SICK_BREAK_DAYS} dni.`}</li>
+      <li><strong>Po wyczerpaniu okresu zasiłkowego</strong> - zasiłek się kończy. Jeśli dalsze leczenie rokuje odzyskanie zdolności do pracy, można wystąpić o świadczenie rehabilitacyjne.</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> ustawa o świadczeniach pieniężnych z ubezpieczenia społecznego w razie choroby i macierzyństwa, <a href="https://www.zus.pl/" rel="noopener" target="_blank">zus.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Kalkulator jest szacunkowy - realna podstawa uwzględnia premie, nadgodziny i nieobecności. Prowadzimy <a href="/kadry-place" style="color: var(--accent-700)">pełną obsługę kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { ZASILEK_ZUS_POMNIEJSZENIE, ZASILEK_DZIELNIK, SICK_PERIOD_DAYS } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('ch-brutto') as HTMLInputElement).value) || 0;
+    const dni = Math.max(0, Number(($('ch-dni') as HTMLInputElement).value) || 0);
+    const select = $('ch-stawka') as HTMLSelectElement;
+    const stawka = Number(select.value);
+    const wybrana = select.selectedOptions[0];
+    // Ciąża nie zmienia sposobu liczenia - dalej liczymy dzień po dniu.
+    // Zmienia dwie rzeczy: stawkę (100%) i długość okresu zasiłkowego (270 zamiast 182 dni).
+    const okres = Number(wybrana?.dataset.okres) || SICK_PERIOD_DAYS;
+    const ciaza = wybrana?.dataset.ciaza === '1';
+
+    const zus = brutto * ZASILEK_ZUS_POMNIEJSZENIE;
+    const podstawa = brutto - zus;
+    const podstawaDzienna = podstawa / ZASILEK_DZIELNIK;
+    const zasilekDzienny = podstawaDzienna * stawka;
+    const zasilek = zasilekDzienny * dni;
+
+    $span('ch-kwota').textContent = fmt2.format(zasilek);
+    $span('ch-dzienna').textContent = fmtMoney2(zasilekDzienny);
+    $span('ch-base-brutto').textContent = fmtMoney2(brutto);
+    $span('ch-zus').textContent = `- ${fmtMoney2(zus)}`;
+    $span('ch-podstawa').textContent = fmtMoney2(podstawa);
+    $span('ch-podstawa-dz').textContent = fmtMoney2(podstawaDzienna);
+    $span('ch-okres').textContent = ciaza ? `${okres} dni (ciąża)` : `${okres} dni`;
+
+    const hint = $span('ch-hint');
+    if (dni > okres) {
+      hint.textContent = `Wpisano ${dni} dni, a okres zasiłkowy wynosi tu ${okres} dni. Po jego wyczerpaniu zasiłek chorobowy się kończy - dalej można starać się o świadczenie rehabilitacyjne. Kwota powyżej to wyliczenie dla wpisanej liczby dni, nie dla świadczenia, które faktycznie wypłaci ZUS.`;
+      hint.hidden = false;
+    } else {
+      hint.hidden = true;
+      hint.textContent = '';
+    }
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#chor-calc input, #chor-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+  });
+  calculate();
+</script>

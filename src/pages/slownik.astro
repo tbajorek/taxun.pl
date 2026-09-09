@@ -1,0 +1,331 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import LegalNotice from '../components/LegalNotice.astro';
+// Liczba haseł w opisie meta liczy się z kolekcji - wpisana ręcznie rozjechała
+// się z zawartością strony (tytuł mówił o 30 pojęciach przy 52 hasłach).
+import { plural } from '../lib/blog';
+
+interface Term {
+  term: string;
+  alt?: string[];
+  def: string;
+  category: 'Księgowość' | 'Podatki' | 'ZUS' | 'Kadry' | 'Spółki' | 'KSeF';
+  related?: string[];
+}
+
+const terms: Term[] = [
+  // --- KSeF ---
+  { term: 'KSeF', alt: ['Krajowy System e-Faktur'], category: 'KSeF', def: 'Centralny system Ministerstwa Finansów do wystawiania, odbierania i przechowywania faktur ustrukturyzowanych w formacie XML. Obowiązek wystawiania faktur objął od 1.02.2026 największych podatników (sprzedaż brutto powyżej 200 mln zł w 2024 r.), a od 1.04.2026 pozostałych przedsiębiorców, w tym zwolnionych z VAT. Odbieranie faktur przez KSeF jest obowiązkowe dla wszystkich od 1.02.2026.' },
+  { term: 'Faktura ustrukturyzowana', alt: ['e-Faktura'], category: 'KSeF', def: 'Faktura wystawiona w formacie XML zgodnym ze schemą Ministerstwa Finansów i przesłana do KSeF. Po przyjęciu otrzymuje unikalny numer KSeF oraz Urzędowe Poświadczenie Odbioru (UPO), które potwierdza jej wystawienie.' },
+  { term: 'ZAW-FA', category: 'KSeF', def: 'Zawiadomienie o nadaniu uprawnień do korzystania z KSeF. Składane przez podmioty niebędące osobami fizycznymi, na przykład spółki z o.o., aby wskazać pierwszą osobę z pełnymi uprawnieniami w systemie. Ta osoba nadaje następnie uprawnienia pracownikom i biuru rachunkowemu bezpośrednio w KSeF.' },
+
+  // --- Księgowość ---
+  { term: 'JDG', alt: ['Jednoosobowa działalność gospodarcza'], category: 'Księgowość', def: 'Najprostsza forma prowadzenia działalności gospodarczej w Polsce, prowadzona przez osobę fizyczną na podstawie wpisu do CEIDG. Bez osobowości prawnej, z pełną odpowiedzialnością osobistą.' },
+  { term: 'KPiR', alt: ['Książka przychodów i rozchodów'], category: 'Księgowość', def: 'Uproszczona ewidencja księgowa dla jednoosobowych działalności gospodarczych na skali podatkowej lub podatku liniowym. Rejestruje przychody i koszty uzyskania przychodu, w odróżnieniu od pełnej księgowości spółek (ksiąg rachunkowych).' },
+  { term: 'CEIDG-1', category: 'Księgowość', def: 'Wniosek o wpis do Centralnej Ewidencji i Informacji o Działalności Gospodarczej. Pełni jednocześnie funkcję zgłoszenia do urzędu skarbowego, GUS oraz zgłoszenia płatnika składek w ZUS. Zgłoszenie samego przedsiębiorcy do ubezpieczeń wymaga dodatkowo złożenia ZUS ZUA lub ZZA w ciągu 7 dni.' },
+  { term: 'PKD', alt: ['Polska Klasyfikacja Działalności'], category: 'Księgowość', def: 'Klasyfikacja statystyczna rodzajów działalności gospodarczej. Każdej działalności nadaje się przynajmniej jeden kod główny PKD oraz dowolną liczbę kodów dodatkowych.' },
+  { term: 'OCR', category: 'Księgowość', def: 'Optical Character Recognition, czyli technologia automatycznego rozpoznawania tekstu z dokumentów w formie PDF, zdjęć i skanów. W księgowości używana do automatycznego wprowadzania faktur kosztowych.' },
+  { term: 'OC zawodowa', alt: ['OC biura rachunkowego'], category: 'Księgowość', def: 'Obowiązkowe ubezpieczenie odpowiedzialności cywilnej dla podmiotów prowadzących usługowo księgi rachunkowe, wymagane przepisami prawa. Chroni klientów biura przed skutkami błędów księgowych.' },
+  { term: 'RODO', alt: ['GDPR'], category: 'Księgowość', def: 'Ogólne rozporządzenie o ochronie danych, unijny akt prawny regulujący przetwarzanie danych osobowych. Obowiązuje od 25 maja 2018 r. i dotyczy każdego podmiotu przetwarzającego dane, w tym biur rachunkowych.' },
+
+  // --- Podatki ---
+  { term: 'Ryczałt ewidencjonowany', alt: ['Ryczałt od przychodów ewidencjonowanych'], category: 'Podatki', def: 'Uproszczona forma opodatkowania, w której podatek liczy się od przychodu, bez pomniejszania go o koszty. Stawka zależy od rodzaju działalności i mieści się w przedziale od 2% do 17%. O jej wysokości decyduje klasyfikacja PKWiU wykonywanych usług.' },
+  { term: 'Skala podatkowa', category: 'Podatki', def: 'Podstawowa forma opodatkowania dochodów osób fizycznych. Do 120 000 zł dochodu obowiązuje stawka 12%, powyżej tego progu 32%. Kwota wolna od podatku wynosi 30 000 zł. Pozwala na wspólne rozliczenie z małżonkiem i korzystanie z większości ulg.' },
+  { term: 'Podatek liniowy', category: 'Podatki', def: 'Forma opodatkowania działalności gospodarczej stałą stawką 19%, niezależnie od wysokości dochodu. Wyklucza wspólne rozliczenie z małżonkiem, kwotę wolną od podatku oraz większość ulg podatkowych. Rozliczany na formularzu PIT-36L.' },
+  { term: 'JPK_V7', alt: ['JPK_V7M', 'JPK_V7K'], category: 'Podatki', def: 'Jednolity Plik Kontrolny dla VAT, zawierający ewidencję sprzedaży i zakupów oraz część deklaracyjną. W wariancie V7M całość składa się co miesiąc. W wariancie V7K ewidencję przesyła się miesięcznie, a część deklaracyjną kwartalnie.' },
+  { term: 'VAT-R', category: 'Podatki', def: 'Zgłoszenie rejestracyjne w zakresie podatku od towarów i usług. Składane przed pierwszą czynnością opodatkowaną VAT albo dobrowolnie, jeszcze przed przekroczeniem limitu zwolnienia podmiotowego, który od 2026 r. wynosi 240 000 zł sprzedaży rocznie.' },
+  { term: 'VAT-UE', category: 'Podatki', def: 'Informacja podsumowująca o wewnątrzwspólnotowych transakcjach VAT (WNT, WDT, import i eksport usług). Składana co miesiąc w terminie do 25. dnia miesiąca następującego po miesiącu, w którym powstał obowiązek podatkowy.' },
+  { term: 'VAT-OSS', alt: ['One Stop Shop', 'OSS'], category: 'Podatki', def: 'Unijna procedura pozwalająca rozliczyć VAT od sprzedaży B2C do wszystkich krajów UE w jednej kwartalnej deklaracji składanej w Polsce. Po przekroczeniu łącznego progu 10 000 euro (42 000 zł) sprzedaż opodatkowuje się stawką kraju nabywcy. Rejestracja odbywa się na formularzu VIU-R.' },
+  { term: 'WDT', alt: ['Wewnątrzwspólnotowa dostawa towarów'], category: 'Podatki', def: 'Sprzedaż towarów z Polski do podatnika VAT w innym kraju UE. Co do zasady opodatkowana stawką 0% VAT, pod warunkiem prawidłowej rejestracji VAT-UE i posiadania dokumentów wywozu.' },
+  { term: 'WNT', alt: ['Wewnątrzwspólnotowe nabycie towarów'], category: 'Podatki', def: 'Zakup towarów od podatnika VAT z innego kraju UE z dostawą do Polski. Rozliczane mechanizmem odwrotnego obciążenia (reverse charge), w którym kupujący nalicza i odlicza VAT równocześnie.' },
+  { term: 'PKWiU', alt: ['Polska Klasyfikacja Wyrobów i Usług'], category: 'Podatki', def: 'Klasyfikacja statystyczna konkretnych czynności wykonywanych w ramach działalności gospodarczej. W odróżnieniu od PKD, która klasyfikuje całą działalność firmy, PKWiU klasyfikuje pojedyncze usługi i decyduje o stawce ryczałtu.' },
+  { term: 'IP Box', category: 'Podatki', def: 'Ulga pozwalająca obniżyć podatek dochodowy do 5% od kwalifikowanych dochodów z praw własności intelektualnej, w tym z praw autorskich do programu komputerowego. Dostępna zarówno w PIT, jak i w CIT. Wymaga prowadzenia odrębnej ewidencji.' },
+  { term: 'Split payment', alt: ['Mechanizm podzielonej płatności', 'MPP'], category: 'Podatki', def: 'System rozliczenia VAT, w którym płatność za fakturę jest rozdzielana: kwota netto trafia na rachunek dostawcy, a kwota VAT na specjalny rachunek VAT. Obowiązkowy dla wybranych branż i transakcji powyżej 15 000 zł brutto.' },
+  { term: 'Biała lista podatników VAT', category: 'Podatki', def: 'Publiczny wykaz prowadzony przez Ministerstwo Finansów, zawierający numery NIP, statusy VAT i numery rachunków bankowych podatników VAT. Płatność powyżej 15 000 zł brutto na rachunek spoza białej listy wiąże się z sankcjami podatkowymi.' },
+  { term: 'Mały podatnik', category: 'Podatki', def: 'Status podatnika, którego przychody ze sprzedaży brutto nie przekroczyły w poprzednim roku równowartości 2 000 000 euro. Uprawnia między innymi do kwartalnego rozliczania VAT, metody kasowej oraz jednorazowej amortyzacji w ramach limitu pomocy de minimis.' },
+  { term: 'Mikrorachunek podatkowy', category: 'Podatki', def: 'Indywidualny rachunek bankowy przypisany do podatnika, na który wpłaca się PIT, CIT, VAT oraz niepodatkowe należności budżetowe. Generuje się go bezpłatnie na podstawie numeru PESEL lub NIP i pozostaje niezmienny nawet po zmianie urzędu skarbowego.' },
+  { term: 'PIT-28', category: 'Podatki', def: 'Roczne zeznanie podatkowe dla podatników opodatkowanych ryczałtem ewidencjonowanym. Od 2023 r. termin złożenia jest ujednolicony z pozostałymi deklaracjami PIT i przypada na 30 kwietnia roku następnego.' },
+  { term: 'PIT-36L', category: 'Podatki', def: 'Roczne zeznanie podatkowe dla osób fizycznych prowadzących działalność opodatkowaną podatkiem liniowym (19%). Termin złożenia: 30 kwietnia roku następnego.' },
+  { term: 'UPL-1', category: 'Podatki', def: 'Pełnomocnictwo do podpisywania deklaracji składanych elektronicznie. Wymagane, by biuro rachunkowe mogło wysyłać deklaracje i JPK w imieniu klienta przez system e-Deklaracje. Nie obejmuje uprawnień do KSeF, które nadaje się osobno.' },
+  { term: 'Interpretacja indywidualna', category: 'Podatki', def: 'Wiążące rozstrzygnięcie Dyrektora Krajowej Informacji Skarbowej, wydane na wniosek podatnika w jego konkretnej sprawie. Chroni przed konsekwencjami podatkowymi, jeśli podatnik zastosował się do jej treści.' },
+  { term: 'Import usług', category: 'Podatki', def: 'Zakup usługi od podmiotu zagranicznego, dla której miejscem opodatkowania jest Polska, a podatek rozlicza nabywca. Dotyczy między innymi reklam w mediach społecznościowych, subskrypcji narzędzi online i hostingu. Czynny podatnik VAT wykazuje go neutralnie w JPK_V7, natomiast podatnik zwolniony musi zarejestrować się do VAT-UE, naliczyć krajowy VAT, zapłacić go i złożyć deklarację VAT-9M do 25. dnia następnego miesiąca.' },
+  { term: 'VAT-9M', category: 'Podatki', def: 'Deklaracja dla podatników niebędących czynnymi podatnikami VAT, którzy rozliczają import usług lub inne transakcje, w których obowiązek podatkowy przechodzi na nabywcę. Składana i opłacana do 25. dnia miesiąca następującego po miesiącu powstania obowiązku podatkowego, wyłącznie za miesiące, w których taka transakcja wystąpiła.' },
+  { term: 'Podatek u źródła', alt: ['WHT', 'Withholding tax'], category: 'Podatki', def: 'Zryczałtowany podatek pobierany przez polskiego płatnika od należności wypłacanych podmiotom zagranicznym, między innymi za usługi reklamowe, doradcze i licencje. Umowy o unikaniu podwójnego opodatkowania zwykle pozwalają nie pobierać go w Polsce, ale warunkiem jest posiadanie certyfikatu rezydencji podatkowej odbiorcy płatności.' },
+  { term: 'IFT-2R', category: 'Podatki', def: 'Roczna informacja o wysokości przychodu uzyskanego w Polsce przez podatnika niemającego tu siedziby. Składa się ją osobno dla każdego zagranicznego kontrahenta, w terminie trzech miesięcy od zakończenia roku podatkowego, także wtedy, gdy podatku u źródła w ogóle nie pobrano.' },
+  { term: 'Barter', category: 'Podatki', def: 'Wymiana towaru lub usługi na inny towar albo usługę, bez przepływu pieniędzy. W podatkach nie jest neutralna: obie strony osiągają przychód i obie wystawiają fakturę na wartość rynkową swojego świadczenia. Częsta forma współpracy twórców internetowych z markami.' },
+
+  // --- ZUS ---
+  { term: 'Ulga na start', category: 'ZUS', def: 'Zwolnienie z obowiązku opłacania składek społecznych ZUS przez pierwsze 6 miesięcy działalności gospodarczej. Płaci się jedynie składkę zdrowotną. Dostępna dla nowych przedsiębiorców, którzy nie prowadzili działalności w ciągu ostatnich 60 miesięcy.' },
+  { term: 'ZUS preferencyjny', alt: ['Mały ZUS', 'Preferencyjne składki ZUS'], category: 'ZUS', def: 'Składki społeczne ZUS w obniżonej wysokości, naliczane od 30% minimalnego wynagrodzenia. Dostępne przez 24 miesiące po zakończeniu ulgi na start, czyli typowo od 7. do 30. miesiąca prowadzenia działalności.' },
+  { term: 'Mały ZUS Plus', category: 'ZUS', def: 'Ulga pozwalająca opłacać składki społeczne od podstawy zależnej od dochodu, a nie od ustawowej kwoty. Warunki to przychód z działalności w poprzednim roku do 120 000 zł oraz co najmniej 60 dni prowadzenia działalności. Od 2026 r. można z niej korzystać przez 36 miesięcy w każdym 60-miesięcznym okresie. Ulga nie obniża składki zdrowotnej.' },
+  { term: 'Składka zdrowotna', category: 'ZUS', def: 'Obowiązkowa składka opłacana przez przedsiębiorcę niezależnie od ulg w składkach społecznych. Na ryczałcie jest stała w trzech progach przychodu, na skali podatkowej wynosi 9% dochodu, a przy podatku liniowym 4,9% dochodu, przy czym obowiązuje składka minimalna.' },
+  { term: 'ZUS ZUA / ZZA', category: 'ZUS', def: 'Formularze zgłoszenia do ubezpieczeń. ZUA służy zgłoszeniu do ubezpieczeń społecznych i zdrowotnego, a ZZA wyłącznie do ubezpieczenia zdrowotnego. Właściwy wybór formularza i kodu tytułu ubezpieczenia decyduje o wysokości opłacanych składek.' },
+  { term: 'ZUS DRA', category: 'ZUS', def: 'Deklaracja rozliczeniowa składek ZUS składana co miesiąc przez płatnika. Zawiera zbiorcze podsumowanie składek społecznych i zdrowotnych za wszystkich ubezpieczonych.' },
+  { term: 'ZUS RCA', category: 'ZUS', def: 'Imienny raport miesięczny składany razem z deklaracją DRA. Wykazuje szczegółowo składki na ubezpieczenia społeczne i zdrowotne dla każdego ubezpieczonego pracownika.' },
+  { term: 'ZUS RSA', category: 'ZUS', def: 'Imienny raport miesięczny dla osób, którym wypłacono w danym miesiącu świadczenia, na przykład zasiłek chorobowy, opiekuńczy lub macierzyński.' },
+
+  // --- Kadry ---
+  { term: 'PIT-11', category: 'Kadry', def: 'Informacja o dochodach pracownika i pobranych zaliczkach na podatek dochodowy. Pracodawca przekazuje ją do urzędu skarbowego do 31 stycznia, wyłącznie elektronicznie, a pracownikowi do końca lutego za rok poprzedni.' },
+  { term: 'PIT-4R', category: 'Kadry', def: 'Roczna deklaracja o zaliczkach na podatek dochodowy pobranych przez płatnika od wynagrodzeń pracowników i zleceniobiorców. Składana do urzędu skarbowego do 31 stycznia za rok poprzedni.' },
+  { term: 'PPK', alt: ['Pracownicze Plany Kapitałowe'], category: 'Kadry', def: 'System długoterminowego oszczędzania emerytalnego. Pracodawca ma obowiązek utworzyć PPK i zapisać pracowników, którzy mogą z niego zrezygnować. Pracodawca finansuje wpłatę podstawową 1,5% wynagrodzenia, pracownik 2%. Państwo dodaje jednorazową wpłatę powitalną 250 zł oraz dopłatę roczną 240 zł.' },
+  { term: 'A1', alt: ['Zaświadczenie A1'], category: 'Kadry', def: 'Zaświadczenie potwierdzające, że pracownik lub przedsiębiorca delegowany do pracy w innym kraju UE podlega polskiemu systemowi ubezpieczeń społecznych. Wydawane przez ZUS na wniosek płatnika i wymagane podczas kontroli za granicą.' },
+  { term: 'e-ZLA', category: 'Kadry', def: 'Elektroniczne zwolnienie lekarskie wystawiane przez lekarza i przekazywane automatycznie do ZUS oraz na profil płatnika składek. Pracodawca nie potrzebuje papierowego dokumentu, aby rozliczyć nieobecność i wypłacić wynagrodzenie chorobowe lub zasiłek.' },
+
+  // --- Spółki ---
+  { term: 'Estoński CIT', alt: ['Ryczałt od dochodów spółek'], category: 'Spółki', def: 'Forma opodatkowania CIT, w której podatek płaci się dopiero w momencie wypłaty zysku do wspólników, a nie w trakcie roku obrotowego. Korzystna dla spółek reinwestujących zyski.' },
+  { term: 'CIT-8', category: 'Spółki', def: 'Roczne zeznanie o wysokości dochodu osiągniętego przez podatnika podatku dochodowego od osób prawnych. Składane w terminie do końca trzeciego miesiąca po zakończeniu roku podatkowego, czyli zwykle do 31 marca.' },
+  { term: 'JPK_CIT', alt: ['JPK_KR_PD'], category: 'Spółki', def: 'Jednolity Plik Kontrolny dla podatku dochodowego, czyli ustrukturyzowany raport z ksiąg rachunkowych. Wdrażany etapami: od 2025 r. dla podatników o przychodach powyżej 50 mln euro i podatkowych grup kapitałowych, od 2026 r. dla podatników składających JPK_VAT, od 2027 r. dla pozostałych.' },
+  { term: 'e-Sprawozdanie finansowe', category: 'Spółki', def: 'Sprawozdanie finansowe sporządzone w ustrukturyzowanej formie elektronicznej i podpisane elektronicznie. Spółki wpisane do KRS składają je do Repozytorium Dokumentów Finansowych w ciągu 15 dni od zatwierdzenia przez zgromadzenie wspólników.' },
+  { term: 'S24', category: 'Spółki', def: 'Tryb rejestracji spółki przez internet, z wykorzystaniem wzorca umowy dostępnego w systemie Ministerstwa Sprawiedliwości. Jest szybszy i tańszy od rejestracji tradycyjnej, ale nie pozwala na modyfikację treści umowy ani wniesienie wkładu niepieniężnego.' },
+];
+
+const categories = ['Wszystkie', 'Księgowość', 'Podatki', 'ZUS', 'Kadry', 'KSeF', 'Spółki'];
+const sortedTerms = [...terms].sort((a, b) => a.term.localeCompare(b.term, 'pl'));
+
+const definedTermSetSchema = {
+  '@type': 'DefinedTermSet',
+  '@id': 'https://taxun.pl/slownik#set',
+  name: 'Słownik księgowy Taxun',
+  description: 'Słownik najważniejszych pojęć księgowych, podatkowych i kadrowych używanych w branży kadrowo - księgowej.',
+  url: 'https://taxun.pl/slownik',
+  hasDefinedTerm: sortedTerms.map((t) => ({
+    '@type': 'DefinedTerm',
+    '@id': `https://taxun.pl/slownik#${t.term.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    name: t.term,
+    ...(t.alt ? { alternateName: t.alt } : {}),
+    description: t.def,
+    inDefinedTermSet: 'https://taxun.pl/slownik#set',
+    termCode: t.category,
+  })),
+};
+
+const breadcrumbs = [{ label: 'Słownik' }];
+const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+---
+<BaseLayout
+  title="Słownik księgowy - KSeF, KPiR, JPK_V7, IP Box"
+  description={`Pojęcia księgowe, podatkowe i kadrowe wyjaśnione prostym językiem: KSeF, KPiR, JPK_V7, IP Box, Mały ZUS Plus, VAT-OSS. W słowniku ${terms.length} ${plural(terms.length, 'hasło', 'hasła', 'haseł')}.`}
+  schema={definedTermSetSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Wiedza"
+    title="Słownik księgowy"
+    description="Krótkie, jednoznaczne definicje pojęć księgowych i podatkowych. Bez branżowego żargonu - od KSeF po IP Box."
+    breadcrumbs={breadcrumbs}
+    align="center"
+  />
+
+  <section class="section">
+    <div class="container">
+      <div class="slownik-toolbar">
+        <div class="slownik-search">
+          <Icon name="search" size={16}/>
+          <input type="search" id="slownik-search" placeholder="Szukaj terminu lub skrótu…" aria-label="Szukaj"/>
+        </div>
+        <div class="slownik-cats" role="group" aria-label="Kategoria">
+          {categories.map((c, i) => (
+            <button type="button" class={`slownik-cat ${i === 0 ? 'is-active' : ''}`}
+                    aria-pressed={i === 0 ? 'true' : 'false'}
+                    data-cat={c === 'Wszystkie' ? 'all' : c}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      <p class="slownik-count" id="slownik-count">
+        Pokazujemy <strong>{sortedTerms.length}</strong> z <strong>{sortedTerms.length}</strong> pojęć.
+      </p>
+
+      <div class="slownik" id="slownik-grid">
+        {sortedTerms.map((t) => (
+          <article
+            class="slownik__item"
+            id={slugify(t.term)}
+            data-term={t.term.toLowerCase()}
+            data-alt={(t.alt || []).join('|').toLowerCase()}
+            data-cat={t.category}
+          >
+            <header>
+              <h2>{t.term}</h2>
+              <span class="slownik__cat">{t.category}</span>
+            </header>
+            {t.alt && <p class="slownik__alt">{t.alt.join(' · ')}</p>}
+            <p class="slownik__def">{t.def}</p>
+          </article>
+        ))}
+        <p class="slownik__empty" id="slownik-empty" hidden>Brak terminów spełniających kryteria. Spróbuj innego zapytania.</p>
+      </div>
+
+      <LegalNotice updated={new Date('2026-09-04')}>
+        <p>
+          Hasła są uproszczone celowo: mają pomóc zrozumieć pojęcie, które padło w rozmowie albo
+          w piśmie z urzędu. Nie zastępują treści przepisu.
+        </p>
+      </LegalNotice>
+    </div>
+  </section>
+
+  <CTA
+    title="Nie widzisz pojęcia, które Cię interesuje?"
+    description="Napisz - dodamy je do słownika i wytłumaczymy w kolejnym mailu. Najczęściej zadawane pytania trafiają też do naszego newslettera."
+  />
+</BaseLayout>
+
+<style>
+.slownik-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.slownik-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  min-width: 280px;
+  color: var(--text-subtle);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.slownik-search:focus-within {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+.slownik-search input {
+  border: none; background: transparent;
+  font-size: 0.9375rem;
+  outline: none; color: var(--text);
+  width: 100%;
+  min-width: 200px;
+}
+.slownik-cats {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.slownik-cat {
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-full);
+  background: var(--ink-50);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.slownik-cat:hover { background: var(--ink-100); color: var(--ink-900); }
+.slownik-cat.is-active { background: var(--ink-900); color: var(--white); }
+
+.slownik-count {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  margin-bottom: 1.25rem;
+}
+.slownik-count strong { color: var(--text-strong); }
+
+.slownik {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+  position: relative;
+  min-height: 240px;
+}
+.slownik__item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  scroll-margin-top: 100px;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.slownik__item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--ink-100);
+}
+.slownik__item header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.slownik__item h2 { font-size: 1.1875rem; letter-spacing: -0.015em; }
+.slownik__cat {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-700);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-50);
+  flex-shrink: 0;
+}
+.slownik__alt {
+  margin: 0.25rem 0 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+  font-style: italic;
+}
+.slownik__def {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.slownik__empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1rem;
+  background: var(--surface-alt);
+  border-radius: var(--radius-xl);
+}
+</style>
+
+<script>
+  const search = document.getElementById('slownik-search') as HTMLInputElement;
+  const cats = document.querySelectorAll<HTMLButtonElement>('.slownik-cat');
+  const items = document.querySelectorAll<HTMLElement>('.slownik__item');
+  const count = document.getElementById('slownik-count') as HTMLElement;
+  const empty = document.getElementById('slownik-empty') as HTMLElement;
+  const total = items.length;
+  let activeCat = 'all';
+
+  function applyFilter() {
+    const q = (search.value || '').toLowerCase().trim();
+    let shown = 0;
+    items.forEach((item) => {
+      const term = item.dataset.term || '';
+      const alt = item.dataset.alt || '';
+      const cat = item.dataset.cat || '';
+      const def = item.querySelector('.slownik__def')?.textContent?.toLowerCase() || '';
+      const matchCat = activeCat === 'all' || cat === activeCat;
+      const matchQ = !q || term.includes(q) || alt.includes(q) || def.includes(q);
+      const visible = matchCat && matchQ;
+      item.style.display = visible ? '' : 'none';
+      if (visible) shown++;
+    });
+    count.innerHTML = `Pokazujemy <strong>${shown}</strong> z <strong>${total}</strong> pojęć.`;
+    empty.hidden = shown > 0;
+  }
+
+  search?.addEventListener('input', applyFilter);
+  cats.forEach((b) => {
+    b.addEventListener('click', () => {
+      cats.forEach((x) => {
+        x.classList.toggle('is-active', x === b);
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      activeCat = b.dataset.cat || 'all';
+      applyFilter();
+    });
+  });
+</script>

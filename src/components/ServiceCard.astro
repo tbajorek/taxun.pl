@@ -1,0 +1,101 @@
+---
+import Icon from './Icon.astro';
+interface Props {
+  icon: string;
+  title: string;
+  description: string;
+  features: string[];
+  href: string;
+  cta?: string;
+  featured?: boolean;
+}
+const { icon, title, description, features, href, cta = 'Dowiedz się więcej', featured = false } = Astro.props;
+---
+<article class={`service-card ${featured ? 'service-card--featured' : ''}`}>
+  <div class="service-card__icon"><Icon name={icon} size={24} /></div>
+  <h3 class="service-card__title">{title}</h3>
+  <p class="service-card__description">{description}</p>
+  <ul class="service-card__features">
+    {features.map((f) => (
+      <li>
+        <Icon name="check" size={16} />
+        <span>{f}</span>
+      </li>
+    ))}
+  </ul>
+  <a href={href} class="btn-arrow service-card__cta">
+    <span>{cta}</span>
+    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>
+  </a>
+</article>
+
+<style>
+.service-card {
+  position: relative;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--ink-100);
+}
+.service-card--featured {
+  background: linear-gradient(180deg, var(--ink-900), var(--ink-950));
+  color: var(--text-on-dark);
+  border-color: transparent;
+}
+.service-card--featured .service-card__title { color: var(--white); }
+.service-card--featured .service-card__description { color: var(--text-on-dark-muted); }
+.service-card--featured .service-card__features li { color: var(--text-on-dark); }
+.service-card--featured .service-card__cta { color: var(--accent-400); }
+.service-card--featured .service-card__icon { background: rgba(16,185,129,0.16); color: var(--accent-400); }
+
+.service-card__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+}
+.service-card__title {
+  font-size: var(--text-2xl);
+  margin-top: 0.25rem;
+}
+.service-card__description {
+  font-size: 1rem;
+  line-height: var(--leading-relaxed);
+}
+.service-card__features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0.5rem 0 1rem;
+}
+.service-card__features li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.service-card__features svg {
+  flex-shrink: 0;
+  color: var(--accent-600);
+  margin-top: 4px;
+}
+.service-card__cta {
+  margin-top: auto;
+}
+</style>

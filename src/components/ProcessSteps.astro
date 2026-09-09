@@ -1,0 +1,73 @@
+---
+interface Step { title: string; description: string }
+interface Props { items: Step[]; eyebrow?: string; title?: string; description?: string }
+const { items, eyebrow = 'Jak pracujemy', title = 'Jak wygląda start współpracy', description } = Astro.props;
+---
+<section class="section process section--alt">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
+    </div>
+    <ol class="process__list">
+      {items.map((step, i) => (
+        <li class="process__step reveal">
+          <div class="process__num">{String(i + 1).padStart(2, '0')}</div>
+          <p class="process__step-title">{step.title}</p>
+          <p>{step.description}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+<style>
+.process__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  counter-reset: process;
+}
+.process__step {
+  position: relative;
+  padding: 1.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.process__step:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.process__step::before {
+  content: '';
+  position: absolute;
+  top: 1.75rem;
+  left: 1.75rem;
+  width: 24px;
+  height: 2px;
+  background: var(--accent-500);
+  border-radius: 2px;
+}
+.process__num {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-text);
+  margin: 0 0 1rem 36px;
+}
+.process__step .process__step-title {
+  font-size: 1.25rem;
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.process__step p {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+</style>

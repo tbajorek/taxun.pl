@@ -1,0 +1,190 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  KUP_STANDARD, KUP_TWORCZE, KUP_TWORCZE_LIMIT, PIT_ZALICZKA_RATE,
+  DZIELO_RYCZALT_THRESHOLD, DZIELO_RUD_DNI, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, pct } from '../../lib/format';
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/umow-o-dzielo#webpage',
+  name: `Kalkulator umowy o dzieło ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator umowy o dzieło brutto-netto na ${TAX_YEAR} r. Koszty uzyskania ${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)}, zaliczka PIT, bez składek ZUS.`,
+  url: 'https://taxun.pl/kalkulatory/umow-o-dzielo',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Czy od umowy o dzieło płaci się składki ZUS?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Co do zasady umowa o dzieło nie podlega składkom ZUS ani składce zdrowotnej. Wyjątkiem jest umowa o dzieło zawarta z własnym pracodawcą lub wykonywana na jego rzecz - wtedy oskładkowanie jest takie jak przy umowie o pracę.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Jaki podatek od umowy o dzieło w ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Zaliczka na PIT wynosi ${pct(PIT_ZALICZKA_RATE)} podstawy, czyli kwoty brutto pomniejszonej o koszty uzyskania (${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)}). Przy umowach do ${zl(DZIELO_RYCZALT_THRESHOLD)} z osobą niebędącą pracownikiem stosuje się podatek zryczałtowany ${pct(PIT_ZALICZKA_RATE)} od pełnej kwoty, bez kosztów.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Kiedy ${pct(KUP_TWORCZE)} kosztów uzyskania przy umowie o dzieło?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Koszty ${pct(KUP_TWORCZE)} przysługują, gdy dzieło ma charakter twórczy i następuje przeniesienie praw autorskich (np. teksty, grafika, programowanie, muzyka). Roczny limit kosztów ${pct(KUP_TWORCZE)} wynosi ${zl(KUP_TWORCZE_LIMIT)}.`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator umowy o dzieło ${TAX_YEAR}`}
+  description={`Policz wynagrodzenie netto z umowy o dzieło: koszty uzyskania ${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)}, zaliczka PIT, bez składek ZUS. Liczy się w przeglądarce, bez wysyłania danych.`}
+  metaTitle={`Kalkulator umowy o dzieło ${TAX_YEAR} - brutto na netto`}
+  metaDescription={`Bezpłatny kalkulator umowy o dzieło ${TAX_YEAR}. Wynagrodzenie netto, koszty uzyskania ${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)} i zaliczka PIT. Bez logowania.`}
+  breadcrumbLabel="Umowa o dzieło"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="dzielo-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="dz-brutto">
+          Wynagrodzenie brutto
+          <small>kwota z umowy</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="dz-brutto" min="0" step="100" value="5000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="dz-kup">
+          Koszty uzyskania przychodu
+        </label>
+        <div class="calc-field__input">
+          <select id="dz-kup">
+            <option value={KUP_STANDARD} selected>Standardowe - {pct(KUP_STANDARD)}</option>
+            <option value={KUP_TWORCZE}>Twórcze (prawa autorskie) - {pct(KUP_TWORCZE)}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Na rękę wykonawcy</div>
+      <div class="calc-result__value">
+        <span id="dz-netto">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Bez składek ZUS - koszt zamawiającego to <strong id="dz-total">-</strong>. <span id="dz-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Koszty uzyskania przychodu</span>
+          <span class="calc-breakdown__value" id="dz-kupval">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Podstawa opodatkowania</span>
+          <span class="calc-breakdown__value" id="dz-podstawa">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Zaliczka na PIT ({pct(PIT_ZALICZKA_RATE)})</span>
+          <span class="calc-breakdown__value" id="dz-pit">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy wynagrodzenie z umowy o dzieło</h2>
+    <p>Umowa o dzieło to najprostsza forma rozliczenia - co do zasady <strong>bez składek ZUS i zdrowotnej</strong>. Potrąca się jedynie zaliczkę na podatek dochodowy.</p>
+
+    <h3>Wzór</h3>
+    <ul>
+      <li><strong>Koszty uzyskania</strong> = {pct(KUP_STANDARD)} lub {pct(KUP_TWORCZE)} kwoty brutto.</li>
+      <li><strong>Podstawa</strong> = brutto - koszty uzyskania.</li>
+      <li><strong>Zaliczka PIT</strong> = {pct(PIT_ZALICZKA_RATE)} podstawy (zaokrąglona do pełnych złotych).</li>
+      <li><strong>Netto</strong> = brutto - zaliczka PIT.</li>
+    </ul>
+
+    <h3>{`Kiedy ${pct(KUP_STANDARD)}, a kiedy ${pct(KUP_TWORCZE)}`}</h3>
+    <table>
+      <thead>
+        <tr><th>Koszty</th><th>Kiedy</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>{pct(KUP_STANDARD)}</td><td>standardowe dzieło bez przeniesienia praw</td></tr>
+        <tr><td>{pct(KUP_TWORCZE)}</td><td>{`dzieło twórcze z przeniesieniem praw autorskich (limit ${zl(KUP_TWORCZE_LIMIT)}/rok)`}</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Wyjątki - kiedy jest ZUS</h3>
+    <ul>
+      <li>Umowa o dzieło z <strong>własnym pracodawcą</strong> (lub wykonywana na jego rzecz) - oskładkowana jak umowa o pracę.</li>
+      <li>{`Każdą umowę o dzieło trzeba `}<strong>zgłosić do ZUS</strong>{` na formularzu RUD w ciągu ${DZIELO_RUD_DNI} dni (zgłoszenie ewidencyjne, nie rodzi składek).`}</li>
+      <li>Umowy do <strong>{zl(DZIELO_RYCZALT_THRESHOLD)}</strong>{` z osobą spoza firmy - podatek zryczałtowany ${pct(PIT_ZALICZKA_RATE)} od pełnej kwoty, bez kosztów.`}</li>
+    </ul>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> ustawa o PIT, ustawa o systemie ubezpieczeń społecznych, <a href="https://www.podatki.gov.pl/" rel="noopener" target="_blank">podatki.gov.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Rozliczasz twórców i wykonawców? Pomożemy z PIT-11 i zgłoszeniami RUD w ramach <a href="/kadry-place" style="color: var(--accent-700)">kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import { KUP_STANDARD, PIT_ZALICZKA_RATE, DZIELO_RYCZALT_THRESHOLD } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('dz-brutto') as HTMLInputElement).value) || 0;
+    const kupRate = Number(($('dz-kup') as HTMLSelectElement).value) || KUP_STANDARD;
+
+    const kup = brutto * kupRate;
+    const podstawa = Math.max(0, Math.round(brutto - kup));
+    const pit = Math.round(podstawa * PIT_ZALICZKA_RATE);
+    const netto = brutto - pit;
+
+    $span('dz-netto').textContent = fmt0.format(Math.round(netto));
+    $span('dz-total').textContent = fmtMoney0(brutto);
+    $span('dz-kupval').textContent = fmtMoney2(kup);
+    $span('dz-podstawa').textContent = fmtMoney2(podstawa);
+    $span('dz-pit').textContent = fmtMoney2(pit);
+
+    const pitPct = `${(PIT_ZALICZKA_RATE * 100).toString().replace('.', ',')}%`;
+    $span('dz-note').textContent = (brutto > 0 && brutto <= DZIELO_RYCZALT_THRESHOLD)
+      ? `Do ${DZIELO_RYCZALT_THRESHOLD} zł zwykle obowiązuje podatek zryczałtowany ${pitPct} bez kosztów.`
+      : '';
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#dzielo-calc input, #dzielo-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Zdjęcia artykułów i kroje pisma muszą być gotowe przed commitem.
+#
+# Oryginały zdjęć nie są commitowane - po przetworzeniu lądują w `.originals/`,
+# poza gitem. Konsekwencja jest taka, że nikt poza Twoim dyskiem nie odtworzy
+# brakującego wariantu: ani CI, ani deployment nie mają z czego. Dlatego
+# niekompletny commit trzeba zatrzymać tutaj, a nie kwadrans później na
+# czerwonym buildzie.
+#
+# Hak sprawdza, czy w `public/posts/` nie czeka nieprzetworzone zdjęcie, czy
+# manifest zgadza się z plikami na dysku i czy kroje odpowiadają źródłom
+# w `fonts/`. Niczego nie zapisuje.
+#
+# Włącza go `npm install` (skrypt `prepare` w package.json ustawia
+# core.hooksPath). Pojedynczy commit można przepuścić przez `git commit -n`.
+
+if [ ! -d node_modules ]; then
+  echo "pre-commit: brak node_modules - pomijam sprawdzenie zasobów."
+  exit 0
+fi
+
+npm run --silent check:assets || {
+  echo ""
+  echo "pre-commit: commit wstrzymany."
+  echo "Uruchom \`npm run assets\` i dodaj wynik do commitu (\`git add public/posts/_optimized src/assets/fonts\`)."
+  exit 1
+}

@@ -1,0 +1,335 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import FAQ from '../components/FAQ.astro';
+import CTA from '../components/CTA.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+import { setupFees, startsFrom } from '../data/pricing';
+
+/*
+ * Lokalny landing pod frazy „biuro rachunkowe Kraków” i „biuro księgowe Kraków”.
+ *
+ * Strona celowo nie podaje ulicy, numeru lokalu ani mapy: adres rejestrowy jest
+ * adresem prywatnym, a obsługa i tak odbywa się w całości online. Lokalność
+ * budujemy na mieście i realnym obszarze obsługi, nie na zapraszaniu klienta
+ * pod prywatny adres. Adres rejestrowy zostaje wyłącznie w regulaminie
+ * i w polityce prywatności, gdzie wymagają go przepisy.
+ */
+
+const districts = [
+  'Stare Miasto', 'Kazimierz', 'Podgórze', 'Krowodrza', 'Nowa Huta',
+  'Bronowice', 'Dębniki', 'Prądnik Biały', 'Prądnik Czerwony', 'Zwierzyniec',
+  'Grzegórzki', 'Czyżyny', 'Bieżanów - Prokocim', 'Łagiewniki - Borek Fałęcki', 'Swoszowice',
+];
+
+const collaboration = [
+  {
+    icon: 'file',
+    title: 'Dokumenty trafiają do nas zdjęciem albo plikiem',
+    body: 'Fakturę wrzucasz do portalu klienta ze zdjęcia z telefonu lub z pliku PDF. OCR odczytuje dane, my sprawdzamy i księgujemy. Nie ma segregatora, który trzeba raz w miesiącu zawieźć na drugi koniec Krakowa.',
+  },
+  {
+    icon: 'users',
+    title: 'Masz jednego opiekuna, nie infolinię',
+    body: 'Za Twoją firmę odpowiada konkretna osoba - ta sama co miesiąc. Piszesz do niej mailem albo dzwonisz. Standardowo odpowiadamy w ciągu 4 godzin roboczych.',
+  },
+  {
+    icon: 'clock',
+    title: 'Terminy pilnujemy my, nie Ty',
+    body: 'Wysokość podatku i składek dostajesz przed terminem płatności. O tym, co wymaga Twojej decyzji, informujemy z wyprzedzeniem, a nie w dniu upływu terminu.',
+  },
+  {
+    icon: 'headset',
+    title: 'Spotkania prowadzimy online',
+    body: 'Rozmowa o formie opodatkowania, przeglądzie roku albo planowanym zatrudnieniu to spotkanie wideo w umówionym terminie. Bez dojazdu, bez korków i bez szukania miejsca do parkowania.',
+  },
+];
+
+const process = [
+  { title: 'Bezpłatna konsultacja online', description: 'Trzydzieści minut rozmowy o tym, jak działa Twoja firma i czego potrzebujesz. Bez zobowiązań i bez sprzedażowego nacisku.' },
+  { title: 'Wycena z publicznego cennika', description: 'Kwotę wyliczamy z tego samego cennika, który widzisz na stronie. Cennik z dnia zawarcia umowy obowiązuje przez 12 miesięcy.' },
+  { title: 'Przejęcie dokumentów od poprzedniego biura', description: 'Wypowiedzenie, odbiór dokumentacji i pełnomocnictwa bierzemy na siebie. Proces trwa zwykle od 7 do 14 dni.' },
+  { title: 'Bieżąca obsługa online', description: 'Portal klienta, jeden opiekun, deklaracje wysyłane w terminie i podsumowanie miesiąca. Ten sam standard w Krakowie i poza nim.' },
+];
+
+const faq = [
+  {
+    q: 'Czy muszę przywozić dokumenty do biura w Krakowie?',
+    a: 'Nie. Dokumenty przekazujesz przez portal klienta - zdjęciem z telefonu albo plikiem PDF. Nie prowadzimy obsługi w formie wizyt z segregatorem, więc nie ma czego przywozić ani skąd odbierać.',
+  },
+  {
+    q: 'Czy da się z Wami spotkać osobiście?',
+    a: 'Spotkania prowadzimy online, przez wideokonferencję. To świadoma decyzja, a nie ograniczenie: dzięki niej mamy ten sam kalendarz dla klienta z Krowodrzy i z Gdańska, a termin da się ustalić na najbliższe dni zamiast na przyszły miesiąc.',
+  },
+  {
+    q: 'Jesteście biurem rachunkowym z Krakowa czy ogólnopolskim?',
+    a: 'Jednym i drugim. Firma jest zarejestrowana w Krakowie i stąd pracujemy, a obsługę prowadzimy online dla klientów z całej Polski. Klient z Krakowa nie dostaje z tego tytułu innej ceny ani innego zakresu obsługi.',
+  },
+  {
+    q: 'Ile kosztuje księgowość w Krakowie w Waszym biurze?',
+    a: `Cennik mamy publiczny - bez „skontaktuj się o wycenę”. Ryczałt od ${startsFrom('ryczalt')} zł, KPiR od ${startsFrom('kpir')} zł, pełna księgowość spółek od ${startsFrom('fk')} zł netto miesięcznie. Kwota zależy od formy rozliczenia i miesięcznej liczby dokumentów - pełne tabele znajdziesz na stronie <a href="/cennik">cennika</a>.`,
+  },
+  {
+    q: 'Czy pomagacie założyć firmę w Krakowie?',
+    a: `Tak, w formie konsultacji online: przechodzimy razem przez wniosek i wszystkie decyzje, które w nim zapadają - formę opodatkowania, kod tytułu w ZUS, kody PKD, VAT-R i VAT-UE, uprawnienia w KSeF. ${setupFees.jdg} zł przy jednoosobowej działalności, ${setupFees.s24} zł przy spółce, a przy umowie o obsługę zaliczamy tę kwotę na poczet pierwszej faktury. Wniosek podpisujesz i wysyłasz sam - w rejestracji nie jesteśmy pełnomocnikiem. Jeśli masz profil zaufany albo podpis kwalifikowany, do żadnego urzędu w Krakowie nie musisz iść osobiście.`,
+  },
+  {
+    q: 'Prowadzę firmę poza Krakowem. Czy to coś zmienia?',
+    a: 'Nie. Standard obsługi jest ten sam: portal klienta dostępny całą dobę, jeden opiekun, standardowo odpowiedź w 4 godziny robocze i deklaracje wysyłane w terminie. Urząd skarbowy i oddział ZUS właściwe dla Twojego adresu obsługujemy elektronicznie, niezależnie od tego, w którym mieście się znajdują.',
+  },
+];
+
+/*
+ * Dane strukturalne opisują biuro jako działalność obsługującą określony obszar:
+ * jest `areaServed`, nie ma `address` ani `geo`. To zgodne ze stanem faktycznym -
+ * nie mamy lokalu, do którego klient przychodzi.
+ */
+const localSchema = [
+  {
+    '@type': 'AccountingService',
+    '@id': 'https://taxun.pl/biuro-rachunkowe-krakow#local',
+    name: 'Taxun - biuro rachunkowe Kraków',
+    description: 'Biuro rachunkowe z Krakowa prowadzące księgowość online dla jednoosobowych działalności i spółek z Krakowa i całej Polski.',
+    url: 'https://taxun.pl/biuro-rachunkowe-krakow',
+    parentOrganization: { '@id': 'https://taxun.pl/#organization' },
+    telephone: `+${site.phoneHref.replace(/^\+/, '')}`,
+    email: site.email,
+    areaServed: [
+      { '@type': 'City', name: 'Kraków' },
+      { '@type': 'Country', name: 'Polska' },
+    ],
+    priceRange: site.priceRange,
+    openingHoursSpecification: [{
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: site.hoursStructured.days,
+      opens: site.hoursStructured.opens,
+      closes: site.hoursStructured.closes,
+    }],
+  },
+];
+
+const breadcrumbs = [{ label: 'Biuro rachunkowe Kraków' }];
+---
+<BaseLayout
+  title="Biuro rachunkowe Kraków - księgowość dla firm"
+  description={`Biuro rachunkowe z Krakowa dla JDG i spółek. Księgowość online, KSeF, OCR, kadry i płace. Publiczny cennik od ${startsFrom('ryczalt')} zł i jeden opiekun.`}
+  schema={localSchema}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    eyebrow="Kraków"
+    title="Biuro rachunkowe w Krakowie"
+    description="Taxun to biuro rachunkowe z Krakowa, które prowadzi księgowość online dla przedsiębiorców z Krakowa i całej Polski. Ryczałt, KPiR i pełna księgowość spółek, kadry i płace - z publicznym cennikiem i jednym opiekunem po naszej stronie."
+    breadcrumbs={breadcrumbs}
+  >
+    <div class="page-hero__actions">
+      <a href="/wycena" class="btn btn--accent btn--lg">
+        <span>Otrzymaj bezpłatną wycenę</span>
+        <Icon name="arrow-right" size={18}/>
+      </a>
+      <a href="/cennik" class="btn btn--ghost-light btn--lg">
+        <Icon name="tag" size={18}/>
+        <span>Zobacz cennik</span>
+      </a>
+    </div>
+  </PageHero>
+
+  <section class="section" id="ksiegowosc-online-krakow">
+    <div class="container">
+      <div class="krk-grid">
+        <div>
+          <span class="eyebrow">Dla firm z Krakowa</span>
+          <h2>Księgowość online dla firm z Krakowa</h2>
+          <p class="lede">Jesteśmy z Krakowa, ale nie prosimy Cię o przywożenie dokumentów. Całą obsługę prowadzimy zdalnie, więc lokalny klient nie musi dostarczać niczego osobiście ani planować wizyty w godzinach pracy biura.</p>
+          <p>Fakturę wrzucasz do portalu klienta zdjęciem z telefonu albo plikiem PDF, w dowolnym momencie. My odczytujemy ją przez OCR, sprawdzamy i księgujemy. Deklaracje, JPK_V7 i ZUS wysyłamy elektronicznie, a wysokość podatku i składek dostajesz przed terminem płatności. Wszystko, co w tradycyjnym biurze wymagało dojazdu, dzieje się u nas w przeglądarce.</p>
+          <p>Ma to praktyczny skutek, który widać dopiero w rachunku czasu: comiesięczny kurs na drugi koniec miasta z segregatorem to realnie kilka godzin w roku, spędzonych w korkach albo w poszukiwaniu miejsca do parkowania. U nas ten czas w ogóle się nie pojawia. Więcej o samym modelu pracy piszemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.</p>
+          <ul class="krk-list">
+            <li><Icon name="check-circle" size={16}/> Portal klienta z OCR - dokumenty wysyłasz z telefonu, o dowolnej porze</li>
+            <li><Icon name="check-circle" size={16}/> KSeF, JPK_V7, VAT-UE, ZUS właściciela i roczne PIT/CIT w cenie abonamentu</li>
+            <li><Icon name="check-circle" size={16}/> Cały cennik publiczny - bez gwiazdek i bez „skontaktuj się o wycenę”</li>
+            <li><Icon name="check-circle" size={16}/> Standardowo odpowiedź na maila i oddzwonienie w ciągu 4 godzin roboczych</li>
+          </ul>
+        </div>
+        <aside class="krk-card">
+          <div class="krk-card__pin"><Icon name="pin" size={20}/></div>
+          <h3>Taxun w skrócie</h3>
+          <p class="krk-card__line"><strong>Skąd działamy:</strong> {site.address.city}, województwo {site.address.region}</p>
+          <p class="krk-card__line"><strong>Kogo obsługujemy:</strong> firmy z Krakowa i z całej Polski</p>
+          <p class="krk-card__line"><strong>Jak pracujemy:</strong> w 100% online, spotkania przez wideokonferencję</p>
+          <p class="krk-card__line"><strong>Godziny kontaktu:</strong> {site.hours}</p>
+          <p>
+            <a href={`tel:${site.phoneHref}`}>{site.phoneDisplay}</a><br/>
+            <a href={`mailto:${site.email}`}>{site.email}</a>
+          </p>
+          <a href="/kontakt" class="btn btn--ghost btn--block">
+            <Icon name="mail" size={14}/>
+            <span>Napisz do nas</span>
+          </a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="wspolpraca">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Współpraca</span>
+        <h2>Biuro księgowe w Krakowie - jak wygląda współpraca?</h2>
+        <p>Szukając biura księgowego w Krakowie, zwykle trzeba wybrać między bliskością a wygodą. My rozwiązujemy to inaczej: firma jest krakowska, ale codzienna praca dzieje się przez przeglądarkę, więc odległość przestaje mieć znaczenie.</p>
+      </div>
+      <div class="krk-cards">
+        {collaboration.map((c) => (
+          <article class="krk-tile">
+            <div class="krk-tile__icon"><Icon name={c.icon} size={20}/></div>
+            <h3>{c.title}</h3>
+            <p>{c.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="dzielnice">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow">Obszar obsługi</span>
+        <h2>Obsługujemy firmy z całego Krakowa</h2>
+        <p>Nie mamy oddziałów w dzielnicach i nie udajemy, że mamy. Obsługa jest zdalna, więc adres Twojej firmy nie wpływa ani na cenę, ani na to, jak szybko odpowiadamy. Poniższa lista pokazuje po prostu obszar, z którego przyjmujemy zlecenia.</p>
+      </div>
+      <ul class="districts">
+        {districts.map((d) => (
+          <li class="district">{d}</li>
+        ))}
+        <li class="district district--more">… i pozostałe dzielnice Krakowa oraz gminy ościenne</li>
+      </ul>
+      <p class="districts__note">Poza Krakowem obsługujemy klientów z całej Polski, na tych samych zasadach i w tym samym cenniku.</p>
+    </div>
+  </section>
+
+  <ProcessSteps
+    items={process}
+    eyebrow="Start współpracy"
+    title="Od pierwszej rozmowy do pierwszej deklaracji"
+    description="Zmiana biura rachunkowego bywa odkładana miesiącami, bo kojarzy się z chaosem. Prowadzimy ten proces od początku do końca i mówimy wprost, na którym etapie jesteśmy."
+  />
+
+  <FAQ
+    eyebrow="FAQ"
+    title="Najczęstsze pytania o obsługę w Krakowie"
+    items={faq}
+  />
+
+  <CTA
+    title="Porozmawiajmy o księgowości Twojej firmy"
+    description="Bezpłatna 30-minutowa konsultacja online. Bez zobowiązań i bez sprzedażowego nacisku - po rozmowie dostajesz pisemne podsumowanie i wycenę."
+  />
+</BaseLayout>
+
+<style>
+.krk-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.krk-grid .lede { margin-top: 1rem; }
+.krk-grid p { margin-top: 1rem; line-height: 1.65; color: var(--text); }
+.krk-grid a { color: var(--accent-700); }
+.krk-list {
+  margin-top: 1.5rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.krk-list li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+.krk-list svg { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+
+.krk-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  position: sticky;
+  top: 100px;
+}
+.krk-card__pin {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-500);
+  color: var(--ink-950);
+  display: grid; place-items: center;
+}
+.krk-card p { font-size: 0.9375rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
+.krk-card__line strong { color: var(--text-strong); font-weight: 600; }
+.krk-card a { color: var(--accent-700); }
+
+@media (max-width: 900px) {
+  .krk-grid { grid-template-columns: 1fr; }
+  .krk-card { position: static; }
+}
+
+.krk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+@media (min-width: 980px) { .krk-cards { grid-template-columns: repeat(2, 1fr); } }
+.krk-tile {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.krk-tile__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  display: grid; place-items: center;
+  margin-bottom: 0.25rem;
+}
+.krk-tile h3 { font-size: 1.0625rem; }
+.krk-tile p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+
+.districts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  max-width: 820px;
+  margin: 0 auto;
+}
+.district {
+  padding: 0.5rem 0.875rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-strong);
+}
+.district--more { color: var(--text-muted); font-style: italic; }
+.districts__note {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+</style>

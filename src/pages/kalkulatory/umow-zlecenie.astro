@@ -1,0 +1,259 @@
+---
+import CalculatorLayout from '../../layouts/CalculatorLayout.astro';
+import {
+  KUP_STANDARD, KUP_TWORCZE, KUP_TWORCZE_LIMIT, EMP_EMERYTALNA, EMP_RENTOWA, EMP_CHOROBOWA,
+  HEALTH_RATE, PIT_ZALICZKA_RATE, ULGA_MLODYCH_LIMIT, ULGA_MLODYCH_AGE,
+  MIN_STAWKA_GODZINOWA, TAX_YEAR,
+  DATA_AKTUALIZACJI,
+} from '../../lib/tax-constants';
+import { zl, zl2, pct } from '../../lib/format';
+
+const skladkiZleceniobiorcy = [
+  { nazwa: 'Emerytalna', stawka: pct(EMP_EMERYTALNA) },
+  { nazwa: 'Rentowa', stawka: pct(EMP_RENTOWA) },
+  { nazwa: 'Chorobowa (dobrowolna)', stawka: pct(EMP_CHOROBOWA) },
+  { nazwa: 'Zdrowotna', stawka: `${pct(HEALTH_RATE)} (od podstawy po odjęciu społecznych)` },
+];
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': 'https://taxun.pl/kalkulatory/umow-zlecenie#webpage',
+  name: `Kalkulator umowy zlecenie ${TAX_YEAR}`,
+  description: `Bezpłatny kalkulator umowy zlecenie brutto-netto na ${TAX_YEAR} r. Składki ZUS, składka zdrowotna, zaliczka PIT, ulga dla młodych i wariant studencki.`,
+  url: 'https://taxun.pl/kalkulatory/umow-zlecenie',
+  inLanguage: 'pl-PL',
+  isAccessibleForFree: true,
+  isPartOf: { '@id': 'https://taxun.pl/#website' },
+  about: { '@id': 'https://taxun.pl/#organization' },
+  publisher: { '@id': 'https://taxun.pl/#organization' },
+};
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Jakie składki płaci się od umowy zlecenia w ${TAX_YEAR}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Gdy zlecenie jest jedynym tytułem do ubezpieczeń, obowiązkowe są składki: emerytalna ${pct(EMP_EMERYTALNA)}, rentowa ${pct(EMP_RENTOWA)} i zdrowotna ${pct(HEALTH_RATE)}. Składka chorobowa ${pct(EMP_CHOROBOWA)} jest dobrowolna. Studenci do ${ULGA_MLODYCH_AGE}. roku życia nie płacą żadnych składek ZUS.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Ile na rękę z umowy zlecenia dla studenta do ${ULGA_MLODYCH_AGE} lat?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Student do ${ULGA_MLODYCH_AGE}. roku życia jest zwolniony ze składek ZUS oraz z podatku (ulga dla młodych do limitu ${zl(ULGA_MLODYCH_LIMIT)} rocznie). Oznacza to, że kwota brutto jest równa kwocie netto - student dostaje całe wynagrodzenie na rękę.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Jakie koszty uzyskania przychodu przy umowie zlecenia?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Standardowo koszty uzyskania to ${pct(KUP_STANDARD)} przychodu po odjęciu składek społecznych. Przy pracy o charakterze twórczym z przeniesieniem praw autorskich stosuje się ${pct(KUP_TWORCZE)} kosztów (z rocznym limitem ${zl(KUP_TWORCZE_LIMIT)}).`,
+      },
+    },
+  ],
+};
+
+const schema = [appSchema, faqSchema];
+---
+<CalculatorLayout
+  title={`Kalkulator umowy zlecenie ${TAX_YEAR}`}
+  description="Policz wynagrodzenie netto z umowy zlecenia: składki ZUS, zdrowotna, zaliczka PIT. Z wariantem studenckim i ulgą dla młodych. Liczy się w przeglądarce."
+  metaTitle={`Kalkulator umowy zlecenie ${TAX_YEAR} - brutto na netto`}
+  metaDescription={`Bezpłatny kalkulator umowy zlecenie ${TAX_YEAR}. Wynagrodzenie netto, składki ZUS i zaliczka PIT. Wariant studencki i ulga dla młodych.`}
+  breadcrumbLabel="Umowa zlecenie"
+  intro="placeholder"
+  schema={schema}
+  lastUpdated={DATA_AKTUALIZACJI}
+>
+  <form class="calc" id="zlec-calc">
+    <div class="calc-grid-inputs">
+      <div class="calc-field">
+        <label for="zl-brutto">
+          Wynagrodzenie brutto
+          <small>kwota z umowy</small>
+        </label>
+        <div class="calc-field__input calc-field__input--with-suffix">
+          <input type="number" id="zl-brutto" min="0" step="100" value="5000" inputmode="numeric"/>
+          <span class="calc-field__suffix">zł</span>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zl-tytul">
+          Tytuł ubezpieczenia
+        </label>
+        <div class="calc-field__input">
+          <select id="zl-tytul">
+            <option value="pelne" selected>Zlecenie jako jedyny tytuł (pełne ZUS)</option>
+            <option value="student">{`Student do ${ULGA_MLODYCH_AGE} lat (bez ZUS i PIT)`}</option>
+            <option value="zdrowotna">Inny tytuł / etat - tylko zdrowotna</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field">
+        <label for="zl-kup">
+          Koszty uzyskania przychodu
+        </label>
+        <div class="calc-field__input">
+          <select id="zl-kup">
+            <option value={KUP_STANDARD} selected>Standardowe - {pct(KUP_STANDARD)}</option>
+            <option value={KUP_TWORCZE}>Twórcze (prawa autorskie) - {pct(KUP_TWORCZE)}</option>
+            <option value="0">Bez kosztów</option>
+          </select>
+        </div>
+      </div>
+      <div class="calc-field" id="zl-chor-field">
+        <label for="zl-chor">
+          Składka chorobowa (dobrowolna)
+        </label>
+        <div class="calc-field__input">
+          <select id="zl-chor">
+            <option value="nie" selected>Bez chorobowej</option>
+            <option value="tak">Z chorobową ({pct(EMP_CHOROBOWA)})</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-result">
+      <div class="calc-result__label">Na rękę zleceniobiorcy</div>
+      <div class="calc-result__value">
+        <span id="zl-netto">-</span> <small>zł</small>
+      </div>
+      <div class="calc-result__sub">
+        Całkowity koszt zleceniodawcy: <strong id="zl-total">-</strong>. <span id="zl-note"></span>
+      </div>
+
+      <div class="calc-breakdown">
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Składki społeczne zleceniobiorcy</span>
+          <span class="calc-breakdown__value" id="zl-spol">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Składka zdrowotna ({pct(HEALTH_RATE)})</span>
+          <span class="calc-breakdown__value" id="zl-zdrow">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Koszty uzyskania przychodu</span>
+          <span class="calc-breakdown__value" id="zl-kupval">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Zaliczka na PIT</span>
+          <span class="calc-breakdown__value" id="zl-pit">-</span>
+        </div>
+        <div class="calc-breakdown__row">
+          <span class="calc-breakdown__label">Narzut zleceniodawcy (ZUS)</span>
+          <span class="calc-breakdown__value" id="zl-narzut">-</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="calc-explanation" slot="explanation">
+    <h2>Jak liczymy wynagrodzenie z umowy zlecenia</h2>
+    <p>Z kwoty brutto potrąca się składki ZUS finansowane przez zleceniobiorcę, składkę zdrowotną i zaliczkę na PIT. Zakres składek zależy od tytułu ubezpieczenia.</p>
+
+    <h3>Składki zleceniobiorcy (od brutto)</h3>
+    <table>
+      <thead>
+        <tr><th>Składka</th><th>Stawka</th></tr>
+      </thead>
+      <tbody>
+        {skladkiZleceniobiorcy.map((s) => (
+          <tr><td>{s.nazwa}</td><td>{s.stawka}</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h3>Warianty</h3>
+    <ul>
+      <li><strong>Jedyny tytuł</strong> - pełne składki społeczne i zdrowotna.</li>
+      <li><strong>{`Student do ${ULGA_MLODYCH_AGE} lat`}</strong> - brak składek ZUS i zwolnienie z PIT (ulga dla młodych). Brutto = netto.</li>
+      <li><strong>Inny tytuł / etat z min. krajową</strong> - składki społeczne nie są obowiązkowe, płacisz tylko zdrowotną.</li>
+    </ul>
+
+    <h3>Podatek</h3>
+    <p>{`Zaliczka PIT to ${pct(PIT_ZALICZKA_RATE)} podstawy = przychód - składki społeczne - koszty uzyskania (${pct(KUP_STANDARD)} lub ${pct(KUP_TWORCZE)}). Składki zdrowotnej nie odlicza się od podatku. Minimalna stawka godzinowa zlecenia w ${TAX_YEAR} r. wynosi ${zl2(MIN_STAWKA_GODZINOWA)} brutto.`}</p>
+
+    <p style="margin-top:1.25rem"><strong>Źródła:</strong> ustawa o systemie ubezpieczeń społecznych, ustawa o PIT, <a href="https://www.zus.pl/" rel="noopener" target="_blank">zus.pl</a>.</p>
+    <p style="margin-top:0.75rem; font-size: 0.8125rem; color: var(--text-subtle);">Zatrudniasz na zlecenia? Listy płac i ZUS dla zleceniobiorców prowadzimy w ramach <a href="/kadry-place" style="color: var(--accent-700)">kadr i płac</a>.</p>
+  </div>
+</CalculatorLayout>
+
+<script>
+  import {
+    EMP_EMERYTALNA, EMP_RENTOWA, EMP_CHOROBOWA, HEALTH_RATE,
+    PIT_ZALICZKA_RATE, PAYER_ZLECENIE_RATE, ULGA_MLODYCH_AGE,
+  } from '../../lib/tax-constants';
+
+  const fmt2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const fmtMoney2 = (v: number) => `${fmt2.format(v)} zł`;
+  const fmtMoney0 = (v: number) => `${fmt0.format(Math.round(v))} zł`;
+
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  const $span = (id: string) => document.getElementById(id) as HTMLElement;
+
+  function calculate() {
+    const brutto = Number(($('zl-brutto') as HTMLInputElement).value) || 0;
+    const tytul = ($('zl-tytul') as HTMLSelectElement).value;
+    const kupRate = Number(($('zl-kup') as HTMLSelectElement).value);
+    const chor = ($('zl-chor') as HTMLSelectElement).value === 'tak';
+
+    const chorField = document.getElementById('zl-chor-field')!;
+    chorField.hidden = tytul !== 'pelne';
+
+    let spoleczne = 0;
+    let zdrowotna = 0;
+    let kup = 0;
+    let pit = 0;
+
+    if (tytul === 'student') {
+      // brak ZUS, brak PIT (ulga dla młodych)
+      spoleczne = 0;
+      zdrowotna = 0;
+      pit = 0;
+    } else {
+      if (tytul === 'pelne') {
+        spoleczne = brutto * (EMP_EMERYTALNA + EMP_RENTOWA + (chor ? EMP_CHOROBOWA : 0));
+      } else {
+        spoleczne = 0; // tylko zdrowotna
+      }
+      const podstawaZdrow = brutto - spoleczne;
+      zdrowotna = podstawaZdrow * HEALTH_RATE;
+      kup = (brutto - spoleczne) * kupRate;
+      const podstawaPit = Math.max(0, Math.round(brutto - spoleczne - kup));
+      pit = Math.round(podstawaPit * PIT_ZALICZKA_RATE);
+    }
+
+    const netto = brutto - spoleczne - zdrowotna - pit;
+
+    // Narzut zleceniodawcy (tylko gdy pełne społeczne)
+    const narzut = (tytul === 'pelne') ? brutto * PAYER_ZLECENIE_RATE : 0;
+    const total = brutto + narzut;
+
+    $span('zl-netto').textContent = fmt0.format(Math.round(netto));
+    $span('zl-total').textContent = fmtMoney0(total);
+    $span('zl-spol').textContent = fmtMoney2(spoleczne);
+    $span('zl-zdrow').textContent = fmtMoney2(zdrowotna);
+    $span('zl-kupval').textContent = fmtMoney2(kup);
+    $span('zl-pit').textContent = fmtMoney2(pit);
+    $span('zl-narzut').textContent = fmtMoney2(narzut);
+
+    $span('zl-note').textContent = tytul === 'student'
+      ? `Student do ${ULGA_MLODYCH_AGE} lat - brutto = netto.`
+      : (tytul === 'zdrowotna' ? 'Składki społeczne nieobowiązkowe - tylko zdrowotna.' : '');
+  }
+
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#zlec-calc input, #zlec-calc select').forEach((el) => {
+    el.addEventListener('input', calculate);
+    el.addEventListener('change', calculate);
+  });
+  calculate();
+</script>

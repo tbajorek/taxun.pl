@@ -1,0 +1,2106 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+import RecaptchaScript from '../components/RecaptchaScript.astro';
+import LegalNotice from '../components/LegalNotice.astro';
+import NewClientsPaused from '../components/NewClientsPaused.astro';
+import { site } from '../data/site';
+import { steps } from '../data/wizard';
+import { SUMMARY_FIELDS, questionsById, startingPrice } from '../lib/wizard';
+
+// Kwota "od" pochodzi z cennika (src/data/pricing.ts) - tak samo jak tabele
+// na stronie /cennik. Jedna zmiana ceny aktualizuje oba miejsca.
+const priceFrom = `od ${new Intl.NumberFormat('pl-PL').format(startingPrice)} zł`;
+
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined;
+
+const totalSteps = steps.length;
+
+// Podsumowanie w panelu bocznym pokazuje wybrane odpowiedzi i pozwala do nich
+// wrócić - dlatego już na serwerze wiemy, w którym kroku leży każde pytanie.
+const summaryRows = SUMMARY_FIELDS.map((id) => {
+  const question = questionsById[id];
+  const stepIndex = steps.findIndex((s) => s.questions.some((q) => q.id === id));
+  return { id, label: question.shortLabel ?? question.label, stepIndex };
+});
+
+const trust = [
+  { icon: 'clock', label: 'Standardowo odpowiedź w 4 godziny robocze' },
+  { icon: 'lock', label: 'Dane szyfrowane, zgodnie z RODO' },
+  { icon: 'check-circle', label: 'Bez zobowiązań i bez ukrytych kosztów' },
+];
+
+const heroBadges = [
+  { icon: 'clock', label: 'Około 2 minut' },
+  { icon: 'tag', label: 'Kwota z publicznego cennika' },
+  { icon: 'mail', label: 'Konkretna odpowiedź standardowo w 4 h roboczych' },
+];
+
+const nextSteps = [
+  {
+    icon: 'search',
+    title: 'Analizujemy zgłoszenie',
+    body: 'Sprawdzamy formę rozliczenia, wolumen dokumentów i to, czy da się coś ustawić korzystniej.',
+  },
+  {
+    icon: 'mail',
+    title: 'Wysyłamy wycenę na e-mail',
+    body: 'Konkretna kwota, zakres obsługi i plan wdrożenia. Wszystko na piśmie, standardowo w ciągu 4 godzin roboczych.',
+  },
+  {
+    icon: 'headset',
+    title: 'Rozmawiamy, jeśli zechcesz',
+    body: 'Bezpłatne 30 minut z księgowym. Bez presji i bez zobowiązań - decyzję podejmujesz później.',
+  },
+];
+---
+<BaseLayout
+  title="Bezpłatna wycena księgowości - formularz online"
+  description="Formularz przeprowadzi Cię przez formę prawną, opodatkowanie, VAT i wolumen dokumentów. W odpowiedzi dostajesz orientacyjną kwotę z cennika."
+  breadcrumbs={[{ label: 'Wycena' }]}
+  schema={{
+    '@type': 'WebPage',
+    name: 'Bezpłatna wycena księgowości - Taxun',
+    description: 'Formularz wyceny księgowości dla firm zakładanych od zera i firm przenoszących księgowość z innego biura.',
+    isPartOf: { '@id': 'https://taxun.pl/#website' },
+    about: { '@id': 'https://taxun.pl/#organization' },
+  }}
+>
+  <RecaptchaScript slot="head" />
+
+  {/*
+    Komunikat o wstrzymaniu przyjmowania nowych klientów. Sam sprawdza zmienną
+    NEW_CLIENTS_PAUSED i bez niej nie renderuje niczego.
+  */}
+  <NewClientsPaused />
+
+  <PageHero
+    eyebrow="Bezpłatna wycena"
+    title="Wycena dopasowana do Twojej firmy"
+    description="Nie musisz zgadywać, co nam napisać - formularz przeprowadzi Cię przez wszystko, co dla wyceny istotne. Dzięki temu pierwsza odpowiedź, którą dostaniesz, to orientacyjna kwota, zakres obsługi i plan wdrożenia, a nie prośba o rozmowę."
+    breadcrumbs={[{ label: 'Wycena' }]}
+    compact
+  >
+    <ul class="hero-badges">
+      {heroBadges.map((b) => (
+        <li><Icon name={b.icon} size={16}/> {b.label}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <section class="section section--alt wz-section">
+    <div class="container container--wide">
+      <div class="wz">
+        <!-- ── Kreator ─────────────────────────────────────────────────── -->
+        <div class="wz__main">
+          <form class="wz-card" id="wizard" novalidate>
+            <div class="wz-prefill" data-prefill hidden>
+              <span class="wz-prefill__icon" aria-hidden="true"><Icon name="check-circle" size={18}/></span>
+              <p class="wz-prefill__text">
+                <strong data-prefill-title>Pakiet wybrany w cenniku</strong>
+                <span data-prefill-detail></span>
+              </p>
+              <button type="button" class="wz-prefill__action" data-unlock>Zmień pakiet</button>
+            </div>
+
+            <!-- Pasek postępu -->
+            <div class="wz-progress">
+              <ol class="stepper" aria-label="Postęp formularza">
+                {steps.map((step, i) => (
+                  <li class="stepper__item" data-stepper={i}>
+                    <button type="button" class="stepper__btn" data-goto={i} disabled={i > 0}>
+                      <span class="stepper__dot">
+                        <span class="stepper__num">{i + 1}</span>
+                        <span class="stepper__done" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </span>
+                      </span>
+                      <span class="stepper__label">{step.eyebrow}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <div class="wz-progress__bar" role="progressbar" aria-label="Postęp wypełniania wyceny" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-progressbar>
+                <span data-progressfill></span>
+              </div>
+              <p class="wz-progress__count"><span data-stepcount>Krok 1 z {totalSteps}</span></p>
+            </div>
+
+            <!-- Kroki -->
+            {steps.map((step, stepIndex) => (
+              <section class="step" data-step={stepIndex} data-step-id={step.id} id={`krok-${stepIndex + 1}`} hidden aria-labelledby={`step-title-${stepIndex}`}>
+                <header class="step__head">
+                  <h2
+                    class="step__title"
+                    id={`step-title-${stepIndex}`}
+                    tabindex="-1"
+                    data-title
+                    data-title-zalozenie={step.titleByMode?.zalozenie ?? step.title}
+                    data-title-przeniesienie={step.titleByMode?.przeniesienie ?? step.title}
+                  >{step.title}</h2>
+                  {(step.intro || step.introByMode) && (
+                    <p
+                      class="step__intro"
+                      data-intro
+                      data-intro-zalozenie={step.introByMode?.zalozenie ?? step.intro ?? ''}
+                      data-intro-przeniesienie={step.introByMode?.przeniesienie ?? step.intro ?? ''}
+                    >{step.intro ?? ''}</p>
+                  )}
+                </header>
+
+                <div class="step__body">
+                  {step.questions.map((q) => {
+                    const isChoice = q.type === 'choice' || q.type === 'multi';
+                    const labelZ = q.labelByMode?.zalozenie ?? q.label;
+                    const labelP = q.labelByMode?.przeniesienie ?? q.label;
+                    const helpZ = q.helpByMode?.zalozenie ?? q.help ?? '';
+                    const helpP = q.helpByMode?.przeniesienie ?? q.help ?? '';
+                    const classes = [
+                      'q',
+                      `q--${q.type}`,
+                      q.attach ? 'q--attached' : '',
+                      q.half ? 'q--half' : '',
+                      q.collapsible ? 'q--collapsible' : '',
+                      q.id === 'mode' ? 'q--hero' : '',
+                    ].filter(Boolean).join(' ');
+
+                    const opts = q.options ?? [];
+
+                    if (isChoice && q.layout === 'slider') {
+                      return (
+                        <fieldset class={classes} data-q={q.id} data-type={q.type} hidden>
+                          <legend class="q__legend">
+                            <span
+                              class="q__label"
+                              data-label
+                              data-label-zalozenie={labelZ}
+                              data-label-przeniesienie={labelP}
+                            >{q.label}</span>
+                            <span class="q__req" data-req hidden aria-hidden="true">*</span>
+                          </legend>
+                          {(q.help || q.helpByMode) && (
+                            <p class="q__help" data-help data-help-zalozenie={helpZ} data-help-przeniesienie={helpP}>{q.help ?? ''}</p>
+                          )}
+                          <div class="slider">
+                            <output class="slider__readout" for={`f-${q.id}`} data-slider-readout>
+                              <span class="slider__value" data-slider-value>{opts[0]?.label}</span>
+                              <span class="slider__hint" data-slider-hint>{opts[0]?.hint ?? ''}</span>
+                            </output>
+                            <input
+                              class="slider__input"
+                              id={`f-${q.id}`}
+                              type="range"
+                              min="0"
+                              max={Math.max(0, opts.length - 1)}
+                              step="1"
+                              value="0"
+                              data-slider-input={q.id}
+                            />
+                            <div class="slider__scale" aria-hidden="true">
+                              {opts.map((o) => (
+                                <span class="slider__tick" data-opt={o.value} data-slider-tick>{o.label}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <p class="q__error" data-error role="alert" hidden></p>
+                        </fieldset>
+                      );
+                    }
+
+                    return isChoice ? (
+                      <fieldset class={classes} data-q={q.id} data-type={q.type} hidden>
+                        <legend class="q__legend">
+                          <span
+                            class="q__label"
+                            data-label
+                            data-label-zalozenie={labelZ}
+                            data-label-przeniesienie={labelP}
+                          >{q.label}</span>
+                          <span class="q__req" data-req hidden aria-hidden="true">*</span>
+                        </legend>
+                        {(q.help || q.helpByMode) && (
+                          <p class="q__help" data-help data-help-zalozenie={helpZ} data-help-przeniesienie={helpP}>{q.help ?? ''}</p>
+                        )}
+                        <div class={`opts opts--${q.layout ?? 'pills'} opts--cols-${q.columns ?? 2}`}>
+                          {(q.options ?? []).map((o) => (
+                            <label class="opt" data-opt={o.value} hidden>
+                              <input
+                                type={q.type === 'multi' ? 'checkbox' : 'radio'}
+                                name={q.id}
+                                value={o.value}
+                                class="opt__input"
+                              />
+                              <span class="opt__box">
+                                {o.icon && <span class="opt__icon" aria-hidden="true"><Icon name={o.icon} size={20}/></span>}
+                                <span class="opt__text">
+                                  <span class="opt__label">{o.label}</span>
+                                  {o.hint && <span class="opt__hint">{o.hint}</span>}
+                                </span>
+                                <span class="opt__mark" aria-hidden="true">
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        <p class="q__error" data-error role="alert" hidden></p>
+                      </fieldset>
+                    ) : (
+                      <div class={classes} data-q={q.id} data-type={q.type} hidden>
+                        {q.collapsible && (
+                          <button type="button" class="q__toggle" data-collapse-toggle>
+                            <Icon name="tag" size={15}/>
+                            <span>{q.collapsible}</span>
+                          </button>
+                        )}
+                        <div class="q__fieldwrap" data-fieldwrap hidden={Boolean(q.collapsible)}>
+                          <label class="field" for={`f-${q.id}`}>
+                            <span class="field__label">
+                              <span data-label data-label-zalozenie={labelZ} data-label-przeniesienie={labelP}>{q.label}</span>
+                              <span class="q__req" data-req hidden aria-hidden="true">*</span>
+                            </span>
+                            {q.type === 'textarea' ? (
+                              <textarea
+                                id={`f-${q.id}`}
+                                name={q.id}
+                                rows={q.rows ?? 4}
+                                maxlength={q.maxlength}
+                                placeholder={q.placeholder}
+                                data-placeholder-zalozenie={q.placeholderByMode?.zalozenie ?? q.placeholder ?? ''}
+                                data-placeholder-przeniesienie={q.placeholderByMode?.przeniesienie ?? q.placeholder ?? ''}
+                              ></textarea>
+                            ) : (
+                              <input
+                                id={`f-${q.id}`}
+                                type={q.type === 'date' ? 'date' : q.type === 'email' ? 'email' : q.type === 'tel' ? 'tel' : 'text'}
+                                name={q.id}
+                                maxlength={q.maxlength}
+                                placeholder={q.placeholder}
+                                autocomplete={q.autocomplete}
+                                inputmode={q.inputmode}
+                              />
+                            )}
+                          </label>
+                          {(q.help || q.helpByMode) && (
+                            <p class="q__help" data-help data-help-zalozenie={helpZ} data-help-przeniesienie={helpP}>{q.help ?? ''}</p>
+                          )}
+                          <p class="q__error" data-error role="alert" hidden></p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {step.id === 'kontakt' && (
+                    <div class="consents">
+                      <label class="check">
+                        <input type="checkbox" name="privacy" />
+                        <span>Zapoznałem/am się z <a href="/polityka-prywatnosci" target="_blank" rel="noopener">polityką prywatności</a> i akceptuję przetwarzanie moich danych w celu przygotowania wyceny i obsługi zapytania. <em>*</em></span>
+                      </label>
+                      <p class="q__error" data-error="privacy" role="alert" hidden></p>
+                      <label class="check">
+                        <input type="checkbox" name="marketing" />
+                        <span>Chcę otrzymywać bezpłatny newsletter z aktualizacjami i poradami księgowymi (bez spamu, około jednego e-maila miesięcznie).</span>
+                      </label>
+                      <p class="consents__legal">
+                        * Pole wymagane. Administratorem danych jest {site.brandOwner} (właściciel marki Taxun).
+                        Dane wykorzystujemy wyłącznie do przygotowania odpowiedzi na to zgłoszenie.
+                        {recaptchaSiteKey && (
+                          <>
+                            {' '}Formularz chroni reCAPTCHA - obowiązują <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Polityka prywatności</a> i <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Warunki</a> Google.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ))}
+
+            <!-- Pole-pułapka na boty. Ukryte dla ludzi i czytników ekranu. -->
+            <div class="wz-honeypot" aria-hidden="true">
+              <label for="wz-website">Nie wypełniaj tego pola</label>
+              <input id="wz-website" type="text" name="website" tabindex="-1" autocomplete="off" />
+            </div>
+
+            <div class="wz-foot">
+              <p class="wz-estimate wz-estimate--inline" data-estimate-inline hidden>
+                <span class="wz-estimate__label">Szacowany abonament</span>
+                <span class="wz-estimate__value" data-price>{priceFrom}</span>
+              </p>
+              <p class="wz-note" data-nav-hint hidden role="alert"></p>
+              <div class="wz-nav">
+                <button type="button" class="btn btn--ghost wz-nav__back" data-prev hidden>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                  <span>Wstecz</span>
+                </button>
+                <button type="button" class="btn btn--accent btn--lg wz-nav__next" data-next>
+                  <span>Dalej</span>
+                  <Icon name="arrow-right" size={18}/>
+                </button>
+                <button type="submit" class="btn btn--accent btn--lg wz-nav__next" data-submit hidden>
+                  <span>Wyślij zgłoszenie</span>
+                  <Icon name="arrow-right" size={18}/>
+                </button>
+              </div>
+              <div class="wz-alert" data-alert hidden role="alert"></div>
+            </div>
+          </form>
+
+          <!-- Potwierdzenie po wysłaniu -->
+          <div class="wz-card wz-done" data-done hidden tabindex="-1">
+            <span class="wz-done__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <h2>Zgłoszenie dotarło. Dziękujemy!</h2>
+            <p class="wz-done__lede">
+              Odpowiedź wyślemy na adres <strong data-done-email>podany w formularzu</strong>.
+              Znajdziesz w niej wycenę, zakres obsługi i plan wdrożenia - standardowo w mniej niż 4 godziny robocze.
+            </p>
+            <ol class="wz-done__steps">
+              {nextSteps.map((s, i) => (
+                <li>
+                  <span class="wz-done__icon"><Icon name={s.icon} size={18}/></span>
+                  <div>
+                    <strong>{i + 1}. {s.title}</strong>
+                    <p>{s.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div class="wz-done__actions">
+              <a href="/cennik" class="btn btn--primary">
+                <Icon name="tag" size={16}/>
+                <span>Zobacz pełny cennik</span>
+              </a>
+              <a href={`tel:${site.phoneHref}`} class="btn btn--outline">
+                <Icon name="phone" size={16}/>
+                <span>{site.phoneDisplay}</span>
+              </a>
+            </div>
+          </div>
+
+          <noscript>
+            <div class="wz-card wz-noscript">
+              <h2>Formularz wymaga włączonego JavaScriptu</h2>
+              <p>
+                Kreator dobiera pytania do Twojej sytuacji, dlatego potrzebuje JS. Włącz go albo napisz do nas
+                bezpośrednio - odpowiemy tak samo szybko.
+              </p>
+              <p>
+                <a href={`mailto:${site.email}`} class="btn btn--accent">Napisz na {site.email}</a>
+                <a href="/kontakt" class="btn btn--outline">Prosty formularz kontaktowy</a>
+              </p>
+            </div>
+          </noscript>
+        </div>
+
+        <!-- ── Panel boczny ────────────────────────────────────────────── -->
+        <aside class="wz__side">
+          <div class="side-card side-card--price">
+            <span class="side-card__eyebrow">Szacowany abonament</span>
+            <p class="side-price">
+              <span class="side-price__value" data-price>{priceFrom}</span>
+              <span class="side-price__unit">netto / mies.</span>
+            </p>
+            <p class="side-price__scope" data-price-scope>Uzupełnij formę rozliczenia i liczbę dokumentów, a policzymy kwotę.</p>
+            <ul class="side-lines" data-price-lines hidden></ul>
+            <p class="side-price__once" data-price-once hidden></p>
+            <p class="side-price__note">Wyliczenie z naszego publicznego cennika. Ma charakter orientacyjny i nie jest ofertą w rozumieniu art. 66 Kodeksu cywilnego - szczegóły w <a href="/regulamin">regulaminie</a>. Ostateczną stawkę potwierdzamy mailowo po analizie zgłoszenia, przed podpisaniem umowy.</p>
+          </div>
+
+          <div class="side-card">
+            <h2 class="side-card__title">Twoje odpowiedzi</h2>
+            <p class="side-empty" data-summary-empty>Tutaj pojawi się podsumowanie. Każdą odpowiedź możesz zmienić jednym kliknięciem.</p>
+            <ul class="summary" data-summary>
+              {summaryRows.map((row) => (
+                <li class="summary__row" data-summary-row={row.id} hidden>
+                  <span class="summary__label">{row.label}</span>
+                  <span class="summary__value" data-summary-value></span>
+                  <button type="button" class="summary__edit" data-goto={row.stepIndex} data-summary-edit={row.id}>
+                    <span class="sr-only">Zmień: {row.label}</span>
+                    <span aria-hidden="true">Zmień</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="side-card side-card--trust">
+            <ul class="trust">
+              {trust.map((t) => (
+                <li><span class="trust__icon"><Icon name={t.icon} size={16}/></span>{t.label}</li>
+              ))}
+            </ul>
+            <div class="side-help">
+              <p>Wolisz porozmawiać albo masz krótkie pytanie?</p>
+              <a href={`tel:${site.phoneHref}`} class="side-help__link">
+                <Icon name="phone" size={15}/>
+                <span>{site.phoneDisplay}</span>
+              </a>
+              <a href="/kontakt" class="side-help__link side-help__link--muted">
+                <Icon name="mail" size={15}/>
+                <span>Kontakt z biurem</span>
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/*
+        O tym, że wyliczenie nie jest ofertą w rozumieniu art. 66 k.c., mówi notka
+        przy samej kwocie w bocznym panelu - czyli tam, gdzie klient patrzy na
+        liczbę. Tutaj zostaje wyłącznie to, czego tamta notka nie obejmuje:
+        granica między doborem pakietu a oceną formy opodatkowania.
+      */}
+      <LegalNotice updated={new Date('2026-09-04')}>
+        <p>
+          Dobór pakietu wynika z Twoich odpowiedzi w kreatorze. Nie jest oceną, czy wybrana przez
+          Ciebie forma opodatkowania jest dla Ciebie optymalna - to wymaga indywidualnej analizy.
+        </p>
+      </LegalNotice>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero-badges {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.75rem;
+}
+.hero-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-dark);
+}
+.hero-badges :global(svg) { color: var(--accent-400); }
+
+/* ── Układ ────────────────────────────────────────────────────────────── */
+.wz-section { padding-top: clamp(2.5rem, 5vw, 4rem); }
+.wz {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 336px;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+}
+@media (max-width: 1060px) {
+  .wz { grid-template-columns: 1fr; }
+}
+
+.wz-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+}
+
+[hidden] { display: none !important; }
+
+/* ── Baner z pakietem z cennika ───────────────────────────────────────── */
+.wz-prefill {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.75rem;
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-lg);
+  background: var(--accent-50);
+  flex-wrap: wrap;
+}
+.wz-prefill__icon { color: var(--accent-600); display: grid; place-items: center; }
+.wz-prefill__text { flex: 1 1 220px; font-size: 0.875rem; line-height: 1.45; color: var(--text-muted); }
+.wz-prefill__text strong { display: block; color: var(--accent-700); font-size: 0.9375rem; }
+.wz-prefill__action {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+.wz-prefill__action:hover { color: var(--ink-900); }
+
+/* ── Pasek postępu ────────────────────────────────────────────────────── */
+.wz-progress { margin-bottom: clamp(1.75rem, 3vw, 2.5rem); }
+.stepper {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem;
+  counter-reset: step;
+}
+.stepper__item { position: relative; min-width: 0; }
+/* Linia łącząca kółka - rysowana pod kółkiem następnego kroku. */
+.stepper__item + .stepper__item::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.stepper__item.is-done + .stepper__item::before,
+.stepper__item.is-current::before { background: var(--accent-400); }
+
+.stepper__btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.stepper__btn:disabled { cursor: default; }
+.stepper__dot {
+  position: relative;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  background: var(--white);
+  border: 2px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), transform var(--transition-base);
+}
+.stepper__done { display: none; }
+.stepper__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: -0.01em;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  transition: color var(--transition-base);
+}
+.stepper__item.is-current .stepper__dot {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+  color: var(--white);
+  transform: scale(1.06);
+}
+.stepper__item.is-current .stepper__label { color: var(--text-strong); }
+.stepper__item.is-done .stepper__dot {
+  background: var(--accent-500);
+  border-color: var(--accent-500);
+  color: var(--ink-950);
+}
+.stepper__item.is-done .stepper__num { display: none; }
+.stepper__item.is-done .stepper__done { display: grid; place-items: center; }
+.stepper__item.is-done .stepper__label { color: var(--accent-700); }
+.stepper__item.is-done .stepper__btn:hover .stepper__dot { transform: scale(1.1); }
+
+.wz-progress__bar {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+  margin-top: 1.25rem;
+  overflow: hidden;
+}
+.wz-progress__bar span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
+  transition: width var(--transition-slow);
+}
+.wz-progress__count {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 720px) {
+  .stepper { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; }
+  .stepper__label { display: none; }
+  .stepper__dot { width: 26px; height: 26px; font-size: 0.6875rem; border-width: 2px; }
+  .stepper__item + .stepper__item::before { top: 12px; }
+}
+
+/* ── Krok ─────────────────────────────────────────────────────────────── */
+.step__head { margin-bottom: clamp(1.25rem, 2.5vw, 1.75rem); }
+.step__title {
+  font-size: clamp(1.375rem, 2.6vw, 1.875rem);
+  letter-spacing: -0.025em;
+}
+.step__title:focus { outline: none; }
+.step__title:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 4px; }
+.step__intro {
+  margin-top: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+.step__body { display: grid; gap: clamp(1.5rem, 3vw, 2rem); }
+/* Dane kontaktowe układają się w dwie kolumny - pola oznaczone jako `half`
+   dzielą wiersz, reszta zajmuje pełną szerokość. */
+.step[data-step-id="kontakt"] .step__body {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.125rem 1.25rem;
+}
+.step[data-step-id="kontakt"] .step__body > :not(.q--half) { grid-column: 1 / -1; }
+@media (max-width: 560px) {
+  .step[data-step-id="kontakt"] .step__body { grid-template-columns: 1fr; }
+  .step[data-step-id="kontakt"] .step__body > * { grid-column: 1 / -1; }
+}
+
+/* ── Pytanie ──────────────────────────────────────────────────────────── */
+.q { border: 0; padding: 0; margin: 0; min-width: 0; }
+.q__legend { display: flex; align-items: baseline; gap: 0.25rem; padding: 0; margin-bottom: 0.25rem; }
+.q__label {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+}
+.q__req { color: var(--accent-text); font-weight: 700; }
+.q__help {
+  margin-top: 0.375rem;
+  margin-bottom: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-subtle);
+  max-width: 70ch;
+}
+.q__legend + .opts { margin-top: 0.875rem; }
+.q__error {
+  margin-top: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #B91C1C;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Doprecyzowanie odpowiedzi - wcięty blok pod pytaniem nadrzędnym. */
+.q--attached {
+  margin-top: -0.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--accent-200);
+}
+.q--attached .field__label { font-size: 0.8125rem; }
+
+/* ── Opcje ────────────────────────────────────────────────────────────── */
+.opts { display: grid; gap: 0.75rem; }
+.opts--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.opts--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.opts--chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 860px) {
+  .opts--cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .opts--cols-2, .opts--cols-3 { grid-template-columns: 1fr; }
+}
+
+.opt { display: block; cursor: pointer; min-width: 0; }
+.opt__input {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+.opt__box {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0.9375rem 2.25rem 0.9375rem 1rem;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+.opt:hover .opt__box { border-color: var(--accent-400); background: var(--accent-50); }
+.opt__input:focus-visible + .opt__box {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+.opt__input:checked + .opt__box {
+  border-color: var(--accent-500);
+  background: var(--accent-50);
+  box-shadow: 0 0 0 1px var(--accent-500), var(--shadow-sm);
+}
+.opt__icon {
+  flex: 0 0 auto;
+  width: 34px; height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--ink-50);
+  color: var(--ink-700);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.opt__input:checked + .opt__box .opt__icon { background: var(--accent-600); color: var(--white); }
+.opt__text { display: flex; flex-direction: column; gap: 0.1875rem; min-width: 0; }
+.opt__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+.opt__hint { font-size: 0.8125rem; line-height: 1.45; color: var(--text-subtle); }
+.opt__mark {
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  width: 20px; height: 20px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-strong);
+  background: var(--white);
+  color: transparent;
+  display: grid;
+  place-items: center;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.opt__input:checked + .opt__box .opt__mark {
+  background: var(--accent-600);
+  border-color: var(--accent-600);
+  color: var(--white);
+}
+/* Znacznik wyboru w tagach wskakuje przed etykietę - sam kolor nie wystarczy,
+   gdy ktoś nie rozróżnia zieleni. */
+.opts--chips .opt__mark {
+  display: none;
+  position: static;
+  order: -1;
+  width: 15px; height: 15px;
+  border: 0;
+  background: transparent;
+  transform: none;
+}
+.opts--chips .opt__input:checked + .opt__box .opt__mark {
+  display: grid;
+  background: transparent;
+  border: 0;
+  color: var(--accent-700);
+}
+
+/* ── Suwak (pytanie jednokrotnego wyboru pokazane jako skala) ──────────── */
+.slider { display: grid; gap: 0.875rem; }
+.slider__readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+.slider__value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+.slider__hint {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-700);
+  background: var(--accent-50);
+  border-radius: var(--radius-full);
+  padding: 0.2rem 0.625rem;
+}
+.slider__input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.slider__input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--accent-500) 0 var(--slider-fill, 0%),
+    var(--ink-100) var(--slider-fill, 0%) 100%
+  );
+}
+.slider__input::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--accent-500) 0 var(--slider-fill, 0%),
+    var(--ink-100) var(--slider-fill, 0%) 100%
+  );
+}
+.slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -8px;
+  width: 22px; height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--accent-600);
+  border: 3px solid var(--white);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast);
+}
+.slider__input::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--accent-600);
+  border: 3px solid var(--white);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast);
+}
+.slider__input:active::-webkit-slider-thumb { transform: scale(1.1); }
+.slider__input:active::-moz-range-thumb { transform: scale(1.1); }
+.slider__input:focus-visible { outline: none; }
+.slider__input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.28);
+}
+.slider__input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.28);
+}
+.slider__scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+.slider__tick {
+  flex: 1;
+  text-align: center;
+  line-height: 1.3;
+}
+.slider__tick:first-child { text-align: left; }
+.slider__tick:last-child { text-align: right; }
+.slider__tick.is-current { color: var(--accent-700); font-weight: 700; }
+/* Na wąskich ekranach etykiety pozycji nie mieszczą się obok siebie - aktualną
+   wartość i tak pokazuje odczyt nad suwakiem, więc zostawiamy same krańce. */
+@media (max-width: 560px) {
+  .slider__tick:not(:first-child):not(:last-child) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slider__input::-webkit-slider-thumb,
+  .slider__input::-moz-range-thumb { transition: none; }
+}
+
+/* Kafelki kompaktowe - bez ikon, ciaśniejsze. */
+.opts--pills .opt__box { padding: 0.8125rem 2.125rem 0.8125rem 0.9375rem; align-items: center; }
+.opts--pills .opt__label { font-size: 0.9063rem; }
+.opts--pills .opt__mark { top: 50%; transform: translateY(-50%); width: 18px; height: 18px; }
+
+/* Kafelki główne - wybór ścieżki. */
+.q--hero .opt__box { padding: 1.375rem 2.5rem 1.375rem 1.25rem; flex-direction: column; gap: 0.875rem; }
+.q--hero .opt__icon { width: 44px; height: 44px; border-radius: var(--radius-md); }
+.q--hero .opt__label { font-size: 1.0625rem; font-family: var(--font-display); }
+
+/* Tagi wielokrotnego wyboru. */
+.opts--chips .opt__box {
+  padding: 0.5625rem 0.9375rem;
+  border-radius: var(--radius-full);
+  align-items: center;
+}
+.opts--chips .opt__label { font-size: 0.875rem; font-weight: 500; }
+.opts--chips .opt__input:checked + .opt__box .opt__label { font-weight: 600; color: var(--accent-700); }
+.opts--chips .opt__input:disabled + .opt__box { opacity: 0.45; cursor: not-allowed; }
+.opts--chips .opt__input:disabled + .opt__box:hover { border-color: var(--border); background: var(--white); }
+
+/* ── Pola tekstowe ────────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 0.4375rem; }
+.field__label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.field input, .field textarea {
+  width: 100%;
+  padding: 0.8125rem 1rem;
+  background: var(--surface-alt);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--text-faint); }
+.field input:focus, .field textarea:focus {
+  outline: none;
+  background: var(--white);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+.field textarea { resize: vertical; min-height: 108px; line-height: 1.6; }
+.q.is-invalid .field input,
+.q.is-invalid .field textarea { border-color: #F87171; background: #FEF2F2; }
+.q.is-invalid .opt__box { border-color: #FCA5A5; }
+.q .q__help + .q__error { margin-top: 0.375rem; }
+
+.q__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-700);
+  padding: 0.25rem 0;
+  border-radius: var(--radius-xs);
+}
+.q__toggle:hover { color: var(--ink-900); }
+
+/* ── Zgody ────────────────────────────────────────────────────────────── */
+.consents {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-alt);
+}
+.check {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.check input {
+  margin-top: 2px;
+  width: 18px; height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-600);
+  cursor: pointer;
+}
+.check a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.check em { font-style: normal; color: var(--accent-text); font-weight: 700; }
+.consents.is-invalid { border-color: #FCA5A5; background: #FEF2F2; }
+.consents__legal { font-size: 0.75rem; line-height: 1.55; color: var(--text-subtle); }
+.consents__legal a { color: var(--accent-700); text-decoration: underline; }
+
+.wz-honeypot {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
+
+/* ── Stopka kreatora ──────────────────────────────────────────────────── */
+.wz-foot {
+  margin-top: clamp(1.75rem, 3vw, 2.25rem);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.wz-nav { display: flex; align-items: center; gap: 0.75rem; }
+.wz-nav__back { padding-inline: 1rem; }
+.wz-nav__next { margin-left: auto; }
+@media (max-width: 480px) {
+  .wz-nav { flex-direction: column-reverse; align-items: stretch; }
+  .wz-nav__next { margin-left: 0; width: 100%; }
+  .wz-nav__back { width: 100%; }
+}
+.wz-note {
+  margin-bottom: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #B91C1C;
+}
+.wz-estimate--inline {
+  display: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--accent-200);
+  border-radius: var(--radius-md);
+  background: var(--accent-50);
+}
+.wz-estimate__label { font-size: 0.8125rem; font-weight: 600; color: var(--accent-700); }
+.wz-estimate__value {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+@media (max-width: 1060px) {
+  .wz-estimate--inline:not([hidden]) { display: flex; }
+}
+
+.wz-alert {
+  margin-top: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  background: #FEF2F2;
+  color: #B91C1C;
+  border: 1px solid #FECACA;
+}
+
+/* ── Potwierdzenie ────────────────────────────────────────────────────── */
+.wz-done { text-align: center; }
+.wz-done:focus { outline: none; }
+.wz-done__mark {
+  display: grid;
+  place-items: center;
+  width: 64px; height: 64px;
+  margin: 0 auto 1.25rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-50);
+  color: var(--accent-600);
+  box-shadow: 0 0 0 8px var(--accent-50);
+}
+.wz-done h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+.wz-done__lede {
+  margin: 0.75rem auto 0;
+  max-width: 52ch;
+  font-size: 1.0625rem;
+  color: var(--text-muted);
+}
+.wz-done__lede strong { color: var(--text-strong); }
+.wz-done__steps {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+  margin: 2rem 0 0;
+  text-align: left;
+}
+.wz-done__steps li {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-alt);
+}
+.wz-done__icon {
+  flex: 0 0 auto;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--accent-700);
+  box-shadow: var(--shadow-xs);
+}
+.wz-done__steps strong { font-size: 0.9375rem; color: var(--text-strong); }
+.wz-done__steps p { margin-top: 0.25rem; font-size: 0.875rem; line-height: 1.55; color: var(--text-muted); }
+.wz-done__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.wz-noscript { display: grid; gap: 1rem; }
+.wz-noscript p:last-child { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+/* ── Panel boczny ─────────────────────────────────────────────────────── */
+.wz__side {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: calc(var(--nav-height) + 1.5rem);
+}
+@media (max-width: 1060px) {
+  .wz__side { position: static; }
+}
+.side-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.375rem;
+}
+.side-card__eyebrow {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-400);
+}
+.side-card__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin-bottom: 0.875rem;
+}
+.side-card--price {
+  background: linear-gradient(150deg, var(--ink-900) 0%, var(--ink-800) 100%);
+  border-color: var(--ink-800);
+  color: var(--white);
+}
+.side-price { margin-top: 0.5rem; display: flex; align-items: baseline; gap: 0.4375rem; flex-wrap: wrap; }
+.side-price__value {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  line-height: 1.1;
+}
+.side-price__unit { font-size: 0.8125rem; color: rgba(255,255,255,0.62); }
+.side-price__scope {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--accent-200);
+}
+/* Rozbicie kwoty. Wiersze powstają w JavaScripcie, więc reguły dla ich
+   wnętrza muszą być globalne - selektor rodzica trzyma je w ryzach. */
+.side-lines {
+  list-style: none;
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: 1px dashed rgba(255,255,255,0.16);
+  display: grid;
+  gap: 0.3125rem;
+}
+.side-lines :global(li) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.72);
+}
+.side-lines :global(li b) {
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+}
+.side-lines :global(li.side-price__group) {
+  display: block;
+  margin-top: 0.375rem;
+  padding-top: 0.4375rem;
+  border-top: 1px dashed rgba(255,255,255,0.16);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-200);
+}
+.side-lines :global(li small) {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.6);
+}
+.side-lines :global(li.is-optional) { opacity: 0.65; }
+.side-lines :global(li.is-optional b) { color: var(--accent-200); font-weight: 600; }
+.side-lines :global(li.is-discount b) { color: var(--accent-400); }
+.side-price__once {
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: 1px dashed rgba(255,255,255,0.16);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.82);
+}
+.side-price__once :global(b) { color: var(--white); }
+.side-price__once :global(.side-price__once-row) { display: block; }
+.side-price__once :global(.side-price__once-row) + :global(.side-price__once-row) { margin-top: 0.5rem; }
+.side-price__note {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.55);
+}
+/* Notka leży na ciemnej karcie, więc odnośnik potrzebuje własnego koloru -
+   domyślny akcent nie ma tu wystarczającego kontrastu. */
+.side-price__note a {
+  color: rgba(255,255,255,0.85);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.side-price__note a:hover { color: var(--white); }
+
+.side-empty { font-size: 0.8125rem; line-height: 1.55; color: var(--text-subtle); }
+.summary { list-style: none; display: grid; gap: 0.5rem; }
+.summary__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.125rem 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.summary__row:last-child { border-bottom: 0; padding-bottom: 0; }
+.summary__label {
+  grid-column: 1;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.summary__value {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+.summary__edit {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-700);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast);
+}
+.summary__edit:hover { background: var(--accent-50); }
+.summary__row.is-locked .summary__label::after {
+  content: ' · z cennika';
+  color: var(--accent-text);
+  letter-spacing: 0.02em;
+}
+
+.side-card--trust { background: var(--surface-alt); }
+.trust { list-style: none; display: grid; gap: 0.625rem; }
+.trust li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.trust__icon { color: var(--accent-600); display: grid; place-items: center; flex: 0 0 auto; }
+.side-help {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.5rem;
+}
+.side-help p { font-size: 0.8125rem; color: var(--text-subtle); }
+.side-help__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  transition: color var(--transition-fast);
+}
+.side-help__link:hover { color: var(--accent-700); }
+.side-help__link--muted { font-weight: 500; color: var(--text-muted); }
+</style>
+
+<script>
+  import {
+    answerText,
+    canReveal,
+    createState,
+    estimate,
+    estimateScope,
+    isRequired,
+    isVisible,
+    matchRule,
+    planFilledFields,
+    questionsById,
+    reconcile,
+    revealQuestion,
+    startingPrice,
+    steps,
+    SUMMARY_FIELDS,
+    validateAnswer,
+    visibleOptions,
+    visibleQuestions,
+    type Answers,
+    type Question,
+    type WizardState,
+  } from '../lib/wizard';
+  import { createSubmitter } from '../lib/form-client';
+  import { contactEmail } from '../data/site';
+
+  const form = document.getElementById('wizard') as HTMLFormElement | null;
+  if (form) {
+    const STORAGE_KEY = 'taxun-wycena-v2';
+    const RECAPTCHA_KEY = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined;
+    const plnFormat = new Intl.NumberFormat('pl-PL');
+
+    // Wspólna wysyłka: token reCAPTCHA, pola antyspamowe i komunikaty błędów
+    // są takie same jak w pozostałych formularzach na stronie.
+    const submit = createSubmitter({
+      endpoint: '/api/wycena',
+      action: 'wycena',
+      siteKey: RECAPTCHA_KEY,
+      form,
+      fallbackEmail: contactEmail,
+      // Zdarzenia GA4 (generate_lead, lead_form_error) wysyła wspólna warstwa
+      // wysyłki - tutaj dokładamy tylko kontekst kreatora.
+      // `value` to szacowany abonament miesięczny i trafia do Google Ads jako
+      // wartość konwersji.
+      leadParams: () => {
+        const current = answers();
+        const monthly = estimate(current).monthlyTotal;
+        return {
+          mode: typeof current.mode === 'string' ? current.mode : undefined,
+          value: typeof monthly === 'number' ? monthly : undefined,
+        };
+      },
+    });
+
+    const doneCard = document.querySelector<HTMLElement>('[data-done]');
+    const alertBox = form.querySelector<HTMLElement>('[data-alert]');
+    const navHint = form.querySelector<HTMLElement>('[data-nav-hint]');
+    const prevBtn = form.querySelector<HTMLButtonElement>('[data-prev]');
+    const nextBtn = form.querySelector<HTMLButtonElement>('[data-next]');
+    const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]');
+    const progressFill = form.querySelector<HTMLElement>('[data-progressfill]');
+    const progressBar = form.querySelector<HTMLElement>('[data-progressbar]');
+    const stepCount = form.querySelector<HTMLElement>('[data-stepcount]');
+    const prefillBox = form.querySelector<HTMLElement>('[data-prefill]');
+    const stepEls = Array.from(form.querySelectorAll<HTMLElement>('[data-step]'));
+    const privacyInput = form.querySelector<HTMLInputElement>('input[name="privacy"]');
+    const marketingInput = form.querySelector<HTMLInputElement>('input[name="marketing"]');
+
+    /**
+     * Stan kreatora: odpowiedzi, blokady z linku i odpowiedzi czekające na
+     * pytania, które jeszcze się nie pojawiły. Za spójność między nimi
+     * odpowiada `reconcile` z biblioteki - ten sam kod pokrywają testy.
+     */
+    let state: WizardState = createState();
+    let current = 0;
+    let furthest = 0;
+    let submitting = false;
+
+    const allQuestions: Question[] = steps.flatMap((s) => s.questions);
+    const qEl = (id: string) => form.querySelector<HTMLElement>(`[data-q="${id}"]`);
+    const answers = () => state.answers;
+    const locks = () => state.locks;
+
+    /* ── Stan ─────────────────────────────────────────────────────────── */
+
+    function setAnswer(id: string, value: string | string[] | undefined) {
+      if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+        delete state.answers[id];
+        state.locks.delete(id);
+      } else {
+        state.answers[id] = value;
+      }
+      reconcile(state);
+      render();
+      persist();
+    }
+
+    /* ── Renderowanie ─────────────────────────────────────────────────── */
+
+    const modeText = (el: Element, attr: string, fallback: string) => {
+      const mode = typeof answers().mode === 'string' ? answers().mode : '';
+      const value = mode ? el.getAttribute(`${attr}-${mode}`) : null;
+      return value || fallback;
+    };
+
+    /**
+     * Suwak pokazuje te same opcje co pytanie jednokrotnego wyboru, tyle że
+     * jako kolejne pozycje. W stanie trzymamy wartość opcji (np. "15"), a nie
+     * pozycję suwaka - dzięki temu podsumowanie, walidacja i mail nie muszą
+     * wiedzieć, że to suwak.
+     */
+    function renderSlider(q: Question, el: HTMLElement, input: HTMLInputElement) {
+      const opts = visibleOptions(q, answers());
+      if (!opts.length) return;
+
+      const picked = answers()[q.id];
+      const found = typeof picked === 'string' ? opts.findIndex((o) => o.value === picked) : -1;
+      const index = found >= 0 ? found : 0;
+      const option = opts[index];
+
+      input.max = String(opts.length - 1);
+      input.value = String(index);
+      // Wypełnienie toru do pozycji suwaka - zmienną czytają pseudoelementy
+      // ::-webkit-slider-runnable-track i ::-moz-range-track.
+      const fill = opts.length > 1 ? (index / (opts.length - 1)) * 100 : 0;
+      input.style.setProperty('--slider-fill', `${fill}%`);
+      input.setAttribute('aria-label', modeText(el.querySelector('[data-label]') ?? el, 'data-label', q.label));
+      // Czytnik ekranu ma przeczytać "15, +80 zł / mies.", a nie samo "3".
+      input.setAttribute('aria-valuetext', [option.label, option.hint].filter(Boolean).join(', '));
+
+      const valueEl = el.querySelector<HTMLElement>('[data-slider-value]');
+      if (valueEl) valueEl.textContent = option.label;
+      const hintEl = el.querySelector<HTMLElement>('[data-slider-hint]');
+      if (hintEl) {
+        hintEl.textContent = option.hint ?? '';
+        hintEl.hidden = !option.hint;
+      }
+
+      for (const tick of Array.from(el.querySelectorAll<HTMLElement>('[data-slider-tick]'))) {
+        const value = tick.dataset.opt as string;
+        tick.hidden = !opts.some((o) => o.value === value);
+        tick.classList.toggle('is-current', value === option.value);
+      }
+    }
+
+    function renderQuestion(q: Question) {
+      const el = qEl(q.id);
+      if (!el) return;
+      const visible = isVisible(q, answers(), locks());
+      el.hidden = !visible;
+      if (!visible) {
+        el.classList.remove('is-invalid');
+        return;
+      }
+
+      const labelEl = el.querySelector('[data-label]');
+      if (labelEl) labelEl.textContent = modeText(labelEl, 'data-label', q.label);
+
+      const helpEl = el.querySelector('[data-help]');
+      if (helpEl) {
+        const text = modeText(helpEl, 'data-help', q.help ?? '');
+        helpEl.textContent = text;
+        (helpEl as HTMLElement).hidden = !text;
+      }
+
+      const field = el.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea');
+      if (field && field.dataset.placeholderZalozenie !== undefined) {
+        field.placeholder = modeText(field, 'data-placeholder', q.placeholder ?? '');
+      }
+
+      const req = el.querySelector<HTMLElement>('[data-req]');
+      if (req) req.hidden = !isRequired(q, answers());
+
+      const slider = el.querySelector<HTMLInputElement>('[data-slider-input]');
+      if (slider) {
+        renderSlider(q, el, slider);
+        return;
+      }
+
+      if (q.options) {
+        const allowed = new Set(visibleOptions(q, answers()).map((o) => o.value));
+        const picked = answers()[q.id];
+        const chosen = Array.isArray(picked) ? picked : typeof picked === 'string' ? [picked] : [];
+        const atMax = Boolean(q.max) && chosen.length >= (q.max as number);
+        for (const optEl of Array.from(el.querySelectorAll<HTMLElement>('[data-opt]'))) {
+          const value = optEl.dataset.opt as string;
+          optEl.hidden = !allowed.has(value);
+          const input = optEl.querySelector<HTMLInputElement>('input');
+          if (!input) continue;
+          input.checked = chosen.includes(value);
+          input.disabled = atMax && !input.checked;
+        }
+      } else if (field) {
+        const value = answers()[q.id];
+        field.value = typeof value === 'string' ? value : '';
+      }
+    }
+
+    function renderStepper() {
+      for (let i = 0; i < stepEls.length; i += 1) {
+        const item = form.querySelector<HTMLElement>(`[data-stepper="${i}"]`);
+        if (!item) continue;
+        item.classList.toggle('is-current', i === current);
+        item.classList.toggle('is-done', i < current || (i < furthest && i !== current));
+        const btn = item.querySelector<HTMLButtonElement>('.stepper__btn');
+        if (btn) btn.disabled = i > furthest;
+      }
+      const pct = Math.round(((current + 1) / stepEls.length) * 100);
+      if (progressFill) progressFill.style.width = `${pct}%`;
+      if (progressBar) progressBar.setAttribute('aria-valuenow', String(pct));
+      if (stepCount) stepCount.textContent = `Krok ${current + 1} z ${stepEls.length}`;
+    }
+
+    function renderEstimate() {
+      const est = estimate(answers());
+      const zl = (v: number) => `${plnFormat.format(v)} zł`;
+      const parts = estimateScope(est);
+      // Kwotę bierzemy zawsze z wyliczenia, także wtedy, gdy forma rozliczenia
+      // nie jest jeszcze przesądzona - `estimate` zna wtedy najtańszy wariant
+      // z form, które wchodzą w grę. Wcześniej panel pokazywał w tym miejscu
+      // najniższą stawkę z całego cennika, więc przy stu pięćdziesięciu
+      // dokumentach klient widział cenę za dziesięć.
+      const custom = est.monthlyTotal === 'custom';
+      let value = `od ${plnFormat.format(startingPrice)} zł`;
+      let scope = 'Uzupełnij formę rozliczenia i liczbę dokumentów, a policzymy kwotę.';
+
+      if (custom) {
+        value = 'Wycena indywidualna';
+        scope = `${parts} - przy tym wolumenie przygotujemy ofertę szytą na miarę.`;
+      } else if (typeof est.monthlyTotal === 'number') {
+        value = est.isFrom ? `od ${zl(est.monthlyTotal)}` : zl(est.monthlyTotal);
+        if (est.tableSettled || est.bucketRange) {
+          scope = est.bucketRange
+            ? `${parts} - ${est.tableSettled ? 'wyliczone z cennika.' : 'najtańszy wariant z form, które wchodzą w grę.'}`
+            : `${parts} - podaj liczbę dokumentów, żeby zobaczyć dokładną kwotę.`;
+        }
+      }
+
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-price]'))) {
+        el.textContent = value;
+      }
+      // "Wycena indywidualna netto / mies." nie ma sensu - jednostkę chowamy.
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('.side-price__unit'))) {
+        el.hidden = custom;
+      }
+      const scopeEl = document.querySelector<HTMLElement>('[data-price-scope]');
+      if (scopeEl) scopeEl.textContent = scope;
+
+      // Rozbicie ma sens dopiero wtedy, gdy na kwotę składa się więcej niż
+      // sama księgowość - inaczej powtarzałoby liczbę wyświetloną wyżej.
+      // Moduły specjalne idą pod własnym nagłówkiem, tak samo jak w cenniku:
+      // klient ma widzieć, ile kosztuje pakiet oparty o dokumenty, a ile
+      // dopłaty, które włączyła konkretna procedura.
+      const linesEl = document.querySelector<HTMLElement>('[data-price-lines]');
+      if (linesEl) {
+        const show = est.monthly.length > 1;
+        linesEl.textContent = '';
+        linesEl.hidden = !show;
+        if (show) {
+          const appendLine = (line: (typeof est.monthly)[number]) => {
+            const li = document.createElement('li');
+            if (line.optional) li.classList.add('is-optional');
+            if (line.id === 'discount') li.classList.add('is-discount');
+            const label = document.createElement('span');
+            label.textContent = line.optional ? `${line.label} - poza kwotą` : line.label;
+            // Pozycja spoza sumy musi powiedzieć, dlaczego jest spoza sumy -
+            // sama stawka obok przekreślonej kwoty wygląda na pomyłkę.
+            if (line.optional && line.note) {
+              const note = document.createElement('small');
+              note.textContent = line.note;
+              label.append(note);
+            }
+            const amount = document.createElement('b');
+            amount.textContent =
+              typeof line.amount === 'number'
+                ? `${line.amount < 0 ? '−' : line.from ? 'od ' : ''}${zl(Math.abs(line.amount))}`
+                : 'wycena ind.';
+            li.append(label, amount);
+            linesEl.append(li);
+          };
+
+          for (const line of est.monthly) if (!line.module) appendLine(line);
+          const modules = est.monthly.filter((line) => line.module);
+          if (modules.length) {
+            const head = document.createElement('li');
+            head.className = 'side-price__group';
+            head.textContent = 'Moduły specjalne';
+            linesEl.append(head);
+            for (const line of modules) appendLine(line);
+          }
+        }
+      }
+
+      const onceEl = document.querySelector<HTMLElement>('[data-price-once]');
+      if (onceEl) {
+        // Pozycji poza abonamentem bywa kilka (rejestracja firmy, IFT-2R),
+        // więc wypisujemy wszystkie, każdą w osobnym wierszu.
+        onceEl.textContent = '';
+        onceEl.hidden = est.once.length === 0;
+        for (const once of est.once) {
+          const row = document.createElement('span');
+          row.className = 'side-price__once-row';
+          const label = document.createElement('span');
+          const prefix = once.period === 'year' ? 'Rocznie' : 'Jednorazowo';
+          // Bez dopisku "poza kwotą" stawka usługi, którą dopiero rozważamy
+          // (WIS, IFT-2R), wygląda na koszt już przesądzony - tak samo jak w
+          // pozycjach miesięcznych i w wiadomości do biura.
+          label.textContent = `${prefix} - ${once.label}${once.optional ? ' (poza kwotą)' : ''}: `;
+          const amount = document.createElement('b');
+          amount.textContent =
+            typeof once.amount === 'number' ? (once.amount === 0 ? '0 zł' : zl(once.amount)) : 'wycena indywidualna';
+          row.append(label, amount);
+          if (once.note) {
+            const note = document.createElement('span');
+            note.textContent = ` ${once.note}`;
+            row.append(note);
+          }
+          onceEl.append(row);
+        }
+      }
+
+      const inline = form.querySelector<HTMLElement>('[data-estimate-inline]');
+      if (inline) inline.hidden = !est.tableSettled && !est.bucketRange;
+    }
+
+    function renderSummary() {
+      let filled = 0;
+      const planFilled = planFilledFields(state);
+      for (const id of SUMMARY_FIELDS) {
+        const row = document.querySelector<HTMLElement>(`[data-summary-row="${id}"]`);
+        if (!row) continue;
+        const q = questionsById[id];
+        const text = matchRule(q.rule, answers()) ? answerText(q, answers()) : '';
+        row.hidden = !text;
+        row.classList.toggle('is-locked', planFilled.includes(id));
+        if (text) {
+          filled += 1;
+          const valueEl = row.querySelector<HTMLElement>('[data-summary-value]');
+          if (valueEl) valueEl.textContent = text;
+          // Nie obiecujemy zmiany tam, gdzie odpowiedź wynika wprost z formy
+          // prawnej i innej możliwości po prostu nie ma.
+          const editBtn = row.querySelector<HTMLElement>('[data-summary-edit]');
+          if (editBtn) {
+            editBtn.hidden = !isVisible(q, answers(), locks()) && !canReveal(id, state);
+          }
+        }
+      }
+      const empty = document.querySelector<HTMLElement>('[data-summary-empty]');
+      if (empty) empty.hidden = filled > 0;
+    }
+
+    function renderPrefill() {
+      if (!prefillBox) return;
+      const filled = planFilledFields(state);
+      if (!answers().planTable || filled.length === 0) {
+        prefillBox.hidden = true;
+        return;
+      }
+      const est = estimate(answers());
+      // Wymieniamy wszystko, co pakiet wypełnił za użytkownika - także formę
+      // opodatkowania, o którą przez zawężenie nie zdążyliśmy zapytać. Gdy ją
+      // znamy, nazwa tabeli byłaby jej powtórzeniem, więc jej nie dublujemy.
+      const detail = [
+        filled.includes('taxForm') ? answerText(questionsById.taxForm, answers()) : est.table?.name,
+        filled.includes('docs') ? `${answerText(questionsById.docs, answers())} dokumentów miesięcznie` : null,
+        filled.includes('vat') ? answerText(questionsById.vat, answers()) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      const detailEl = prefillBox.querySelector<HTMLElement>('[data-prefill-detail]');
+      if (detailEl) {
+        detailEl.textContent = `${detail}. Te odpowiedzi uzupełniliśmy za Ciebie - możesz je zmienić w każdej chwili.`;
+      }
+      prefillBox.hidden = false;
+    }
+
+    function render() {
+      for (const q of allQuestions) renderQuestion(q);
+
+      for (let i = 0; i < stepEls.length; i += 1) {
+        stepEls[i].hidden = i !== current;
+        const step = steps[i];
+        const titleEl = stepEls[i].querySelector('[data-title]');
+        if (titleEl) titleEl.textContent = modeText(titleEl, 'data-title', step.title);
+        const introEl = stepEls[i].querySelector('[data-intro]');
+        if (introEl) {
+          const text = modeText(introEl, 'data-intro', step.intro ?? '');
+          introEl.textContent = text;
+          (introEl as HTMLElement).hidden = !text;
+        }
+      }
+
+      const isLast = current === stepEls.length - 1;
+      if (prevBtn) prevBtn.hidden = current === 0;
+      if (nextBtn) nextBtn.hidden = isLast;
+      if (submitBtn) submitBtn.hidden = !isLast;
+
+      renderStepper();
+      renderEstimate();
+      renderSummary();
+      renderPrefill();
+    }
+
+    /* ── Walidacja ────────────────────────────────────────────────────── */
+
+    function showError(id: string, message: string | null) {
+      const el = qEl(id);
+      if (!el) return;
+      const errorEl = el.querySelector<HTMLElement>('[data-error]');
+      el.classList.toggle('is-invalid', Boolean(message));
+      if (errorEl) {
+        errorEl.textContent = message ?? '';
+        errorEl.hidden = !message;
+      }
+    }
+
+    function clearErrors(stepIndex: number) {
+      for (const q of steps[stepIndex].questions) showError(q.id, null);
+      if (navHint) navHint.hidden = true;
+    }
+
+    function validateCurrent(): boolean {
+      const step = steps[current];
+      let firstInvalid: HTMLElement | null = null;
+
+      for (const q of step.questions) {
+        const visible = isVisible(q, answers(), locks());
+        const error = visible ? validateAnswer(q, answers()) : null;
+        showError(q.id, error);
+        if (error && !firstInvalid) firstInvalid = qEl(q.id);
+      }
+
+      // Zgoda na przetwarzanie danych jest warunkiem wysyłki - zawsze na końcu.
+      if (step.id === 'kontakt') {
+        const consents = form.querySelector<HTMLElement>('.consents');
+        const consentError = form.querySelector<HTMLElement>('[data-error="privacy"]');
+        const ok = Boolean(privacyInput?.checked);
+        consents?.classList.toggle('is-invalid', !ok);
+        if (consentError) {
+          consentError.textContent = ok ? '' : 'Bez zgody na przetwarzanie danych nie możemy odpowiedzieć na zgłoszenie.';
+          consentError.hidden = ok;
+        }
+        if (!ok && !firstInvalid) firstInvalid = consents;
+      }
+
+      if (firstInvalid) {
+        if (navHint) {
+          navHint.textContent = 'Uzupełnij zaznaczone pola, aby przejść dalej.';
+          navHint.hidden = false;
+        }
+        firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        firstInvalid.querySelector<HTMLElement>('input:not([type="hidden"]), textarea')?.focus({ preventScroll: true });
+        return false;
+      }
+      if (navHint) navHint.hidden = true;
+      return true;
+    }
+
+    /** Indeks pierwszego kroku, który nie został jeszcze poprawnie wypełniony. */
+    function firstIncomplete(): number {
+      for (let i = 0; i < steps.length; i += 1) {
+        for (const q of visibleQuestions(steps[i], answers(), locks())) {
+          if (validateAnswer(q, answers())) return i;
+        }
+      }
+      return steps.length - 1;
+    }
+
+    /* ── Nawigacja ────────────────────────────────────────────────────── */
+
+    function goto(index: number, options: { push?: boolean; focus?: boolean } = {}) {
+      const { push = true, focus = true } = options;
+      current = Math.max(0, Math.min(steps.length - 1, index));
+      furthest = Math.max(furthest, current);
+      clearErrors(current);
+      render();
+      persist();
+
+      if (focus) {
+        const title = stepEls[current].querySelector<HTMLElement>('[data-title]');
+        title?.focus({ preventScroll: true });
+        const card = form.getBoundingClientRect();
+        const offset = window.scrollY + card.top - 96;
+        if (window.scrollY > offset) window.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+      if (push) {
+        const hash = `#krok-${current + 1}`;
+        if (location.hash !== hash) history.pushState({ step: current }, '', hash);
+      }
+    }
+
+    function next() {
+      if (!validateCurrent()) return;
+      goto(Math.min(current + 1, steps.length - 1));
+    }
+
+    /* ── Zapamiętywanie postępu ───────────────────────────────────────── */
+
+    function persist() {
+      try {
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            answers: state.answers,
+            locks: Array.from(state.locks),
+            pending: Array.from(state.pending),
+            current,
+          })
+        );
+      } catch {
+        /* prywatny tryb przeglądarki - postęp po prostu nie przetrwa odświeżenia */
+      }
+    }
+
+    function restore() {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw) as {
+          answers?: Answers;
+          locks?: string[];
+          pending?: Array<[string, string]>;
+          current?: number;
+        };
+        if (saved.answers && typeof saved.answers === 'object') state.answers = saved.answers;
+        if (Array.isArray(saved.locks)) state.locks = new Set(saved.locks);
+        if (Array.isArray(saved.pending)) state.pending = new Map(saved.pending);
+        if (typeof saved.current === 'number') current = saved.current;
+      } catch {
+        /* uszkodzony wpis ignorujemy i zaczynamy od czystego formularza */
+      }
+    }
+
+    /* ── Wejście z linku (cennik, strony usług) ───────────────────────── */
+
+    /** Zamienia górną granicę pakietu z cennika na odpowiedź w pytaniu o dokumenty. */
+    function docsOptionFor(upTo: number): string | null {
+      const option = (questionsById.docs.options ?? []).find(
+        (o) => /^\d+$/.test(o.value) && Number(o.value) >= upTo
+      );
+      return option ? option.value : null;
+    }
+
+    function applyLink() {
+      const params = new URLSearchParams(location.search);
+
+      const tryb = params.get('tryb');
+      if (tryb === 'zalozenie' || tryb === 'przeniesienie') state.answers.mode = tryb;
+
+      const plan = params.get('plan');
+      const match = plan ? /^(ryczalt|kpir|fk)-(\d+|custom)$/.exec(plan) : null;
+      if (match) {
+        state.answers.planTable = match[1];
+        // Pakiety "powyżej X" nie wskazują konkretnego wolumenu, więc o liczbę
+        // dokumentów pytamy normalnie - prefill byłby zgadywaniem.
+        if (match[2] !== 'custom') {
+          const docs = docsOptionFor(Number(match[2]));
+          if (docs) {
+            state.answers.docs = docs;
+            state.answers.planDocs = match[2];
+            state.locks.add('docs');
+          }
+        }
+        const vat = params.get('vat');
+        if (vat === 'on' || vat === 'off') {
+          state.answers.vat = vat === 'on' ? 'czynny' : 'zwolniony';
+          state.locks.add('vat');
+        }
+        // Spółki rozliczają się CIT-em, więc pakiet ryczałtu i KPiR wskazuje
+        // działalność osób fizycznych - a pełna księgowość spółkę.
+        if (!state.answers.mode) state.answers.mode = 'przeniesienie';
+      }
+
+      // Podstrony branżowe (np. księgowość dla lekarzy) podpowiadają branżę,
+      // żeby klient nie zaznaczał ręcznie tego, co wynika z miejsca wejścia.
+      const branza = params.get('branza');
+      if (branza && (questionsById.industry.options ?? []).some((o) => o.value === branza)) {
+        state.answers.industry = [branza];
+      }
+
+      // Pytanie o kadry pojawia się dopiero po podaniu zatrudnienia, więc
+      // odpowiedź z linku czeka na swoją kolej zamiast zniknąć przy pierwszym
+      // porządkowaniu odpowiedzi.
+      if (params.get('uslugi') === 'kadry') state.pending.set('payroll', 'tak');
+      if (!state.answers.contactPreference) state.answers.contactPreference = 'email';
+    }
+
+    /* ── Zdarzenia ────────────────────────────────────────────────────── */
+
+    form.addEventListener('change', (event) => {
+      const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+      if (!target.name || target.name === 'privacy' || target.name === 'marketing' || target.name === 'website') {
+        if (target.name === 'privacy' && target.checked) {
+          form.querySelector('.consents')?.classList.remove('is-invalid');
+          const consentError = form.querySelector<HTMLElement>('[data-error="privacy"]');
+          if (consentError) consentError.hidden = true;
+        }
+        return;
+      }
+      const q = questionsById[target.name];
+      if (!q) return;
+
+      if (q.type === 'multi') {
+        const picked = Array.from(
+          form.querySelectorAll<HTMLInputElement>(`input[name="${q.id}"]:checked`)
+        ).map((i) => i.value);
+        setAnswer(q.id, picked);
+      } else {
+        setAnswer(q.id, target.value);
+      }
+      showError(q.id, null);
+    });
+
+    form.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+      const q = questionsById[target.name];
+      if (!q || q.type === 'choice' || q.type === 'multi') return;
+      state.answers[q.id] = target.value;
+      showError(q.id, null);
+      renderEstimate();
+      renderSummary();
+      persist();
+    });
+
+    // Suwak nie ma atrybutu name, więc omijają go ogólne obsługi change/input -
+    // pozycję trzeba przetłumaczyć na wartość opcji samodzielnie.
+    for (const input of Array.from(form.querySelectorAll<HTMLInputElement>('[data-slider-input]'))) {
+      input.addEventListener('input', () => {
+        const q = questionsById[input.dataset.sliderInput ?? ''];
+        if (!q) return;
+        const opts = visibleOptions(q, answers());
+        const option = opts[Number(input.value)];
+        if (!option) return;
+        setAnswer(q.id, option.value);
+        showError(q.id, null);
+      });
+    }
+
+    // Enter w polu tekstowym przenosi do następnego kroku, a nie wysyła formularza.
+    form.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+      if (current < steps.length - 1) {
+        event.preventDefault();
+        next();
+      }
+    });
+
+    nextBtn?.addEventListener('click', next);
+    prevBtn?.addEventListener('click', () => goto(current - 1));
+
+    for (const btn of Array.from(document.querySelectorAll<HTMLElement>('[data-goto]'))) {
+      btn.addEventListener('click', () => {
+        const target = Number(btn.dataset.goto);
+        if (Number.isNaN(target)) return;
+        // Pytanie wypełnione pakietem z cennika trzeba najpierw odsłonić,
+        // inaczej "Zmień" przeniósłby do kroku, w którym go nie widać.
+        const editId = btn.dataset.summaryEdit;
+        if (editId) {
+          revealQuestion(editId, state);
+          render();
+          persist();
+        }
+        // Do kroków już wypełnionych wracamy bez walidacji, do kolejnych - z nią.
+        if (target <= current) goto(target);
+        else if (validateCurrent()) goto(target);
+      });
+    }
+
+    for (const btn of Array.from(form.querySelectorAll<HTMLElement>('[data-collapse-toggle]'))) {
+      btn.addEventListener('click', () => {
+        const wrap = btn.parentElement?.querySelector<HTMLElement>('[data-fieldwrap]');
+        if (!wrap) return;
+        wrap.hidden = false;
+        btn.hidden = true;
+        wrap.querySelector('input')?.focus();
+      });
+    }
+
+    form.querySelector('[data-unlock]')?.addEventListener('click', () => {
+      revealQuestion('taxForm', state);
+      render();
+      persist();
+      const target = steps.findIndex((s) => s.id === 'podatki');
+      if (target >= 0) goto(target);
+    });
+
+    window.addEventListener('popstate', (event) => {
+      const state = event.state as { step?: number } | null;
+      const fromHash = Number((location.hash.match(/^#krok-(\d+)$/) ?? [])[1]);
+      // Wpis historii bez kotwicy to wejście na stronę, czyli pierwszy krok.
+      const target = typeof state?.step === 'number' ? state.step : Number.isNaN(fromHash) ? 0 : fromHash - 1;
+      goto(target, { push: false });
+    });
+
+    /* ── Wysyłka ──────────────────────────────────────────────────────── */
+
+    function showAlert(message: string | null) {
+      if (!alertBox) return;
+      alertBox.textContent = message ?? '';
+      alertBox.hidden = !message;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (submitting) return;
+      if (current < steps.length - 1) {
+        next();
+        return;
+      }
+      if (!validateCurrent()) return;
+
+      submitting = true;
+      showAlert(null);
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.querySelector('span')!.textContent = 'Wysyłamy...';
+      }
+
+      try {
+        const result = await submit({
+          answers: answers(),
+          privacy: Boolean(privacyInput?.checked),
+          marketing: Boolean(marketingInput?.checked),
+        });
+
+        if (result.ok) {
+          try {
+            sessionStorage.removeItem(STORAGE_KEY);
+          } catch {
+            /* brak dostępu do sessionStorage nie blokuje potwierdzenia */
+          }
+          const emailEl = doneCard?.querySelector<HTMLElement>('[data-done-email]');
+          if (emailEl && typeof answers().email === 'string') emailEl.textContent = answers().email;
+          form.hidden = true;
+          if (doneCard) {
+            doneCard.hidden = false;
+            doneCard.focus({ preventScroll: true });
+            doneCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }
+          return;
+        }
+
+        if (result.fields) {
+          // Serwer wskazał konkretne pola - wracamy do pierwszego z błędem.
+          const firstField = Object.keys(result.fields)[0];
+          const stepIndex = steps.findIndex((s) => s.questions.some((q) => q.id === firstField));
+          if (stepIndex >= 0) goto(stepIndex);
+          for (const [id, message] of Object.entries(result.fields)) showError(id, message);
+        }
+        showAlert(result.message);
+      } finally {
+        submitting = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.querySelector('span')!.textContent = 'Wyślij zgłoszenie';
+        }
+      }
+    });
+
+    /* ── Start ────────────────────────────────────────────────────────── */
+
+    restore();
+    applyLink();
+    reconcile(state);
+
+    const requested = Number((location.hash.match(/^#krok-(\d+)$/) ?? [])[1]);
+    const limit = firstIncomplete();
+    const target = Number.isNaN(requested) ? Math.min(current, limit) : Math.min(requested - 1, limit);
+    current = Math.max(0, target);
+    furthest = current;
+    render();
+    // Pierwszy krok zostawiamy pod czystym adresem - kotwicę dokładamy dopiero
+    // przy przejściu dalej, żeby przycisk "wstecz" wracał krok po kroku.
+    if (current > 0) history.replaceState({ step: current }, '', `#krok-${current + 1}`);
+  }
+</script>

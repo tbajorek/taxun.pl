@@ -1,0 +1,642 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { site } from '../data/site';
+import { CONSENT_TTL_DAYS } from '../lib/consent';
+
+/**
+ * Ważność zapisanej zgody bierzemy z silnika zgód, a nie z ręcznie wpisanego
+ * terminu. Baner cookies czyta tę samą stałą, więc tabela technologii i panel
+ * „Ustawienia cookies” nie mogą podać dwóch różnych okresów.
+ */
+const consentRetention = CONSENT_TTL_DAYS === 365 ? '1 rok' : `${CONSENT_TTL_DAYS} dni`;
+
+/**
+ * Tag Google Ads uruchamiamy wyłącznie przy ustawionym PUBLIC_GOOGLE_ADS_ID
+ * (patrz components/GoogleTag.astro). Polityka opisuje stan faktyczny, więc
+ * fragmenty o pomiarze konwersji zależą od tej samej zmiennej co kod - inaczej
+ * dokument obiecywałby coś innego, niż robi serwis. Zakres mierzonych działań
+ * opisuje src/data/conversions.ts.
+ */
+const adsEnabled = ((import.meta.env.PUBLIC_GOOGLE_ADS_ID as string | undefined) || '').trim() !== '';
+
+const toc = [
+  { id: 'postanowienia', label: 'Postanowienia ogólne' },
+  { id: 'administrator', label: 'Administrator danych' },
+  { id: 'role', label: 'Role administratora i podmiotu przetwarzającego' },
+  { id: 'dane', label: 'Zakres i źródła danych' },
+  { id: 'cele', label: 'Cele i podstawy prawne' },
+  { id: 'obowiazek', label: 'Czy podanie danych jest obowiązkowe?' },
+  { id: 'odbiorcy', label: 'Odbiorcy danych' },
+  { id: 'transfery', label: 'Przekazywanie danych poza EOG' },
+  { id: 'okres', label: 'Okres przechowywania danych' },
+  { id: 'prawa', label: 'Prawa osób, których dane dotyczą' },
+  { id: 'marketing', label: 'Marketing bezpośredni i newsletter' },
+  { id: 'automatyczne', label: 'Zautomatyzowane podejmowanie decyzji' },
+  { id: 'cookies', label: 'Cookies i podobne technologie' },
+  { id: 'google-analytics', label: adsEnabled ? 'Narzędzia analityczne i reklamowe' : 'Narzędzia analityczne' },
+  { id: 'recaptcha', label: 'Google reCAPTCHA' },
+  { id: 'bezpieczenstwo', label: 'Bezpieczeństwo danych' },
+  { id: 'zmiany', label: 'Zmiany polityki' },
+  { id: 'kontakt-rodo', label: 'Kontakt w sprawach ochrony danych' },
+];
+---
+<LegalLayout
+  title="Polityka prywatności"
+  description="Polityka prywatności Taxun: przetwarzanie danych osobowych, pliki cookies, Google Analytics i Ads, reCAPTCHA oraz prawa osób, których dane dotyczą."
+  effective="1 października 2026 r."
+  breadcrumbLabel="Polityka prywatności"
+  toc={toc}
+>
+  <p>
+    Niniejsza Polityka prywatności opisuje zasady przetwarzania danych osobowych użytkowników serwisu
+    <strong>taxun.pl</strong> oraz osób kontaktujących się z Taxun, w szczególności za pośrednictwem formularza
+    kontaktowego, formularza bezpłatnej wyceny, Portalu klienta, poczty elektronicznej lub telefonu. Dokument
+    obejmuje również zasady stosowania plików cookies i podobnych technologii.
+  </p>
+  <p>
+    Polityka nie zastępuje umowy o świadczenie usług księgowych i kadrowo-płacowych ani umowy powierzenia
+    przetwarzania danych osobowych zawieranej z klientem jako załącznik do tej umowy. Zasady korzystania z serwisu
+    i usług świadczonych drogą elektroniczną określa <a href="/regulamin">Regulamin serwisu</a>.
+  </p>
+
+  <h2 id="postanowienia">1. Postanowienia ogólne</h2>
+  <p>
+    Dane osobowe są przetwarzane zgodnie z obowiązującymi przepisami prawa, w szczególności z rozporządzeniem
+    Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. („RODO”), ustawą z dnia 10 maja 2018 r.
+    o ochronie danych osobowych oraz ustawą z dnia 12 lipca 2024 r. Prawo komunikacji elektronicznej („PKE”),
+    w zakresie dotyczącym przechowywania informacji lub uzyskiwania dostępu do informacji zapisanych w urządzeniu
+    końcowym użytkownika oraz przesyłania informacji handlowej.
+  </p>
+  <p>
+    Polityka dotyczy osób fizycznych odwiedzających serwis, osób reprezentujących przedsiębiorców, potencjalnych
+    klientów, klientów oraz osób kontaktujących się z Taxun. W przypadku danych pracowników, zleceniobiorców i innych
+    osób, których dane znajdują się w dokumentacji klienta, pierwszeństwo ma opis zawarty w sekcji dotyczącej roli
+    podmiotu przetwarzającego.
+  </p>
+
+  <h2 id="administrator">2. Administrator danych</h2>
+  <p>
+    Administratorem danych osobowych przetwarzanych w związku z działaniem serwisu i kontaktem z Taxun jest
+    <strong>{site.brandOwner}</strong>, właściciel marki <strong>Taxun</strong>,
+    {site.legalAddress.street}, {site.legalAddress.postal} {site.address.city}, NIP {site.taxId.nip},
+    REGON {site.taxId.regon} (dalej: „Administrator”).
+  </p>
+  <p>
+    Administrator nie wyznaczył inspektora ochrony danych. Kontakt w sprawach ochrony danych osobowych:
+    <a href="mailto:rodo@taxun.pl">rodo@taxun.pl</a> lub telefonicznie pod numerem {site.phoneDisplay}.
+  </p>
+
+  <h2 id="role">3. Role Administratora i podmiotu przetwarzającego</h2>
+  <p>
+    W zakresie danych osób, które korzystają z serwisu, kontaktują się z Taxun, otrzymują wycenę, korzystają z
+    usług lub pozostają w relacji gospodarczej z Taxun, Taxun działa jako administrator danych.
+  </p>
+  <p>
+    Jeżeli Taxun wykonuje na rzecz klienta czynności księgowe lub kadrowo-płacowe polegające na przetwarzaniu danych
+    osobowych w imieniu klienta, administratorem tych danych jest klient, a Taxun działa jako podmiot przetwarzający
+    w rozumieniu art. 28 RODO. Zasady takiego przetwarzania, w tym zakres danych, kategorie osób, obowiązki stron,
+    zasady dalszego powierzenia oraz postępowanie po zakończeniu współpracy, określa umowa powierzenia przetwarzania
+    danych osobowych stanowiąca załącznik do umowy o świadczenie usług.
+  </p>
+  <p>
+    W tym zakresie osoba, której dane dotyczą, kieruje żądania związane z realizacją swoich praw do klienta jako
+    administratora. Nie wyłącza to obowiązków Taxun wynikających z RODO jako podmiotu przetwarzającego, w tym
+    obowiązku pomocy administratorowi w odpowiedzi na takie żądania.
+  </p>
+
+  <h2 id="dane">4. Zakres i źródła danych</h2>
+  <p>W zależności od sposobu kontaktu i celu przetwarzania możemy przetwarzać w szczególności:</p>
+  <ul>
+    <li><strong>dane identyfikacyjne i kontaktowe</strong> - imię, nazwisko, adres e-mail, numer telefonu, stanowisko lub pełnioną funkcję;</li>
+    <li><strong>dane dotyczące przedsiębiorstwa</strong> - firma, NIP, REGON, KRS, forma prawna, adres oraz informacje potrzebne do przygotowania oferty;</li>
+    <li><strong>dane dotyczące sytuacji księgowej i podatkowej firmy</strong> - forma opodatkowania, status VAT, szacowana liczba dokumentów, liczba osób zatrudnionych, informacje o obecnej obsłudze księgowej i planowanym zakresie współpracy;</li>
+    <li><strong>dane zawarte w korespondencji</strong> - informacje przekazane w wiadomościach, formularzach i podczas kontaktu telefonicznego;</li>
+    <li><strong>dane rozliczeniowe</strong> - numer rachunku bankowego, dane do faktury, historia płatności;</li>
+    <li><strong>dane techniczne</strong> - adres IP, typ urządzenia, przeglądarka, system operacyjny, informacje o zdarzeniach i bezpieczeństwie, o ile ich przetwarzanie wynika z działania serwisu, zabezpieczeń lub wykorzystywanych usług;</li>
+    <li><strong>dane związane z korzystaniem z Portalu klienta</strong> - identyfikator konta, logi logowań i operacji na dokumentach, w zakresie niezbędnym do zapewnienia bezpieczeństwa i rozliczalności;</li>
+    <li><strong>dane związane z preferencjami cookies</strong> - informacje o wyborach użytkownika dotyczących poszczególnych kategorii technologii.</li>
+  </ul>
+  <p>
+    Co do zasady dane otrzymujemy bezpośrednio od osoby, której dane dotyczą. W uzasadnionych przypadkach możemy
+    otrzymywać dane także od reprezentowanego przez nią przedsiębiorcy, wspólnika, pracodawcy, pełnomocnika lub
+    innych osób działających w ramach danej relacji gospodarczej, a także z publicznie dostępnych rejestrów, takich
+    jak CEIDG, KRS, wykaz podatników VAT i CRBR, jeżeli jest to potrzebne do realizacji konkretnego celu.
+  </p>
+
+  <h2 id="cele">5. Cele i podstawy prawne przetwarzania</h2>
+  <table>
+    <thead>
+      <tr><th>Cel</th><th>Typowe dane</th><th>Podstawa prawna</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Obsługa zapytań kierowanych przez formularz, e-mail lub telefon</td>
+        <td>Dane identyfikacyjne i kontaktowe, treść wiadomości</td>
+        <td>Art. 6 ust. 1 lit. b RODO, gdy zapytanie zmierza do zawarcia umowy; w pozostałych przypadkach art. 6 ust. 1 lit. f RODO</td>
+      </tr>
+      <tr>
+        <td>Przygotowanie wyceny i kontakt w sprawie wyceny</td>
+        <td>Dane kontaktowe oraz informacje o przedsiębiorstwie i oczekiwanym zakresie usług</td>
+        <td>Art. 6 ust. 1 lit. b RODO - działania na żądanie osoby przed zawarciem umowy; pomocniczo art. 6 ust. 1 lit. f RODO</td>
+      </tr>
+      <tr>
+        <td>Zawarcie i wykonanie umowy oraz obsługa klienta, w tym prowadzenie konta w Portalu klienta</td>
+        <td>Dane identyfikacyjne, kontaktowe, rozliczeniowe i dane niezbędne do wykonania usługi</td>
+        <td>Art. 6 ust. 1 lit. b RODO, a wobec osób reprezentujących klienta art. 6 ust. 1 lit. f RODO</td>
+      </tr>
+      <tr>
+        <td>Wypełnianie obowiązków prawnych, w szczególności rachunkowych i podatkowych</td>
+        <td>Dane wymagane przez właściwe przepisy</td>
+        <td>Art. 6 ust. 1 lit. c RODO</td>
+      </tr>
+      <tr>
+        <td>Stosowanie środków bezpieczeństwa finansowego wynikających z przepisów o przeciwdziałaniu praniu pieniędzy</td>
+        <td>Dane identyfikacyjne klienta, osób działających w jego imieniu i beneficjentów rzeczywistych, dane z dokumentów tożsamości</td>
+        <td>Art. 6 ust. 1 lit. c RODO w związku z ustawą z dnia 1 marca 2018 r. o przeciwdziałaniu praniu pieniędzy oraz finansowaniu terroryzmu</td>
+      </tr>
+      <tr>
+        <td>Ustalenie, dochodzenie lub obrona roszczeń, ochrona przed nadużyciami i zapewnienie bezpieczeństwa</td>
+        <td>Dane dotyczące relacji, korespondencji, operacji i zdarzeń bezpieczeństwa</td>
+        <td>Art. 6 ust. 1 lit. f RODO</td>
+      </tr>
+      <tr>
+        <td>Wysyłka newslettera i marketing bezpośredni drogą elektroniczną</td>
+        <td>Adres e-mail i dane identyfikacyjne potrzebne do wysyłki</td>
+        <td>Art. 6 ust. 1 lit. a RODO oraz zgoda wymagana przez art. 398 PKE dla danego kanału komunikacji</td>
+      </tr>
+      <tr>
+        <td>Analityka serwisu za pomocą Google Analytics</td>
+        <td>Dane techniczne i informacje o korzystaniu z serwisu</td>
+        <td>Art. 6 ust. 1 lit. a RODO oraz zgoda na przechowywanie lub uzyskiwanie dostępu do informacji w urządzeniu końcowym wymagana przez art. 399 ust. 1 PKE</td>
+      </tr>
+      {adsEnabled && (
+      <tr>
+        <td>Pomiar skuteczności kampanii reklamowych w Google Ads</td>
+        <td>Dane techniczne, identyfikator kliknięcia w reklamę oraz informacja o wykonaniu mierzonej akcji w serwisie</td>
+        <td>Art. 6 ust. 1 lit. a RODO oraz zgoda na przechowywanie lub uzyskiwanie dostępu do informacji w urządzeniu końcowym wymagana przez art. 399 ust. 1 PKE</td>
+      </tr>
+      )}
+      <tr>
+        <td>Ochrona formularzy przed spamem i nadużyciami za pomocą reCAPTCHA</td>
+        <td>Dane techniczne i sygnały służące ocenie ryzyka nadużycia</td>
+        <td>Art. 6 ust. 1 lit. f RODO - uzasadniony interes polegający na ochronie serwisu i formularzy; w zakresie dostępu do urządzenia końcowego stosujemy art. 399 ust. 3 PKE, o ile technologia pozostaje niezbędna do świadczenia usługi żądanej przez użytkownika</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Zgoda jest wykorzystywana wyłącznie tam, gdzie jest właściwą podstawą prawną. Cofnięcie zgody nie wpływa na
+    zgodność z prawem przetwarzania dokonanego przed jej wycofaniem. Zgoda w rozumieniu PKE musi spełniać wymagania
+    zgody określone w RODO.
+  </p>
+  <p>
+    Jeżeli podstawą przetwarzania jest prawnie uzasadniony interes Administratora, interes ten polega w szczególności
+    na zapewnieniu ciągłości działalności, bezpieczeństwie systemów, obsłudze relacji gospodarczych oraz na ustaleniu,
+    dochodzeniu lub obronie roszczeń.
+  </p>
+
+  <h2 id="obowiazek">6. Czy podanie danych jest obowiązkowe?</h2>
+  <p>
+    Podanie danych jest dobrowolne, jednak brak danych oznaczonych w formularzu jako wymagane może uniemożliwić
+    odpowiedź na zapytanie, przygotowanie wyceny lub wykonanie umowy. Zakres wymaganych danych zależy od celu, dla
+    którego są zbierane.
+  </p>
+  <p>
+    Podanie danych wymaganych przepisami o przeciwdziałaniu praniu pieniędzy jest warunkiem nawiązania i kontynuowania
+    współpracy. Brak możliwości zastosowania środków bezpieczeństwa finansowego uniemożliwia świadczenie usług.
+  </p>
+  <p>
+    Podanie danych do newslettera lub innych fakultatywnych działań marketingowych jest dobrowolne i nie wpływa na
+    możliwość skorzystania z funkcji serwisu ani otrzymania odpowiedzi na zapytanie.
+  </p>
+
+  <h2 id="odbiorcy">7. Odbiorcy danych</h2>
+  <p>
+    Dane osobowe mogą być ujawniane odbiorcom, jeżeli jest to niezbędne do realizacji określonego celu lub wynika z
+    obowiązku prawnego. Mogą to być w szczególności:
+  </p>
+  <ul>
+    <li>organy publiczne i instytucje, w zakresie wymaganym przez prawo, w szczególności organy podatkowe, Zakład Ubezpieczeń Społecznych oraz Generalny Inspektor Informacji Finansowej;</li>
+    <li>banki, operatorzy płatności i podmioty obsługujące rozliczenia, w zakresie potrzebnym do rozliczeń;</li>
+    <li>dostawcy hostingu, infrastruktury IT, poczty elektronicznej, kopii zapasowych, utrzymania serwisu i bezpieczeństwa;</li>
+    <li>dostawcy oprogramowania finansowo-księgowego i kadrowego oraz Portalu klienta;</li>
+    <li>dostawcy narzędzi formularzowych i komunikacyjnych, jeżeli są wykorzystywani do realizacji danego procesu;</li>
+    <li>dostawcy narzędzi analitycznych, w szczególności Google Ireland Limited w zakresie Google Analytics (przed wyrażeniem zgody wyłącznie w zakresie zapytań bez plików cookies opisanych w punkcie 13.3) oraz Vercel Inc. w zakresie pomiaru szybkości działania serwisu (Speed Insights), wyłącznie po uzyskaniu zgody;</li>
+    {adsEnabled && (
+    <li>dostawcy narzędzi reklamowych, w szczególności Google Ireland Limited w zakresie Google Ads, w zakresie pomiaru skuteczności kampanii, wyłącznie po uzyskaniu zgody na kategorię marketingową;</li>
+    )}
+    <li>dostawcy usług bezpieczeństwa, w szczególności Google w zakresie reCAPTCHA, w zakresie niezbędnym do ochrony formularzy;</li>
+    <li>doradcy prawni, podatkowi, audytorzy, ubezpieczyciele i inne podmioty wspierające Administratora, gdy jest to potrzebne do obsługi prawnej lub gospodarczej;</li>
+    <li>podmioty przetwarzające dane na zlecenie Administratora, związane umową lub innym instrumentem prawnym wymaganym przez art. 28 RODO.</li>
+  </ul>
+  <p>
+    Szczegółowa lista dostawców może zmieniać się wraz z rozwojem serwisu. Administrator dobiera ich z uwzględnieniem
+    charakteru powierzonego przetwarzania i wymogów RODO. Aktualny wykaz podmiotów przetwarzających wykorzystywanych
+    przy obsłudze klienta jest udostępniany klientowi na jego żądanie.
+  </p>
+
+  <h2 id="transfery">8. Przekazywanie danych poza Europejski Obszar Gospodarczy</h2>
+  <p>
+    W związku z korzystaniem z usług dostawców technologicznych dane mogą być przekazywane poza Europejski Obszar
+    Gospodarczy, jeżeli konkretny dostawca lub jego infrastruktura znajduje się poza EOG albo korzysta z infrastruktury
+    w państwie trzecim. Takie przekazanie następuje wyłącznie na zasadach przewidzianych w rozdziale V RODO.
+  </p>
+  <p>
+    W zależności od konkretnego przypadku podstawą transferu może być decyzja Komisji Europejskiej stwierdzająca
+    odpowiedni stopień ochrony (art. 45 RODO), odpowiednie zabezpieczenia, w szczególności standardowe klauzule
+    umowne (art. 46 RODO), albo inny mechanizm dopuszczony przez RODO.
+  </p>
+  <p>
+    W szczególności korzystanie z usług Google może wiązać się z przekazywaniem danych do państw trzecich. W przypadku
+    podmiotów uczestniczących w EU-U.S. Data Privacy Framework zastosowanie może mieć decyzja wykonawcza Komisji
+    Europejskiej z dnia 10 lipca 2023 r. stwierdzająca odpowiedni stopień ochrony. W pozostałych przypadkach Google
+    stosuje mechanizmy transferowe wskazane we własnej dokumentacji ochrony danych, w tym standardowe klauzule umowne,
+    zależnie od konkretnej usługi i relacji prawnej.
+  </p>
+
+  <h2 id="okres">9. Okres przechowywania danych</h2>
+  <p>
+    Dane są przechowywane przez okres nie dłuższy, niż jest to niezbędne do realizacji celu, dla którego zostały zebrane,
+    z uwzględnieniem obowiązków prawnych i okresów przedawnienia roszczeń. Różne kategorie danych mają różne okresy
+    przechowywania.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Kategoria</th><th>Okres lub kryterium ustalenia okresu</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Zapytania, wyceny i korespondencja przed zawarciem umowy</td>
+        <td>Przez czas potrzebny do obsługi zapytania, a następnie przez okres potrzebny do ustalenia, dochodzenia lub obrony ewentualnych roszczeń. Jeżeli do zawarcia umowy nie doszło, dane są usuwane najpóźniej po 12 miesiącach od ostatniego kontaktu, chyba że dłuższe przechowywanie jest uzasadnione konkretną sprawą.</td>
+      </tr>
+      <tr>
+        <td>Dane związane z umową i obsługą klienta</td>
+        <td>Przez czas trwania umowy, a po jej zakończeniu przez okres wymagany przepisami lub potrzebny do rozliczenia i ochrony przed roszczeniami. Roszczenia o wynagrodzenie za usługi świadczone w zakresie działalności przedsiębiorstwa przedawniają się co do zasady z upływem 2 lat.</td>
+      </tr>
+      <tr>
+        <td>Dokumentacja księgowa i podatkowa Administratora</td>
+        <td>Przez okres wynikający z przepisów, w szczególności z art. 74 ustawy o rachunkowości oraz z zasad przedawnienia zobowiązań podatkowych. W typowych przypadkach jest to 5 lat liczonych zgodnie z zasadami właściwymi dla danego dokumentu i obowiązku.</td>
+      </tr>
+      <tr>
+        <td>Dokumentacja dotycząca stosowania środków bezpieczeństwa finansowego</td>
+        <td>Przez okres wskazany w ustawie o przeciwdziałaniu praniu pieniędzy oraz finansowaniu terroryzmu, liczony od zakończenia stosunków gospodarczych z klientem.</td>
+      </tr>
+      <tr>
+        <td>Dane przetwarzane w ramach obsługi księgowej i kadrowo-płacowej klienta</td>
+        <td>Zgodnie z udokumentowanymi poleceniami klienta jako administratora, umową powierzenia i właściwymi przepisami prawa pracy, ubezpieczeń społecznych i rachunkowości. Nie ma jednego uniwersalnego terminu dla wszystkich dokumentów.</td>
+      </tr>
+      <tr>
+        <td>Logi Portalu klienta</td>
+        <td>Przez okres niezbędny do zapewnienia bezpieczeństwa i rozliczalności operacji, nie dłużej niż przez okres przechowywania dokumentacji, której dotyczą.</td>
+      </tr>
+      <tr>
+        <td>Dane dotyczące zgody na newsletter lub marketing</td>
+        <td>Do czasu wycofania zgody, a następnie, w zakresie dowodu jej udzielenia i obsługi ewentualnych roszczeń, przez okres wynikający z potrzeby wykazania zgodności z prawem i z przedawnienia roszczeń.</td>
+      </tr>
+      <tr>
+        <td>Preferencje cookies i lokalnego przechowywania ustawień</td>
+        <td>Do czasu usunięcia danych z urządzenia lub zmiany preferencji przez użytkownika.</td>
+      </tr>
+      <tr>
+        <td>Google Analytics - dane pomiarowe (zapytania bez plików cookies oraz, po wyrażeniu zgody, pełny pomiar)</td>
+        <td>Zgodnie z ustawieniami retencji skonfigurowanymi przez Administratora w usłudze Google Analytics. Ustawienia mogą zostać zmienione wraz ze zmianą konfiguracji usługi.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="prawa">10. Prawa osób, których dane dotyczą</h2>
+  <p>W granicach określonych w RODO przysługują Ci w szczególności:</p>
+  <ul>
+    <li>prawo dostępu do danych osobowych i otrzymania ich kopii;</li>
+    <li>prawo do sprostowania nieprawidłowych lub uzupełnienia niekompletnych danych;</li>
+    <li>prawo do usunięcia danych, jeżeli spełnione są przesłanki z art. 17 RODO;</li>
+    <li>prawo do ograniczenia przetwarzania w przypadkach wskazanych w art. 18 RODO;</li>
+    <li>prawo do przenoszenia danych, gdy przetwarzanie odbywa się w sposób zautomatyzowany na podstawie zgody lub umowy i spełnione są warunki art. 20 RODO;</li>
+    <li>prawo do wniesienia sprzeciwu wobec przetwarzania opartego na art. 6 ust. 1 lit. e lub f RODO, z przyczyn związanych z Twoją szczególną sytuacją;</li>
+    <li>prawo do wniesienia w dowolnym momencie sprzeciwu wobec przetwarzania danych na potrzeby marketingu bezpośredniego;</li>
+    <li>prawo do cofnięcia zgody w dowolnym momencie, jeżeli przetwarzanie odbywa się na podstawie zgody;</li>
+    <li>prawo do wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.</li>
+  </ul>
+  <p>
+    Cofnięcie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej cofnięciem. Prawo do usunięcia
+    danych, ograniczenia przetwarzania oraz pozostałe prawa nie mają charakteru bezwzględnego i mogą być ograniczone,
+    jeżeli dalsze przetwarzanie jest wymagane przez przepisy prawa albo jest niezbędne do ustalenia, dochodzenia lub
+    obrony roszczeń.
+  </p>
+  <p>
+    Żądanie dotyczące danych można przesłać na <a href="mailto:rodo@taxun.pl">rodo@taxun.pl</a>. Administrator
+    odpowiada bez zbędnej zwłoki, nie później niż w ciągu miesiąca od otrzymania żądania. Termin może zostać
+    przedłużony o kolejne dwa miesiące, jeżeli jest to konieczne ze względu na skomplikowany charakter żądania lub
+    liczbę żądań; o takim przedłużeniu Administrator informuje w terminie miesiąca od otrzymania żądania.
+  </p>
+  <p>
+    Dla ochrony danych Administrator może poprosić o informacje pozwalające potwierdzić tożsamość osoby składającej
+    żądanie, jeżeli istnieją uzasadnione wątpliwości co do jej tożsamości.
+  </p>
+  <p>
+    Skargę można wnieść do Prezesa Urzędu Ochrony Danych Osobowych, ul. Stawki 2, 00-193 Warszawa,
+    <a href="https://uodo.gov.pl/" target="_blank" rel="noopener noreferrer">uodo.gov.pl</a>. Skargi dotyczące
+    stosowania plików cookies i podobnych technologii mogą być kierowane również do Prezesa Urzędu Komunikacji
+    Elektronicznej, który nadzoruje przestrzeganie przepisów PKE w tym zakresie.
+  </p>
+
+  <h2 id="marketing">11. Marketing bezpośredni i newsletter</h2>
+  <p>
+    Jeżeli wyrazisz zgodę na newsletter, Taxun może wysyłać na wskazany adres informacje, aktualizacje i materiały
+    dotyczące księgowości, podatków oraz usług Taxun. Zgoda na newsletter jest dobrowolna i nie warunkuje odpowiedzi
+    na zapytanie ani zawarcia umowy.
+  </p>
+  <p>
+    Przesyłanie informacji handlowej i prowadzenie marketingu bezpośredniego z wykorzystaniem telekomunikacyjnych
+    urządzeń końcowych, w tym poczty elektronicznej i połączeń telefonicznych, wymaga uprzedniej zgody odbiorcy
+    zgodnie z art. 398 PKE. Sama podstawa z art. 6 ust. 1 lit. f RODO nie zastępuje tej zgody. Odbiorca nie ponosi
+    kosztów związanych z otrzymywaniem informacji handlowej.
+  </p>
+  <p>
+    Zgodę można wycofać w dowolnym momencie, w szczególności poprzez link rezygnacji znajdujący się w wiadomości lub
+    kontaktując się z Taxun. Wycofanie zgody jest równie łatwe jak jej udzielenie.
+  </p>
+
+  <h2 id="automatyczne">12. Zautomatyzowane podejmowanie decyzji i profilowanie</h2>
+  <p>
+    Taxun nie podejmuje wobec użytkowników serwisu decyzji wywołujących wobec nich skutki prawne lub w podobny sposób
+    istotnie na nich wpływających wyłącznie w wyniku zautomatyzowanego przetwarzania danych osobowych.
+  </p>
+  <p>
+    Google Analytics służy do statystycznej analizy korzystania z serwisu, a reCAPTCHA ocenia ryzyko, że dane działanie
+    pochodzi od bota lub stanowi nadużycie. Funkcje te nie służą do podejmowania decyzji kredytowych, kadrowych ani
+    innych decyzji o podobnym skutku wobec użytkownika.
+  </p>
+
+  <h2 id="cookies">13. Cookies i podobne technologie</h2>
+  <p>
+    Serwis wykorzystuje pliki cookies oraz podobne mechanizmy przechowywania lub uzyskiwania dostępu do informacji na
+    urządzeniu końcowym użytkownika, w tym pamięć lokalną przeglądarki. O obowiązkach związanych z daną technologią
+    decyduje funkcja, jaką pełni, a nie jej nazwa techniczna.
+  </p>
+  <p>
+    Zgodnie z art. 399 ust. 1 PKE przechowywanie informacji lub uzyskiwanie dostępu do informacji już przechowywanej
+    w telekomunikacyjnym urządzeniu końcowym jest dozwolone pod warunkiem uprzedniego poinformowania użytkownika
+    w sposób jednoznaczny, łatwy i zrozumiały o celu przechowywania i dostępu oraz o możliwości określenia warunków
+    przechowywania, a także po wyrażeniu przez niego zgody. Zgody nie wymagają technologie objęte wyłączeniem
+    z art. 399 ust. 3 PKE, czyli niezbędne do transmisji komunikatu albo do dostarczenia usługi żądanej przez
+    użytkownika. Zgoda musi spełniać wymagania określone w RODO.
+  </p>
+  <p>
+    Przy pierwszej wizycie użytkownik wybiera kategorie technologii. Preferencje można później zmienić za pomocą
+    przycisku <strong>„Ustawienia cookies”</strong> dostępnego w serwisie. Wycofanie zgody jest równie łatwe jak jej
+    udzielenie i nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem. Technologie wymagające
+    zgody nie są uruchamiane przed jej uzyskaniem.
+  </p>
+
+  <h3>13.1. Aktualnie stosowane technologie</h3>
+  <table>
+    <thead>
+      <tr><th>Nazwa / technologia</th><th>Kategoria</th><th>Cel</th><th>Okres</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>taxun-consent-v1</strong> (localStorage)</td>
+        <td>Niezbędna</td>
+        <td>Zapamiętanie preferencji użytkownika dotyczących cookies.</td>
+        <td>{consentRetention} od zapisania decyzji. Po tym okresie wpis jest usuwany, a panel zgód pyta ponownie; do czasu odpowiedzi obowiązuje domyślna odmowa. Użytkownik może usunąć wpis wcześniej, czyszcząc dane witryny w przeglądarce.</td>
+      </tr>
+      <tr>
+        <td><strong>_GRECAPTCHA</strong></td>
+        <td>Niezbędna, bezpieczeństwo</td>
+        <td>Ochrona formularzy przed spamem i nadużyciami w ramach Google reCAPTCHA.</td>
+        <td>6 miesięcy, zgodnie z konfiguracją usługi wskazaną w panelu cookies.</td>
+      </tr>
+      <tr>
+        <td><strong>_ga</strong></td>
+        <td>Analityczna</td>
+        <td>Rozróżnianie użytkowników na potrzeby Google Analytics.</td>
+        <td>2 lata według ustawienia domyślnego Google. Przeglądarki mogą skracać ten okres, na przykład do 400 dni.</td>
+      </tr>
+      <tr>
+        <td><strong>_ga_*</strong></td>
+        <td>Analityczna</td>
+        <td>Utrzymywanie stanu sesji i pomiaru w ramach Google Analytics.</td>
+        <td>2 lata według ustawienia domyślnego Google. Przeglądarki mogą skracać ten okres.</td>
+      </tr>
+      {adsEnabled && (
+      <>
+      <tr>
+        <td><strong>_gcl_au</strong></td>
+        <td>Marketingowa</td>
+        <td>Powiązanie wizyty w serwisie z kliknięciem w reklamę Google Ads, aby przypisać zgłoszenie z formularza do konkretnej kampanii.</td>
+        <td>90 dni według ustawienia domyślnego Google.</td>
+      </tr>
+      <tr>
+        <td><strong>_gcl_aw</strong></td>
+        <td>Marketingowa</td>
+        <td>Zapamiętanie identyfikatora kliknięcia w reklamę (gclid) na potrzeby rozliczenia konwersji w Google Ads.</td>
+        <td>90 dni według ustawienia domyślnego Google.</td>
+      </tr>
+      </>
+      )}
+      <tr>
+        <td><strong>taxun-source-v1</strong> (sessionStorage)</td>
+        <td>Analityczna</td>
+        <td>Zapamiętanie źródła wejścia do serwisu (adres strony odsyłającej, parametry kampanii, pierwsza otwarta podstrona), aby przypisać zgłoszenie z formularza do kanału, z którego przyszedł użytkownik.</td>
+        <td>Do zamknięcia karty przeglądarki. Dane pozostają na urządzeniu użytkownika.</td>
+      </tr>
+      <tr>
+        <td><strong>Vercel Speed Insights</strong></td>
+        <td>Analityczna</td>
+        <td>Pomiar szybkości wczytywania i wydajności serwisu u rzeczywistych użytkowników. Narzędzie nie zapisuje plików cookies ani innych identyfikatorów na urządzeniu.</td>
+        <td>Nie dotyczy - brak zapisu na urządzeniu użytkownika.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Nazwy, liczba, dostawcy, cele i okresy przechowywania cookies mogą ulec zmianie, na przykład w związku z rozwojem
+    serwisu lub zmianą konfiguracji dostawców. Aktualny stan dostępnych kategorii i technologii jest zawsze widoczny
+    w panelu <strong>„Ustawienia cookies”</strong>, który stanowi wiążące źródło informacji o bieżącej konfiguracji.
+  </p>
+
+  <h3>13.2. Cookies niezbędne</h3>
+  <p>
+    Technologie niezbędne do działania serwisu, jego bezpieczeństwa lub do zapamiętania wyborów użytkownika są stosowane
+    bez zgody wyłącznie w zakresie objętym wyłączeniem z art. 399 ust. 3 PKE. Zakwalifikowanie technologii jako
+    niezbędnej zależy od jej rzeczywistej funkcji i sposobu wdrożenia, a nie od nazwy nadanej jej przez dostawcę.
+  </p>
+
+  <h3>13.3. Cookies analityczne</h3>
+  <p>
+    Do kategorii analitycznej należą Google Analytics 4, Vercel Speed Insights oraz zapamiętanie źródła wejścia
+    do serwisu. <strong>Żaden z tych mechanizmów nie zapisuje niczego na urządzeniu użytkownika przed wyrażeniem
+    zgody.</strong> Vercel Speed Insights i zapamiętanie źródła wejścia są uruchamiane dopiero po zgodzie - do tego
+    czasu przeglądarka nie nawiązuje połączenia z serwerami Vercel i nic nie jest zapisywane w pamięci sesji.
+  </p>
+  <p>
+    Google Analytics 4 działa w zaawansowanym trybie zgody (advanced consent mode). Oznacza to, że skrypt pomiarowy
+    Google jest wczytywany przy każdym wejściu, ale <strong>przed wyrażeniem zgody nie zapisuje plików cookies ani
+    identyfikatorów użytkownika</strong>. Google otrzymuje wówczas wyłącznie zapytanie bez plików cookies, zawierające
+    adres odwiedzanej podstrony, podstawowe parametry przeglądarki i informację o odmownym stanie zgody. Takie
+    zapytanie nie pozwala rozpoznać użytkownika przy kolejnej wizycie ani powiązać go z wcześniejszymi odwiedzinami;
+    Google wykorzystuje je do statystycznego szacowania ruchu w ujęciu zbiorczym. Wyrażenie zgody włącza pełny pomiar
+    wraz z plikami cookies wymienionymi w tabeli poniżej, a jej cofnięcie przywraca stan opisany w tym akapicie
+    i powoduje usunięcie cookies <strong>_ga</strong> oraz <strong>_ga_*</strong>.
+  </p>
+  <p>
+    Podstawą tego rozwiązania jest art. 399 PKE w związku z art. 6 ust. 1 lit. a RODO: zgoda jest wymagana dla
+    zapisu i odczytu informacji na urządzeniu użytkownika, a przed jej uzyskaniem żaden taki zapis ani odczyt nie
+    następuje. Administrator nie przekazuje w zapytaniach bez plików cookies danych podawanych w formularzach ani
+    innych informacji umożliwiających identyfikację osoby.
+  </p>
+  <p>
+    Zgoda na kategorię analityczną jest zapamiętywana na okres nieprzekraczający roku. Po jego upływie panel cookies
+    pyta o zgodę ponownie, a do czasu udzielenia odpowiedzi obowiązuje stan odmowy.
+  </p>
+
+  <h3>13.4. Cookies marketingowe</h3>
+  {adsEnabled ? (
+  <>
+  <p>
+    Do kategorii marketingowej należy pomiar konwersji Google Ads, czyli sprawdzenie, które kliknięcia w reklamy
+    kończą się próbą kontaktu z Administratorem. Za próbę kontaktu uznajemy wysłanie formularza (kreator wyceny
+    albo formularz kontaktowy) oraz kliknięcie w numer telefonu. Są to jedyne działania mierzone w ten sposób;
+    samo przeglądanie serwisu i otwieranie podstron nie są raportowane do Google Ads. Kliknięcie w numer telefonu
+    rejestrujemy jako sam fakt kliknięcia - Administrator nie ma dostępu do informacji o tym, czy i jak długo
+    trwała rozmowa. Tag reklamowy działa w tym samym
+    zaawansowanym trybie zgody co analityka: <strong>przed wyrażeniem zgody nie są zapisywane cookies
+    _gcl_*</strong>, wizyta nie jest kojarzona z kliknięciem w reklamę, a dane nie są wykorzystywane do rozliczenia
+    ani personalizacji kampanii.
+  </p>
+  <p>
+    Zgoda na kategorię marketingową jest odrębna od zgody analitycznej: jej brak nie ogranicza możliwości korzystania
+    z serwisu ani wysłania formularza. Cofnięcie zgody powoduje przekazanie Google odmownego stanu zgody, usunięcie
+    cookies <strong>_gcl_*</strong> i zaprzestanie raportowania konwersji. Zgoda jest zapamiętywana na okres
+    nieprzekraczający roku, a po jego upływie panel cookies pyta o nią ponownie.
+  </p>
+  </>
+  ) : (
+  <p>
+    Serwis nie stosuje obecnie marketingowych technologii śledzących. Kategoria marketingowa jest przewidziana
+    w mechanizmie zarządzania zgodami, aby umożliwić bezpieczne rozszerzenie serwisu w przyszłości. Wdrożenie
+    jakiegokolwiek narzędzia marketingowego wymaga uprzedniej oceny podstawy prawnej, konfiguracji blokującej je do
+    czasu uzyskania zgody oraz aktualizacji niniejszej Polityki i panelu cookies przed uruchomieniem narzędzia.
+  </p>
+  )}
+
+  <h2 id="google-analytics">14. Narzędzia analityczne{adsEnabled ? ' i reklamowe' : ''}</h2>
+  <p>
+    Serwis korzysta z Google Analytics 4, usługi dostarczanej przez Google Ireland Limited, w celu analizy ruchu
+    i sposobu korzystania ze strony. Pełny pomiar - wraz z zapisem plików cookies i rozpoznawaniem powracających
+    użytkowników - prowadzony jest wyłącznie po wyrażeniu zgody na kategorię analityczną. Przed jej wyrażeniem
+    Google otrzymuje jedynie zapytania bez plików cookies, opisane w punkcie 13.3.
+  </p>
+  <p>
+    Google Analytics może przetwarzać informacje o interakcjach z serwisem, parametry urządzenia i przeglądarki,
+    informacje o źródle wejścia oraz inne dane niezbędne do prowadzenia pomiaru. Google wskazuje, że Google Analytics 4
+    nie zapisuje ani nie przechowuje adresów IP użytkowników, a adres IP jest wykorzystywany przejściowo do ustalenia
+    przybliżonej lokalizacji, po czym jest odrzucany przed zapisaniem danych.
+  </p>
+  <p>
+    Google Consent Mode jest mechanizmem technicznym sterującym zachowaniem usług Google w zależności od stanu zgody.
+    Nie stanowi samodzielnej podstawy prawnej przetwarzania i nie zastępuje obowiązku uzyskania zgody. Serwis
+    korzysta z jego wariantu zaawansowanego: stan zgody - również odmowny - jest przekazywany Google przy każdym
+    wejściu, a od niego zależy, czy usługi Google mogą zapisać pliki cookies i wykorzystać dane do pomiaru
+    spersonalizowanego. Na podstawie zapytań bez plików cookies Google może szacować statystycznie liczbę zdarzeń,
+    których nie zaobserwował bezpośrednio; szacunki te dotyczą danych zbiorczych, a nie konkretnych osób.
+  </p>
+  <p>
+    Informacje dotyczące Google Analytics i przetwarzania danych przez Google są dostępne w dokumentacji Google:
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Polityka prywatności Google</a> oraz
+    <a href="https://business.safety.google/" target="_blank" rel="noopener noreferrer">Centrum bezpieczeństwa Google</a>.
+  </p>
+
+  <p>
+    Niezależnie od Google Analytics serwis korzysta z Vercel Speed Insights, usługi dostarczanej przez Vercel Inc.,
+    w celu pomiaru szybkości wczytywania i wydajności strony u rzeczywistych użytkowników. Narzędzie zbiera dane
+    techniczne o wydajności, takie jak czasy renderowania podstrony, rodzaj urządzenia i przybliżona lokalizacja
+    wynikająca z adresu IP; nie zapisuje plików cookies ani innych identyfikatorów na urządzeniu użytkownika i nie
+    służy do profilowania. Jest uruchamiane wyłącznie po wyrażeniu zgody na kategorię analityczną.
+  </p>
+  <p>
+    W ramach pomiaru analitycznego Administrator zapisuje również, z jakiego źródła użytkownik trafił do serwisu
+    (adres strony odsyłającej, parametry kampanii marketingowej oraz pierwsza otwarta podstrona). Informacja ta jest
+    przechowywana w pamięci sesji przeglądarki, usuwana wraz z zamknięciem karty i wykorzystywana wyłącznie po to,
+    aby ustalić skuteczność poszczególnych kanałów pozyskiwania klientów.
+  </p>
+
+  {adsEnabled && (
+  <>
+  <p>
+    Serwis korzysta również z Google Ads, usługi dostarczanej przez Google Ireland Limited, w celu prowadzenia kampanii
+    reklamowych i pomiaru ich skuteczności. Pomiar odbywa się za pośrednictwem Google Analytics 4: informację
+    o próbie kontaktu - wysłaniu formularza albo kliknięciu w numer telefonu - przekazujemy do Google Analytics,
+    a stamtąd, wraz z identyfikatorem wcześniejszego kliknięcia w reklamę i szacunkową wartością zapytania,
+    trafia ona do Google Ads. Oznacza to, że konwersja jest
+    mierzona wyłącznie wtedy, gdy udzielono zarówno zgody analitycznej, jak i marketingowej. Administrator nie
+    przekazuje w tym pomiarze danych podanych w formularzu, takich jak imię, adres e-mail, numer telefonu czy treść
+    wiadomości.
+  </p>
+  <p>
+    Narzędzie jest uruchamiane wyłącznie po wyrażeniu zgody na kategorię marketingową. Zgoda obejmuje również
+    wykorzystanie danych o kliknięciu do personalizacji reklam po stronie Google, zgodnie z sygnałami trybu zgody
+    (Consent Mode) przekazywanymi przez serwis. Zasady przetwarzania danych przez Google opisuje
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Polityka prywatności Google</a>
+    oraz <a href="https://business.safety.google/adsservices/" target="_blank" rel="noopener noreferrer">Warunki przetwarzania danych w usługach reklamowych Google</a>.
+  </p>
+  </>
+  )}
+
+  <h2 id="recaptcha">15. Google reCAPTCHA</h2>
+  <p>
+    Formularze w serwisie są zabezpieczane za pomocą Google reCAPTCHA w celu ograniczenia spamu, automatycznych zgłoszeń
+    i innych nadużyć. Usługa jest uruchamiana wyłącznie na podstronach zawierających formularze.
+  </p>
+  <p>
+    Google wskazuje, że reCAPTCHA wykorzystuje analizę ryzyka i może ustawiać cookie <strong>_GRECAPTCHA</strong>, gdy
+    usługa jest uruchamiana w celu przeprowadzenia takiej analizy. Zakres danych i sposób ich przetwarzania zależą od
+    bieżącej konfiguracji usługi.
+  </p>
+  <p>
+    Administrator kwalifikuje reCAPTCHA jako technologię niezbędną do bezpiecznego dostarczenia usługi żądanej przez
+    użytkownika, czyli przesłania formularza. Jeżeli zmiana konfiguracji reCAPTCHA rozszerzy zakres zbieranych
+    informacji albo spowoduje utratę warunków pozwalających traktować tę technologię jako niezbędną, zasady zarządzania
+    zgodą oraz treść niniejszej Polityki zostaną zmienione przed wdrożeniem zmiany.
+  </p>
+  <p>
+    Więcej informacji: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Polityka prywatności Google</a>
+    oraz <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Warunki Google</a>.
+  </p>
+
+  <h2 id="bezpieczenstwo">16. Bezpieczeństwo danych</h2>
+  <p>
+    Administrator stosuje środki techniczne i organizacyjne odpowiadające ryzyku związanemu z przetwarzaniem danych
+    osobowych, zgodnie z art. 24 i 32 RODO. Środki te obejmują w szczególności zarządzanie dostępem opartym na
+    indywidualnych kontach i uwierzytelnianiu wieloskładnikowym, szyfrowanie transmisji i kopii zapasowych, regularne
+    kopie zapasowe, rejestrowanie operacji na danych, ograniczenie dostępu do osób upoważnionych, zobowiązanie tych osób
+    do zachowania poufności oraz procedury reagowania na incydenty.
+  </p>
+  <p>
+    Ponieważ szczegółowe rozwiązania techniczne zmieniają się wraz z rozwojem systemów, Polityka nie stanowi zamkniętego
+    katalogu zastosowanych środków bezpieczeństwa.
+  </p>
+
+  <h2 id="zmiany">17. Zmiany Polityki prywatności</h2>
+  <p>
+    Polityka prywatności może być aktualizowana, w szczególności w przypadku zmiany przepisów prawa, sposobu świadczenia
+    usług, wykorzystywanych narzędzi technologicznych, dostawców lub celów przetwarzania. Nowa wersja jest publikowana
+    w serwisie wraz z datą jej obowiązywania.
+  </p>
+  <p>
+    Jeżeli zmiana będzie istotnie wpływać na sposób przetwarzania danych osobowych lub będzie wymagać uzyskania zgody,
+    Administrator podejmie działania wymagane przez obowiązujące przepisy, w tym pozyska wymaganą zgodę albo przekaże
+    wymaganą informację.
+  </p>
+
+  <h2 id="kontakt-rodo">18. Kontakt w sprawach ochrony danych</h2>
+  <p>
+    Wnioski dotyczące realizacji praw, pytania związane z przetwarzaniem danych oraz zgłoszenia dotyczące prywatności
+    można kierować na <a href="mailto:rodo@taxun.pl">rodo@taxun.pl</a>.
+  </p>
+  <p>
+    Wnioski dotyczące danych przetwarzanych przez Taxun w imieniu klienta w ramach usług księgowych lub kadrowo-płacowych
+    należy kierować do tego klienta jako administratora danych. Jeżeli wniosek wpłynie do Taxun, Administrator
+    niezwłocznie przekaże go właściwemu administratorowi i poinformuje o tym wnioskodawcę, jeżeli nie narusza to
+    obowiązków wynikających z umowy powierzenia.
+  </p>
+</LegalLayout>

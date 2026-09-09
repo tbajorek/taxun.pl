@@ -1,0 +1,295 @@
+---
+import Icon from './Icon.astro';
+import { industries, industriesLabel, site } from '../data/site';
+import { footerDisclaimer } from '../data/legal';
+// Adres z odciskiem treści - patrz komentarz w Header.astro.
+import logoMark from '../assets/brand/logo-mark.png';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="container">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <a href="/" class="brand" aria-label="Taxun - biuro rachunkowe, strona główna">
+          <img src={logoMark.src} alt="Taxun - biuro rachunkowe" width="256" height="256" class="brand__mark" loading="lazy" decoding="async"/>
+          <span class="brand__wordmark">
+            <span class="brand__name">taxun</span>
+            <span class="brand__sub">Biuro rachunkowe</span>
+          </span>
+        </a>
+        <p class="site-footer__lede">
+          Nowoczesne biuro rachunkowe online z portalem klienta, KSeF i OCR w cenie.
+          Pełna księgowość, kadry i płace dla JDG i spółek - z transparentnym cennikiem
+          i bez ukrytych dopłat.
+        </p>
+        <div class="site-footer__social">
+          <a href={site.social.linkedin} aria-label="LinkedIn" rel="noopener" target="_blank"><Icon name="linkedin" size={18}/></a>
+          <a href={site.social.facebook} aria-label="Facebook" rel="noopener" target="_blank"><Icon name="facebook" size={18}/></a>
+          <a href={site.social.instagram} aria-label="Instagram" rel="noopener" target="_blank"><Icon name="instagram" size={18}/></a>
+        </div>
+      </div>
+
+      <nav class="site-footer__col" aria-label="Usługi">
+        <p class="site-footer__col-title">Usługi</p>
+        <ul>
+          <li><a href="/ksiegowosc">Księgowość</a></li>
+          <li><a href="/ksiegowosc-online">Księgowość online</a></li>
+          <li><a href="/kadry-place">Kadry i płace</a></li>
+          <li><a href="/biuro-rachunkowe-krakow">Biuro rachunkowe Kraków</a></li>
+          <li><a href="/cennik">Cennik</a></li>
+          <li><a href="/kalkulatory">Kalkulatory</a></li>
+          <li><a href="/wycena">Bezpłatna wycena</a></li>
+        </ul>
+      </nav>
+
+      <nav class="site-footer__col" aria-label="Firma">
+        <p class="site-footer__col-title">Firma</p>
+        <ul>
+          <li><a href="/o-nas">O nas</a></li>
+          <li><a href="/o-nas#zobowiazania">Zobowiązania</a></li>
+          <li><a href="/wiedza">Wiedza i blog</a></li>
+          <li><a href="/slownik">Słownik księgowy</a></li>
+          <li><a href="/kontakt">Kontakt</a></li>
+          <li><a href="/polityka-prywatnosci">Polityka prywatności</a></li>
+          <li><a href="/regulamin">Regulamin</a></li>
+          <li><button type="button" class="footer-link" onclick="window.taxunConsent?.open()">Ustawienia cookies</button></li>
+        </ul>
+      </nav>
+
+      <div class="site-footer__col site-footer__contact">
+        <p class="site-footer__col-title">Kontakt</p>
+        <ul>
+          <li>
+            <Icon name="pin" size={16}/>
+            <address>{site.address.city} | {site.address.country}</address>
+          </li>
+          <li>
+            <Icon name="phone" size={16}/>
+            <a href={`tel:${site.phoneHref}`}>{site.phoneDisplay}</a>
+          </li>
+          <li>
+            <Icon name="mail" size={16}/>
+            <a href={`mailto:${site.email}`}>{site.email}</a>
+          </li>
+          <li>
+            <Icon name="clock" size={16}/>
+            <span>{site.hours}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!--
+      Branże mają własny pas na całą szerokość, a nie kolumnę obok pozostałych.
+      Lista rośnie z każdą nową podstroną branżową, więc układa się w tyle kolumn,
+      ile zmieści się w kontenerze - stopka rośnie wtedy w dół o jeden wiersz,
+      zamiast wyciągać jedną kolumnę na wysokość całej sekcji.
+    -->
+    <nav class="site-footer__col site-footer__industries" aria-label={industriesLabel}>
+      <p class="site-footer__col-title">{industriesLabel}</p>
+      <ul>
+        {industries.map((i) => <li><a href={i.href}>{i.label}</a></li>)}
+      </ul>
+    </nav>
+
+    <!--
+      Zastrzeżenie stoi w stopce, więc jest na każdej podstronie - także tam,
+      gdzie pełna ramka `LegalNotice` byłaby przesadą (strona główna, cennik,
+      kontakt). Treść czytamy z `src/data/legal.ts`, żeby brzmiała tak samo
+      jak w ramkach pod artykułami i kalkulatorami.
+    -->
+    <p class="site-footer__disclaimer">{footerDisclaimer}</p>
+
+    <div class="site-footer__bottom">
+      <p>&copy; {year} Taxun - marka firmy {site.brandOwner}. Wszystkie prawa zastrzeżone.</p>
+      <p class="site-footer__credits">
+        <span>NIP {site.taxId.nip}</span>
+        <span aria-hidden="true">·</span>
+        <span>REGON {site.taxId.regon}</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+.site-footer {
+  background: var(--ink-950);
+  color: var(--text-on-dark);
+  padding: clamp(3rem, 6vw, 4.5rem) 0 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.site-footer::before {
+  content: '';
+  position: absolute;
+  inset: -50% 50% auto auto;
+  width: 50%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(16,185,129,0.18), transparent 60%);
+  pointer-events: none;
+}
+
+.site-footer__disclaimer {
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.78125rem;
+  line-height: 1.6;
+  color: var(--text-on-dark-muted);
+  max-width: 90ch;
+}
+/* Zastrzeżenie przejmuje kreskę oddzielającą - pasek z prawami autorskimi
+   rysowałby drugą, kilkanaście pikseli niżej. */
+.site-footer__disclaimer + .site-footer__bottom {
+  border-top: none;
+  padding-top: 1.25rem;
+}
+
+.site-footer__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+  padding-bottom: clamp(2rem, 4vw, 3rem);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.brand__mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+.brand__wordmark { display: flex; flex-direction: column; line-height: 1; }
+.brand__name {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--white);
+}
+.brand__sub {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+  color: var(--text-on-dark-muted);
+}
+.site-footer__lede {
+  color: var(--text-on-dark-muted);
+  margin-top: 1.25rem;
+  max-width: 42ch;
+  font-size: 0.9375rem;
+  line-height: var(--leading-relaxed);
+}
+.site-footer__social {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.site-footer__social a {
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-on-dark);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+.site-footer__social a:hover {
+  background: var(--accent-500);
+  color: var(--ink-950);
+  transform: translateY(-2px);
+}
+
+.site-footer__col-title {
+  font-size: 0.8125rem;
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 1.125rem;
+}
+.site-footer__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.site-footer__col li, .site-footer__col a {
+  color: var(--text-on-dark-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.site-footer__col a:hover { color: var(--white); }
+.site-footer__contact li {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+}
+.site-footer__contact svg { flex-shrink: 0; color: var(--accent-400); margin-top: 2px; }
+.site-footer__contact address { font-style: normal; }
+
+.site-footer__industries {
+  padding: clamp(1.75rem, 3.5vw, 2.5rem) 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.site-footer__industries ul {
+  display: grid;
+  /* Tor szerszy niż najdłuższa nazwa branży - pozycje nie łamią się na dwie linie. */
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  align-items: start;
+  gap: 0.7rem clamp(1.5rem, 3vw, 3rem);
+}
+
+.site-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.8125rem;
+  color: var(--text-on-dark-muted);
+}
+.site-footer__credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.site-footer__credits span[aria-hidden] { opacity: 0.4; }
+
+.footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-on-dark-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.footer-link:hover { color: var(--white); }
+
+@media (max-width: 900px) {
+  .site-footer__top { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .site-footer__brand { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .site-footer__top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Kontakt pod dwiema kolumnami linków, żeby adres i telefon się nie łamały. */
+  .site-footer__contact { grid-column: 1 / -1; }
+}
+@media (max-width: 400px) {
+  .site-footer__top { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
