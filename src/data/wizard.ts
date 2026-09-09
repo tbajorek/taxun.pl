@@ -1367,7 +1367,7 @@ export const steps: Step[] = [
     id: 'kontakt',
     eyebrow: 'Kontakt',
     title: 'Gdzie wysłać wycenę?',
-    intro: 'Przygotujemy indywidualną wycenę i plan wdrożenia. Standardowo odpowiadamy w ciągu 4 godzin roboczych.',
+    intro: 'Przygotujemy indywidualną wycenę i plan wdrożenia.',
     questions: [
       {
         id: 'firstName',

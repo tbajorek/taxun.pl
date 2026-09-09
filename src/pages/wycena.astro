@@ -26,7 +26,7 @@ const summaryRows = SUMMARY_FIELDS.map((id) => {
 });
 
 const trust = [
-  { icon: 'clock', label: 'Standardowo odpowiedź w 4 godziny robocze' },
+  { icon: 'clock', label: 'Szybka odpowiedź w godzinach roboczych' },
   { icon: 'lock', label: 'Dane szyfrowane, zgodnie z RODO' },
   { icon: 'check-circle', label: 'Bez zobowiązań i bez ukrytych kosztów' },
 ];
@@ -34,7 +34,7 @@ const trust = [
 const heroBadges = [
   { icon: 'clock', label: 'Około 2 minut' },
   { icon: 'tag', label: 'Kwota z publicznego cennika' },
-  { icon: 'mail', label: 'Konkretna odpowiedź standardowo w 4 h roboczych' },
+  { icon: 'mail', label: 'Wycena na piśmie, na e-mail' },
 ];
 
 const nextSteps = [
@@ -46,7 +46,7 @@ const nextSteps = [
   {
     icon: 'mail',
     title: 'Wysyłamy wycenę na e-mail',
-    body: 'Konkretna kwota, zakres obsługi i plan wdrożenia. Wszystko na piśmie, standardowo w ciągu 4 godzin roboczych.',
+    body: 'Konkretna kwota, zakres obsługi i plan wdrożenia. Wszystko na piśmie.',
   },
   {
     icon: 'headset',
@@ -355,7 +355,7 @@ const nextSteps = [
             <h2>Zgłoszenie dotarło. Dziękujemy!</h2>
             <p class="wz-done__lede">
               Odpowiedź wyślemy na adres <strong data-done-email>podany w formularzu</strong>.
-              Znajdziesz w niej wycenę, zakres obsługi i plan wdrożenia - standardowo w mniej niż 4 godziny robocze.
+              Znajdziesz w niej wycenę, zakres obsługi i plan wdrożenia.
             </p>
             <ol class="wz-done__steps">
               {nextSteps.map((s, i) => (
