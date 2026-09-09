@@ -584,13 +584,17 @@ export const KASA_ECOMMERCE_WYJATKI = [
 export const KASA_ZWOLNIENIA_DO = 'końca 2027 roku';
 /**
  * Warunki zwolnienia z kasy rejestrującej przy wynajmie i zarządzaniu
- * nieruchomościami własnymi lub dzierżawionymi (poz. 25 załącznika do
+ * nieruchomościami własnymi lub dzierżawionymi (poz. 29 załącznika do
  * rozporządzenia z 17 grudnia 2024 r.). Muszą być spełnione łącznie, a
  * przyjęcie zapłaty gotówką odbiera zwolnienie od tej transakcji.
+ *
+ * Przy usługach przepis wymaga powiązania wpłaty z konkretną czynnością i nie
+ * żąda danych nabywcy - te pojawiają się dopiero przy dostawie towarów
+ * w systemie wysyłkowym (poz. 41), stąd różnica wobec KASA_WYSYLKA_WARUNKI.
  */
 export const KASA_NAJEM_WARUNKI = [
   'Usługa jest w całości udokumentowana fakturą albo cała zapłata wpływa na rachunek bankowy',
-  'Z ewidencji i dowodów zapłaty jednoznacznie wynika, kogo i jakiej umowy dotyczy wpłata',
+  'Z ewidencji i dowodów zapłaty jednoznacznie wynika, jakiej konkretnie umowy dotyczy wpłata',
   'Umowa dotyczy najmu, a nie krótkotrwałego udostępniania miejsca postoju z rotacją użytkowników',
 ];
 

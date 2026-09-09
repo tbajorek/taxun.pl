@@ -8,9 +8,12 @@ import Icon from '../components/Icon.astro';
 import Stats from '../components/Stats.astro';
 import { hrMin, hrPricing, setupFees, startsFrom, tables } from '../data/pricing';
 import {
+  DAYS_IN_YEAR,
   KASA_EDUKACJA_WYJATKI,
   KASA_LIMIT_ROCZNY,
   KASA_TERMIN_MIESIACE,
+  KASA_ULGA_MAX,
+  KASA_ULGA_RATE,
   KUP_STANDARD,
   PIP_DECYZJE_OD,
   PIP_INTERPRETACJA_DNI,
@@ -25,11 +28,12 @@ import {
   PKD_NOWA_OD,
   RYCZALT_EDUKACJA,
   RYCZALT_SPORT,
+  TAX_YEAR,
   VAT_RATE,
   VAT_RATE_OBNIZONA,
   VAT_ZWOLNIENIE_LIMIT,
 } from '../lib/tax-constants';
-import { pct, zl } from '../lib/format';
+import { pct, round2, zl, zl2 } from '../lib/format';
 import { industriesLabel, site } from '../data/site';
 
 const fmt = new Intl.NumberFormat('pl-PL');
@@ -234,14 +238,14 @@ const cashCases = [
     icon: 'check-circle',
     tone: 'good',
     title: 'Płatności wyłącznie na rachunek',
-    body: 'Przelew, BLIK na konto firmowe, płatność w systemie rezerwacji. Jeżeli całość zapłaty trafia na rachunek, a z ewidencji jednoznacznie wynika, kogo i jakiej transakcji dotyczy wpłata, kasa nie jest potrzebna niezależnie od obrotu.',
-    foot: 'Warunek dotyczący ewidencji bywa lekceważony, a to on najczęściej przesądza o utracie zwolnienia.',
+    body: 'Przelew, BLIK, karta w terminalu, płatność w systemie rezerwacji - liczy się to, że całość kwoty za daną usługę wpływa na Twój rachunek. Przepis stawia wtedy jeden warunek: z ewidencji i z dowodów zapłaty ma jednoznacznie wynikać, jakiej konkretnie czynności dotyczyła wpłata. Kasa nie jest potrzebna niezależnie od obrotu.',
+    foot: 'Przy usługach przepis nie wymaga danych nabywcy, ale sam wyciąg z konta warunku nie spełnia. Co ma być w ewidencji, rozpisujemy niżej.',
   },
   {
     icon: 'clock',
     tone: 'warn',
     title: 'Gotówka od klientów indywidualnych',
-    body: `Wtedy liczy się limit sprzedaży na rzecz osób prywatnych, czyli ${limitKasy} rocznie, w pierwszym roku działalności liczony proporcjonalnie do liczby dni. Po jego przekroczeniu na wdrożenie kasy masz ${KASA_TERMIN_MIESIACE} miesiące.`,
+    body: `Gotówka nie ma osobnego limitu. Limit ${limitKasy} obejmuje całą sprzedaż na rzecz osób prywatnych, więc gotówka i przelewy sumują się w jednej kwocie, a w pierwszym roku limit jest niższy proporcjonalnie do liczby dni. Po przekroczeniu zwolnienie działa jeszcze przez ${KASA_TERMIN_MIESIACE} pełne miesiące kalendarzowe.`,
     foot: 'Pilnujemy limitu w trakcie roku, żeby moment jego przekroczenia nie był zaskoczeniem.',
   },
   {
@@ -250,6 +254,58 @@ const cashCases = [
     title: 'Współpraca wyłącznie z klubami',
     body: 'Trener fakturujący kluby i firmy nie prowadzi sprzedaży na rzecz osób prywatnych, więc obowiązek ewidencjonowania w ogóle go nie dotyczy. Kasa pojawia się dopiero wtedy, gdy zaczynasz przyjmować własnych klientów.',
     foot: 'Ustalamy to przy starcie, zanim powstanie obowiązek, którego nie da się cofnąć.',
+  },
+];
+
+/**
+ * Przykład proporcjonalnego limitu dla kogoś, kto pierwszego klienta prywatnego
+ * przyjął 1 lipca. Dni liczymy włącznie z dniem tej sprzedaży, tak samo jak
+ * kalkulator na /kalkulatory/limitu-kasy-fiskalnej - inaczej obie strony
+ * pokazywałyby dwie różne kwoty dla tej samej daty.
+ */
+const kasaPrzykladDni =
+  Math.round((Date.UTC(TAX_YEAR, 11, 31) - Date.UTC(TAX_YEAR, 6, 1)) / 86_400_000) + 1;
+const kasaPrzykladLimit = zl2(round2((KASA_LIMIT_ROCZNY * kasaPrzykladDni) / DAYS_IN_YEAR));
+
+/**
+ * Trzy pytania, które wracają po przeczytaniu kart obok: czym jest ewidencja
+ * wymagana przez rozporządzenie, jak liczyć limit przy dwóch formach zapłaty
+ * naraz i co właściwie dzieje się w tych dwóch miesiącach po przekroczeniu.
+ */
+const cashDetails = [
+  {
+    icon: 'file',
+    title: 'Ewidencja to nie to samo co wyciąg z konta',
+    lead: 'Rozporządzenie wymienia ewidencję i dowody zapłaty osobno i na tym rozróżnieniu stoi cały warunek. Dowodem zapłaty jest wyciąg z rachunku, tylko że wyciąg pokazuje kwotę i nadawcę, a nie to, za co ktoś zapłacił. Resztę dokłada ewidencja, którą prowadzisz i tak na potrzeby podatku dochodowego: ewidencja przychodów na ryczałcie albo podatkowa księga na skali i liniowym. Podatnik zwolniony z VAT prowadzi do tego dzienną ewidencję sprzedaży, a czynny ma te dane w ewidencji, z której składa JPK.',
+    points: [
+      'Data wykonania usługi, data wpływu i kwota zgodna z wpłatą',
+      'Nazwa usługi na tyle konkretna, żeby dało się ją przypisać do przelewu, czyli „pakiet 10 treningów”, a nie „usługa”',
+      'Numer faktury albo rezerwacji powtórzony w tytule wpłaty, jeżeli klient płaci za kilka rzeczy naraz',
+    ],
+    foot: 'Faktury klientowi prywatnemu wystawiać nie musisz, chyba że o nią poprosi - ma na to trzy miesiące, licząc od końca miesiąca wykonania usługi albo otrzymania zapłaty. Jeżeli fakturujesz każdą sprzedaż, warunek ewidencji spełniasz przy okazji i nie prowadzisz niczego równolegle.',
+  },
+  {
+    icon: 'calculator',
+    title: 'Limit liczy się od całej sprzedaży, nie od samej gotówki',
+    lead: 'Nieporozumienie brzmi zwykle tak: skoro przelewy mają własne zwolnienie, to do limitu wchodzi tylko gotówka. Wchodzi wszystko, co sprzedajesz osobom prywatnym, bez względu na formę zapłaty. Rozporządzenie wyłącza z tego rachunku dokładnie dwie pozycje, sprzedaż nieruchomości oraz sprzedaż środków trwałych udokumentowaną fakturą, i żadna z nich nie dotyczy treningów.',
+    points: [
+      'Dopóki całość każdej zapłaty wpływa na rachunek, wysokość obrotu nie ma znaczenia i limit możesz przekroczyć bez żadnych skutków',
+      'Kasa staje się potrzebna dopiero wtedy, gdy przy przekroczonym limicie pojawi się choćby jedna wpłata poza rachunkiem',
+      'Zapłata w części gotówką, w części przelewem odbiera zwolnienie całej transakcji, bo przepis mówi o zapłacie w całości',
+    ],
+    foot: `W pierwszym roku limit to ${limitKasy} razy liczba dni od pierwszej sprzedaży na rzecz osoby prywatnej do końca roku, podzielone przez ${DAYS_IN_YEAR}. Liczy się dzień tej sprzedaży, a nie data wpisu do CEIDG: przy pierwszym kliencie prywatnym 1 lipca wychodzi ${kasaPrzykladLimit}.`,
+    link: { href: '/kalkulatory/limitu-kasy-fiskalnej', label: 'Kalkulator limitu kasy fiskalnej' },
+  },
+  {
+    icon: 'clock',
+    title: `Te ${KASA_TERMIN_MIESIACE} miesiące to zapas, a nie termin na wstrzymanie sprzedaży`,
+    lead: 'Przekroczenie limitu nie wyłącza zwolnienia z dnia na dzień i niczego nie każe wstrzymywać. Zwolnienie traci moc dopiero po upływie dwóch pełnych miesięcy następujących po miesiącu przekroczenia, więc przez ten czas przyjmujesz płatności tak jak dotąd, również gotówką. Przekroczenie 12 marca oznacza, że kwiecień i maj są jeszcze wolne, a kasa ma działać od 1 czerwca.',
+    points: [
+      'W tym czasie kupujesz kasę online i umawiasz serwisanta na fiskalizację, a odrębne zgłoszenie kasy do urzędu skarbowego już nie występuje, bo przy fiskalizacji zgłasza się ona sama do Centralnego Repozytorium Kas',
+      `Kto rozpocznie ewidencjonowanie w ustawowym terminie, odlicza ${pct(KASA_ULGA_RATE)} ceny netto kasy, nie więcej niż ${zl(KASA_ULGA_MAX)} na jedno urządzenie; spóźnienie tę ulgę odbiera`,
+      'Osoba, która będzie wystawiać paragony, przed pierwszym dniem pracy na kasie podpisuje oświadczenie o zapoznaniu się z zasadami ewidencji',
+    ],
+    foot: 'Zwolnienie z tytułu limitu jest jednorazowe: raz utracone, nie wraca w kolejnym roku, nawet jeżeli obrót spadnie. Zostaje wtedy to drugie zwolnienie, więc sprzedaż w całości opłacona na rachunek dalej może być poza kasą, a na kasie lądują te transakcje, przy których pojawiła się gotówka.',
   },
 ];
 
@@ -427,7 +483,15 @@ const faq = [
   },
   {
     q: 'Przyjmuję tylko przelewy i BLIK. Czy kasa jest potrzebna?',
-    a: 'Zwykle nie, pod warunkiem że całość zapłaty trafia na rachunek, a z ewidencji i dowodów zapłaty jednoznacznie wynika, kogo i jakiej transakcji dotyczy wpłata. Warunek dotyczący ewidencji bywa lekceważony, a to on najczęściej przesądza o utracie zwolnienia. Ustawiamy to na początku współpracy.',
+    a: 'Zwykle nie, pod warunkiem że całość zapłaty za daną usługę trafia na rachunek, a z ewidencji i dowodów zapłaty jednoznacznie wynika, jakiej konkretnie czynności dotyczy wpłata. Przy usługach przepis nie wymaga danych nabywcy, wymaga natomiast powiązania wpłaty z konkretną usługą, więc sam wyciąg z konta nie wystarczy - potrzebna jest do tego ewidencja przychodów albo księga, którą prowadzisz na potrzeby podatku dochodowego. Ustawiamy to na początku współpracy.',
+  },
+  {
+    q: `Biorę i przelewy, i gotówkę. Jak wtedy liczyć limit ${limitKasy}?`,
+    a: `Limit obejmuje całą sprzedaż na rzecz osób prywatnych, więc gotówka i przelewy sumują się w jednej kwocie. Rozporządzenie wyłącza z tego rachunku tylko sprzedaż nieruchomości i sprzedaż środków trwałych udokumentowaną fakturą. Samo przekroczenie limitu nie zmusza jeszcze do kasy, dopóki całość każdej zapłaty wpływa na rachunek, bo wtedy działa drugie zwolnienie. Kasa staje się potrzebna dopiero wtedy, gdy przy przekroczonym limicie przyjmiesz wpłatę poza rachunkiem. Limit policzysz w <a href="/kalkulatory/limitu-kasy-fiskalnej">kalkulatorze limitu kasy fiskalnej</a>.`,
+  },
+  {
+    q: `Przekraczam limit w trakcie roku. Co mogę robić przez te ${KASA_TERMIN_MIESIACE} miesiące?`,
+    a: `Tak. Zwolnienie traci moc dopiero po upływie dwóch pełnych miesięcy następujących po miesiącu przekroczenia, więc przez ten czas przyjmujesz płatności tak jak dotąd, również gotówką. Przy przekroczeniu w marcu kasa ma zacząć pracę 1 czerwca. Ten czas jest na zakup kasy online i fiskalizację u serwisanta, a nie na wstrzymanie sprzedaży. Kto rozpocznie ewidencjonowanie w ustawowym terminie, odlicza ${pct(KASA_ULGA_RATE)} ceny netto kasy, nie więcej niż ${zl(KASA_ULGA_MAX)} na jedno urządzenie. Zwolnienia z tytułu limitu nie odzyskasz w kolejnym roku, nawet jeżeli obrót spadnie.`,
   },
   {
     q: 'Czy sportowiec może rozliczać się na działalności gospodarczej?',
@@ -733,6 +797,30 @@ const serviceSchema = {
             </article>
           ))}
         </div>
+      </div>
+
+      <div class="sport-cash__deep">
+        {cashDetails.map((d) => (
+          <article class="sport-detail">
+            <div class="sport-detail__head">
+              <Icon name={d.icon} size={20}/>
+              <h3>{d.title}</h3>
+            </div>
+            <p>{d.lead}</p>
+            <ul>
+              {d.points.map((pt) => <li><Icon name="check" size={14}/>{pt}</li>)}
+            </ul>
+            <p class="sport-detail__foot">{d.foot}</p>
+            {d.link && (
+              <a href={d.link.href} class="btn-arrow sport-detail__link">
+                <span>{d.link.label}</span>
+                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            )}
+          </article>
+        ))}
       </div>
     </div>
   </section>
@@ -1756,6 +1844,57 @@ const serviceSchema = {
   color: var(--text-subtle);
   line-height: 1.6;
 }
+
+/* ── Kasa fiskalna: rozwinięcie pod kartami ───────────────────────────── */
+.sport-cash__deep {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 1080px) { .sport-cash__deep { grid-template-columns: repeat(3, 1fr); } }
+.sport-detail {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.sport-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.sport-detail__head h3 { font-size: 1.0625rem; }
+.sport-detail__head :global(svg) { color: var(--accent-600); flex-shrink: 0; }
+.sport-detail > p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.sport-detail ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 1rem 0 auto;
+}
+.sport-detail li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.sport-detail li :global(svg) { color: var(--accent-600); flex-shrink: 0; margin-top: 4px; }
+.sport-detail__foot {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+.sport-detail__link { margin-top: 1rem; align-self: flex-start; }
 
 /* ── Sportowiec: źródła przychodu ─────────────────────────────────────── */
 .sport-sources {
