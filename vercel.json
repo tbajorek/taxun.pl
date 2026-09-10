@@ -95,7 +95,7 @@
       ]
     },
     {
-      "source": "/logo-mark.svg",
+      "source": "/favicon.png",
       "headers": [
         {
           "key": "Cache-Control",
@@ -104,7 +104,7 @@
       ]
     },
     {
-      "source": "/favicon.svg",
+      "source": "/apple-touch-icon.png",
       "headers": [
         {
           "key": "Cache-Control",
@@ -123,15 +123,6 @@
     },
     {
       "source": "/og-image.png",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=604800, s-maxage=31536000, stale-while-revalidate=86400"
-        }
-      ]
-    },
-    {
-      "source": "/og-image.svg",
       "headers": [
         {
           "key": "Cache-Control",

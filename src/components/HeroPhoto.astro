@@ -1,0 +1,69 @@
+---
+/*
+ * Zdjęcie w bloku powitalnym - jedno dla strony głównej i dla podstron, żeby
+ * ramka, warianty plików i moment pobierania nie rozjeżdżały się między nimi.
+ */
+import { Picture } from 'astro:assets';
+import type { SiteImage } from '../data/images';
+
+interface Props {
+  photo: SiteImage;
+}
+const { photo } = Astro.props;
+---
+{/*
+  Ramka bierze proporcję z samego pliku, więc kadru nie przycinamy i każde
+  kolejne zdjęcie wstawione w to miejsce trafia tu takie, jakie jest. Proporcja
+  jest ustawiona z góry, więc układ nie skacze podczas ładowania.
+*/}
+<figure class="hero-photo" style={`--photo-ratio: ${photo.file.width} / ${photo.file.height}`}>
+  {/*
+    `loading="lazy"` zamiast `eager`: poniżej 981 px zdjęcie jest schowane przez
+    `display: none`, więc leniwe nigdy nie przetnie się z widokiem i telefon go
+    w ogóle nie pobiera. Na desktopie leży nad zgięciem, więc pobieranie startuje
+    przy pierwszym wyliczeniu układu.
+  */}
+  <Picture
+    src={photo.file}
+    formats={['avif', 'webp']}
+    widths={[420, 630, 840]}
+    sizes="min(420px, 40vw)"
+    alt={photo.alt}
+    loading="lazy"
+    decoding="async"
+    class="hero-photo__img"
+  />
+</figure>
+
+<style>
+/*
+ * Szerokość jest mniejszą z trzech rzeczy: 420 px, szerokości kolumny i tego,
+ * co przy proporcji zdjęcia mieści się w 640 px wysokości. Ostatni człon pilnuje,
+ * żeby bardzo wysoki kadr nie rozepchnął bloku powitalnego na kilka ekranów -
+ * i robi to zwężeniem ramki, a nie `max-height`, bo `max-height` przyciął
+ * wtedy zdjęcie zamiast je zmniejszyć.
+ */
+.hero-photo {
+  margin: 0 0 0 auto;
+  width: min(420px, 100%, calc(640px * (var(--photo-ratio, 4 / 5))));
+  aspect-ratio: var(--photo-ratio, 4 / 5);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+.hero-photo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*
+ * Na telefonie zdjęcie odpada. Blok powitalny ma tam zmieścić nagłówek
+ * i przyciski bez przewijania, a zdjęcie zepchnęłoby je poniżej zgięcia.
+ */
+@media (max-width: 980px) {
+  .hero-photo { display: none; }
+}
+</style>

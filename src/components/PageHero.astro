@@ -1,5 +1,7 @@
 ---
+import HeroPhoto from './HeroPhoto.astro';
 import Icon from './Icon.astro';
+import { image as findImage } from '../data/images';
 
 interface Crumb { label: string; href?: string }
 interface Props {
@@ -9,32 +11,46 @@ interface Props {
   breadcrumbs?: Crumb[];
   align?: 'left' | 'center';
   compact?: boolean;
+  /**
+   * Nazwa pliku z `src/assets/images/`, bez rozszerzenia - `image="ksiegowosc"`
+   * to `src/assets/images/ksiegowosc.jpg`. Bez tego pliku blok powitalny
+   * wygląda dokładnie tak jak dotąd, jednokolumnowo. Brak obrazka nie jest
+   * błędem, bo strona ma się zbudować, zanim ktoś zdjęcie przygotuje.
+   */
+  image?: string;
 }
-const { eyebrow, title, description, breadcrumbs, align = 'left', compact = false } = Astro.props;
+const { eyebrow, title, description, breadcrumbs, align = 'left', compact = false, image } = Astro.props;
+
+// Zdjęcie odpada przy `align="center"` - kolumna tekstu wyśrodkowana obok kadru
+// wygląda jak pomyłka, a nie jak decyzja.
+const photo = image && align !== 'center' ? findImage(image) : null;
 ---
-<section class={`page-hero ${align === 'center' ? 'page-hero--center' : ''} ${compact ? 'page-hero--compact' : ''}`}>
+<section class={`page-hero ${align === 'center' ? 'page-hero--center' : ''} ${compact ? 'page-hero--compact' : ''} ${photo ? 'page-hero--with-photo' : ''}`}>
   <div class="page-hero__bg" aria-hidden="true">
     <div class="page-hero__grid"></div>
     <div class="page-hero__glow"></div>
   </div>
-  <div class="container">
-    {breadcrumbs && (
-      <nav class="breadcrumbs" aria-label="Okruszki">
-        <ol>
-          <li><a href="/">Start</a></li>
-          {breadcrumbs.map((c, i) => (
-            <li>
-              <Icon name="chevron-right" size={12} />
-              {c.href ? <a href={c.href}>{c.label}</a> : <span>{c.label}</span>}
-            </li>
-          ))}
-        </ol>
-      </nav>
-    )}
-    {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-    <h1 class="page-hero__title">{title}</h1>
-    {description && <p class="page-hero__lede lede">{description}</p>}
-    <slot />
+  <div class="container page-hero__inner">
+    <div class="page-hero__text">
+      {breadcrumbs && (
+        <nav class="breadcrumbs" aria-label="Okruszki">
+          <ol>
+            <li><a href="/">Start</a></li>
+            {breadcrumbs.map((c, i) => (
+              <li>
+                <Icon name="chevron-right" size={12} />
+                {c.href ? <a href={c.href}>{c.label}</a> : <span>{c.label}</span>}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h1 class="page-hero__title">{title}</h1>
+      {description && <p class="page-hero__lede lede">{description}</p>}
+      <slot />
+    </div>
+    {photo && <HeroPhoto photo={photo} />}
   </div>
 </section>
 
@@ -109,4 +125,19 @@ const { eyebrow, title, description, breadcrumbs, align = 'left', compact = fals
 .page-hero--center .page-hero__lede { margin-inline: auto; }
 
 .page-hero :global(.eyebrow) { color: var(--accent-400); }
+
+/*
+ * Dwie kolumny robimy tylko wtedy, gdy zdjęcie faktycznie jest. Bez niego
+ * `.page-hero__inner` zostaje zwykłym blokiem, więc strony bez obrazka
+ * renderują się co do piksela tak jak dotąd.
+ */
+.page-hero--with-photo .page-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+@media (max-width: 980px) {
+  .page-hero--with-photo .page-hero__inner { grid-template-columns: 1fr; }
+}
 </style>

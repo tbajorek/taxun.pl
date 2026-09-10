@@ -194,6 +194,43 @@ kolorami, nie dla zdjęcia - ta sama fotografia potrafi ważyć w nim
 kilkanaście razy więcej niż w JPEG-u, którego nikt od niej nie odróżni,
 a różnicę zapłaci każdy, kto klonuje repozytorium.
 
+Blok powitalny podstrony bierze zdjęcie przez `image="nazwa"` w `PageHero`,
+a strona główna przez `image('hero')` w `HomeHero`. Rysuje je jeden komponent,
+`HeroPhoto.astro`. **Brak pliku nie jest błędem** - `image()` zwraca wtedy
+`null`, blok powitalny zostaje jednokolumnowy i tyle. Strona ma się budować,
+zanim ktokolwiek przygotuje zdjęcie, więc nazwa wpisana w `PageHero` to
+zaproszenie, a nie zależność.
+
+Kadru nie przycinamy: ramka bierze proporcję z pliku, a bardzo wysoki obrazek
+zwężamy, zamiast obcinać mu górę i dół. Poniżej 981 px zdjęcie znika - blok
+powitalny ma na telefonie zmieścić nagłówek i przyciski bez przewijania - i to
+jest powód, dla którego jest `loading="lazy"`, a nie `eager`: schowane leniwe
+zdjęcie nie przecina się z widokiem, więc telefon go w ogóle nie pobiera.
+
+Obrazek bez wpisu w `ALT` dostaje pusty opis, czyli idzie jako ozdoba, i mówi
+o tym ostrzeżenie w konsoli budowania. Zdania nie generujemy z nazwy pliku -
+opis ma mówić, co widać, a to wie tylko ktoś, kto zdjęcie oglądał.
+
+### Logo ma jedno źródło
+
+`src/assets/brand/logo.png` to jedyny plik logo, który się edytuje. Znak
+w nagłówku i stopce, ikona karty przeglądarki, ikona ekranu głównego w iOS
+i obrazek Open Graph powstają z niego przez `npm run brand`
+(`scripts/build-brand.mjs`) i są commitowane, bo deployment ma je brać
+z repozytorium.
+
+Znak wycinamy z logo, a nie rysujemy osobno. Rysunek wektorowy, który stał tu
+wcześniej, przedstawiał ten sam znak, ale trochę inaczej: inna grubość
+strzałki, inny promień rogów - i ta różnica wychodziła wszędzie tam, gdzie znak
+sąsiadował z pełnym logo. Skrypt liczy prostokąt znaku z samego pliku (przerwa
+z przezroczystych pikseli między znakiem a napisem), więc kolejna wersja logo
+o innych proporcjach nie wymaga poprawki w kodzie.
+
+Znaku nie powiększamy ponad to, co daje logo: w nagłówku i stopce wyświetla się
+w 40-44 px, więc nawet ekran o potrójnej gęstości mieści się w rozdzielczości
+źródła. Z tego samego powodu zniknął `mask-icon` - przypięte karty w Safari
+wymagają jednokolorowego SVG, czyli narysowania znaku drugi raz.
+
 ## Jeden skrypt na stronę
 
 Każdy `<script>` w komponencie Astro to osobny punkt wejścia bundlera, czyli

@@ -27,9 +27,14 @@ const byName = new Map<string, ImageMetadata>(
   ]),
 );
 
-/**
- * Opisy dla czytników ekranu i wyszukiwarek. Obrazek bez wpisu dostaje pusty
- * `alt`, czyli jest traktowany jako ozdoba - a nie zdanie zmyślone przez kod.
+/*
+ * Opisy dla czytników ekranu i wyszukiwarek. Zdanie ma mówić, co widać na
+ * zdjęciu, więc dopisuje je człowiek, który to zdjęcie widział - kod nie ma
+ * czego zgadywać. Obrazek bez wpisu idzie jako ozdoba, z pustym `alt`,
+ * i budowanie mówi o tym w konsoli.
+ *
+ * Nazwy używane przez bloki powitalne podstron: `ksiegowosc`, `kadry-place`
+ * i `ksiegowosc-online` - takie same jak adresy tych stron.
  */
 const ALT: Record<string, string> = {
   hero: 'Doradca Taxun i klientka przeglądają dokumenty firmowe na tablecie',
@@ -47,5 +52,12 @@ export interface SiteImage {
  */
 export function image(name: string): SiteImage | null {
   const file = byName.get(name);
-  return file ? { file, alt: ALT[name] ?? '' } : null;
+  if (!file) return null;
+  const alt = ALT[name];
+  if (alt === undefined) {
+    console.warn(
+      `[images] Obrazek "${name}" nie ma opisu w ALT (src/data/images.ts) - idzie z pustym alt, czyli jako ozdoba.`,
+    );
+  }
+  return { file, alt: alt ?? '' };
 }
