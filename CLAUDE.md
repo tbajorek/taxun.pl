@@ -179,6 +179,21 @@ Nowe zdjęcie w commicie to więc pliki z `_optimized/` plus `manifest.json`,
 nigdy oryginał. Zdjęcie wycofuje się przez
 `npm run covers -- --forget nazwa.jpg`. Szczegóły w `docs/cover-photos.md`.
 
+### Zdjęcia poza blogiem
+
+Obrazki wstawiane w treść stron leżą w `src/assets/images/`, a kod sięga po nie
+nazwą pliku bez rozszerzenia: `hero.jpg` to `image('hero')` z
+`src/data/images.ts`. Nowy obrazek to wrzucenie pliku i dopisanie zdania do
+`ALT` w tym module - bez importu i bez zmiany w komponencie. Warianty AVIF
+i WebP składa potok obrazów Astro w budowaniu, więc tych plików nie
+commitujemy; commitujemy sam obrazek źródłowy, bo bez niego nie ma z czego ich
+złożyć.
+
+Źródło zapisujemy skompresowane. PNG jest formatem dla grafiki z płaskimi
+kolorami, nie dla zdjęcia - ta sama fotografia potrafi ważyć w nim
+kilkanaście razy więcej niż w JPEG-u, którego nikt od niej nie odróżni,
+a różnicę zapłaci każdy, kto klonuje repozytorium.
+
 ## Jeden skrypt na stronę
 
 Każdy `<script>` w komponencie Astro to osobny punkt wejścia bundlera, czyli
