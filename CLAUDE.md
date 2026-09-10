@@ -202,14 +202,28 @@ zanim ktokolwiek przygotuje zdjęcie, więc nazwa wpisana w `PageHero` to
 zaproszenie, a nie zależność.
 
 Kadru nie przycinamy: ramka bierze proporcję z pliku, a bardzo wysoki obrazek
-zwężamy, zamiast obcinać mu górę i dół. Poniżej 981 px zdjęcie znika - blok
-powitalny ma na telefonie zmieścić nagłówek i przyciski bez przewijania - i to
-jest powód, dla którego jest `loading="lazy"`, a nie `eager`: schowane leniwe
-zdjęcie nie przecina się z widokiem, więc telefon go w ogóle nie pobiera.
+zwężamy, zamiast obcinać mu górę i dół. Zdjęcie wypełnia swoją kolumnę -
+sztywna szerokość dobrana pod kadr pionowy zostawiała kadr poziomy małym
+i doklejonym z boku.
 
-Obrazek bez wpisu w `ALT` dostaje pusty opis, czyli idzie jako ozdoba, i mówi
-o tym ostrzeżenie w konsoli budowania. Zdania nie generujemy z nazwy pliku -
-opis ma mówić, co widać, a to wie tylko ktoś, kto zdjęcie oglądał.
+Poniżej 981 px zdjęcie znika, bo blok powitalny ma na telefonie zmieścić
+nagłówek i przyciski bez przewijania. Nie znaczy to jednak `loading="lazy"`:
+przy leniwym ładowaniu przeglądarka odkrywała zdjęcie dopiero po pierwszym
+wyliczeniu układu i przez tę chwilę malowała w ramce opis alternatywny - widać
+to było przy każdym odświeżeniu. Dlatego zdjęcie jest `eager`, z wysokim
+priorytetem, a `<picture>` piszemy wprost, z `media="(min-width: 981px)"` na
+każdym `<source>` i przezroczystym pikselem w `src`. Telefon nie pobiera wtedy
+ani bajta, desktop startuje razem z dokumentem, a `<Picture>` z Astro tu nie
+wystarczy, bo nie przepuszcza `media`.
+
+Świadoma cena: przy indeksowaniu mobilnym robot nie widzi tego zdjęcia, więc
+nie trafi ono do wyszukiwarki grafiki. To ilustracja usługi, a nie treść, po
+którą ktoś przychodzi.
+
+Opis w `ALT` mówi, czego dotyczy strona, a nie kto jest na zdjęciu. Ze zdjęcia
+nie wynika, czy osoba przy biurku to księgowa, czy klientka, a zdanie, które to
+rozstrzyga, po prostu zmyśla. Obrazek bez wpisu dostaje pusty opis, czyli idzie
+jako ozdoba, i mówi o tym ostrzeżenie w konsoli budowania.
 
 ### Logo ma jedno źródło
 

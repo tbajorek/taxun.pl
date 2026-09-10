@@ -28,16 +28,21 @@ const byName = new Map<string, ImageMetadata>(
 );
 
 /*
- * Opisy dla czytników ekranu i wyszukiwarek. Zdanie ma mówić, co widać na
- * zdjęciu, więc dopisuje je człowiek, który to zdjęcie widział - kod nie ma
- * czego zgadywać. Obrazek bez wpisu idzie jako ozdoba, z pustym `alt`,
- * i budowanie mówi o tym w konsoli.
+ * Opisy dla czytników ekranu i wyszukiwarek.
  *
- * Nazwy używane przez bloki powitalne podstron: `ksiegowosc`, `kadry-place`
- * i `ksiegowosc-online` - takie same jak adresy tych stron.
+ * Zdjęcia w blokach powitalnych są ilustracją usługi, a nie dokumentacją
+ * zdarzenia, więc opis mówi, czego dotyczy strona, a nie kto jest na zdjęciu.
+ * To nie jest wygodnictwo: ze zdjęcia nie wynika, czy osoba przy biurku to
+ * księgowa, czy klientka, a opis, który to rozstrzyga, po prostu zmyśla.
+ *
+ * Obrazek bez wpisu idzie jako ozdoba, z pustym `alt`, i budowanie mówi o tym
+ * w konsoli. Klucz to nazwa pliku bez rozszerzenia.
  */
 const ALT: Record<string, string> = {
-  hero: 'Doradca Taxun i klientka przeglądają dokumenty firmowe na tablecie',
+  hero: 'Taxun - biuro rachunkowe online dla jednoosobowych działalności i spółek',
+  ksiegowosc: 'Taxun - księgowość dla JDG i spółek: ryczałt, KPiR i księgi rachunkowe',
+  'kadry-place': 'Taxun - kadry i płace: listy płac, akta osobowe i deklaracje ZUS',
+  'ksiegowosc-online': 'Taxun - księgowość online: dokumenty i deklaracje bez wizyty w biurze',
 };
 
 export interface SiteImage {

@@ -25,12 +25,12 @@ const { eyebrow, title, description, breadcrumbs, align = 'left', compact = fals
 // wygląda jak pomyłka, a nie jak decyzja.
 const photo = image && align !== 'center' ? findImage(image) : null;
 ---
-<section class={`page-hero ${align === 'center' ? 'page-hero--center' : ''} ${compact ? 'page-hero--compact' : ''} ${photo ? 'page-hero--with-photo' : ''}`}>
+<section class={`page-hero ${align === 'center' ? 'page-hero--center' : ''} ${compact ? 'page-hero--compact' : ''}`}>
   <div class="page-hero__bg" aria-hidden="true">
     <div class="page-hero__grid"></div>
     <div class="page-hero__glow"></div>
   </div>
-  <div class="container page-hero__inner">
+  <div class={`container page-hero__inner ${photo ? 'page-hero__inner--with-photo' : ''}`}>
     <div class="page-hero__text">
       {breadcrumbs && (
         <nav class="breadcrumbs" aria-label="Okruszki">
@@ -130,14 +130,30 @@ const photo = image && align !== 'center' ? findImage(image) : null;
  * Dwie kolumny robimy tylko wtedy, gdy zdjęcie faktycznie jest. Bez niego
  * `.page-hero__inner` zostaje zwykłym blokiem, więc strony bez obrazka
  * renderują się co do piksela tak jak dotąd.
+ *
+ * Klasa siedzi na tym samym elemencie, którego dotyczy, a nie na sekcji wyżej.
+ * Selektor potomka działał w każdej przeglądarce, którą sprawdziłem, ale gdy
+ * przestanie pasować - obojętne, przez co - zdjęcie ląduje pod tekstem, dosunięte
+ * do prawej, i blok powitalny wygląda na zepsuty. Selektor jednoelementowy nie
+ * ma jak nie zadziałać.
  */
-.page-hero--with-photo .page-hero__inner {
+.page-hero__inner--with-photo {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: clamp(2rem, 5vw, 4rem);
   align-items: center;
 }
 @media (max-width: 980px) {
-  .page-hero--with-photo .page-hero__inner { grid-template-columns: 1fr; }
+  .page-hero__inner--with-photo { grid-template-columns: 1fr; }
+}
+
+/*
+ * Obok zdjęcia nagłówek dostaje niecałe dwie trzecie szerokości, więc przy
+ * dotychczasowym stopniu pisma dłuższe tytuły łamały się na cztery wersy
+ * i rozpychały blok. Mniejszy stopień mieści je w dwóch albo trzech. Strony
+ * bez zdjęcia zostają przy starym rozmiarze - tam nic nie zabiera miejsca.
+ */
+.page-hero__inner--with-photo .page-hero__title {
+  font-size: clamp(2rem, 3.4vw, 3.125rem);
 }
 </style>
