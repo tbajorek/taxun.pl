@@ -111,7 +111,7 @@ Pełna opieka KSeF nie jest dla nas dodatkiem do usługi - traktujemy to jako ob
 
 ---
 
-Wdrożenie KSeF to dobry moment, żeby uporządkować nie tylko dane kontrahentów, ale i sam proces fakturowania w firmie. Jeśli chcesz, abyśmy przeprowadzili Cię przez całość, [umów bezpłatną konsultację](/kontakt).
+Wdrożenie KSeF to dobry moment, żeby uporządkować nie tylko dane kontrahentów, ale i sam proces fakturowania w firmie. Jeśli chcesz, abyśmy przeprowadzili Cię przez całość, [umów bezpłatną rozmowę wstępną](/kontakt).
 
 ## Źródła i podstawy prawne
 

@@ -5,6 +5,7 @@ import FAQ from '../components/FAQ.astro';
 import Icon from '../components/Icon.astro';
 import RecaptchaScript from '../components/RecaptchaScript.astro';
 import { site } from '../data/site';
+import { setupFees } from '../data/pricing';
 
 const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined;
 
@@ -18,14 +19,15 @@ const channels = [
 const faq = [
   { q: 'Chcę poznać cenę obsługi. Gdzie zacząć?', a: 'Najszybciej przez <a href="/wycena">formularz wyceny</a>. Zadaje kilka pytań o formie prawnej, sposobie rozliczenia i liczbie dokumentów, dzięki czemu w odpowiedzi dostajesz orientacyjną kwotę i zakres obsługi, a nie prośbę o rozmowę. Ostateczną stawkę potwierdzamy przed podpisaniem umowy. Wypełnienie zajmuje około dwóch minut.' },
   { q: 'Jak szybko otrzymam odpowiedź?', a: 'Standardowo odpowiadamy w ciągu 4 godzin roboczych. W szczególnych przypadkach (np. kontrola US/ZUS), zgłoszenia naszych klientów oznaczone jako pilne możemy obsługiwać także poza standardowymi godzinami.' },
-  { q: 'Czy konsultacja jest płatna?', a: 'Pierwsza 30-minutowa konsultacja online jest całkowicie bezpłatna. Po rozmowie otrzymasz pisemne podsumowanie i wycenę współpracy.' },
+  { q: 'Czy pierwsza rozmowa jest płatna?', a: 'Nie. Pierwsza 30-minutowa rozmowa wstępna online jest bezpłatna i nie wiąże się z zobowiązaniem. Poznajemy na niej Twoją sytuację, ustalamy podstawowe potrzeby księgowe, odpowiadamy na podstawowe pytania i zbieramy dane do oferty. Po rozmowie otrzymasz pisemne podsumowanie i wycenę współpracy.' },
+  { q: 'Czym różni się rozmowa wstępna od płatnej konsultacji?', a: `Rozmowa wstępna jest krótka, bezpłatna i służy ustaleniu, czy i jak możemy Ci pomóc - nie jest pełną konsultacją podatkową. Jeżeli decydujesz się na naszą stałą obsługę, podpisujemy umowę o obsługę księgową, a <strong>pomoc przy założeniu jednoosobowej działalności jest wtedy w cenie współpracy</strong> - nie kierujemy Cię do płatnej konsultacji. Jeżeli natomiast nie zdecydowałeś jeszcze, z kim będziesz prowadzić księgowość, a potrzebujesz szczegółowo omówić start, możesz kupić samodzielną <strong>konsultację przed założeniem działalności za ${setupFees.jdg} zł</strong> netto: policzone warianty opodatkowania, ZUS i ulgi, VAT i VAT-UE, kody PKD, obowiązki po starcie i KSeF. Jeżeli w ciągu ${setupFees.creditWithinDays} dni od niej wejdzie w życie umowa o stałą obsługę, zapłaconą kwotę odejmujemy od pierwszej faktury. Warunki opisuje <a href="/regulamin#jednorazowe">regulamin</a>.` },
   { q: 'Czy musimy spotkać się osobiście?', a: 'Nie. Obsługę prowadzimy w pełni zdalnie - przez portal klienta, e-mail i telefon. Spotkania wideo umawiamy dla bardziej złożonych tematów, takich jak wybór formy opodatkowania czy podsumowanie roku. Cały model współpracy opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.' },
   { q: 'Co przygotować na pierwszą rozmowę?', a: 'Wystarczą nam podstawowe informacje: forma działalności, rodzaj świadczonych usług, miesięczny wolumen dokumentów, liczba pracowników i obecne biuro księgowe (jeśli dotyczy). Jeśli wypełnisz <a href="/wycena">formularz wyceny</a>, mamy to wszystko jeszcze przed rozmową.' },
 ];
 ---
 <BaseLayout
   title="Kontakt - biuro rachunkowe online Taxun, Kraków"
-  description="Telefon, e-mail i formularz do biura rachunkowego Taxun w Krakowie. Standardowo odpowiedź w 4 godziny robocze, bezpłatna konsultacja 30 minut."
+  description="Telefon, e-mail i formularz do biura rachunkowego Taxun w Krakowie. Standardowo odpowiedź w 4 godziny robocze, bezpłatna rozmowa wstępna 30 minut."
   schema={{
     '@type': 'ContactPage',
     name: 'Kontakt - Taxun',

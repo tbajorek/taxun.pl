@@ -66,7 +66,7 @@ const benefits = [
 ];
 
 const process = [
-  { title: 'Bezpłatna konsultacja', description: 'Rozmawiamy o tym, jak działa Twoja firma i czy możemy Ci realnie pomóc. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Bezpłatna rozmowa wstępna', description: 'Poznajemy Twoją firmę, ustalamy podstawowe potrzeby księgowe i zbieramy dane do oferty. Bez opłat, bez zobowiązania i bez sprzedażowego nacisku.' },
   { title: 'Wycena i umowa', description: 'Przygotowujemy ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
   { title: 'Przejęcie dokumentacji', description: 'Formalności z poprzednim biurem bierzemy na siebie. Konfigurujemy portal klienta i e-fakturowanie. Bez przerwy w rozliczeniach.' },
   { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej uwagi i jesteśmy w stałym kontakcie.' },
@@ -384,50 +384,67 @@ const faq = [
         <div class="startup__head">
           <span class="eyebrow">Zakładanie firmy</span>
           <h2>Zakładasz firmę? Przejdziemy przez to razem</h2>
-          <p class="lede">Wypełnienie wniosku jest najprostszą częścią. Trudniejsze są decyzje, które w nim zapadają: forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT, kody PKD. Spotykamy się online i przechodzimy przez to punkt po punkcie, z policzonymi wariantami zamiast ogólników.</p>
+          <p class="lede">Wypełnienie wniosku jest najprostszą częścią. Trudniejsze są decyzje, które w nim zapadają: forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT, kody PKD. Spotykamy się online i przechodzimy przez to punkt po punkcie, z policzonymi wariantami zamiast ogólników. Zaczynamy zawsze tak samo - od bezpłatnej rozmowy wstępnej. To, co dzieje się dalej, zależy od jednej rzeczy: czy wiesz już, z kim chcesz prowadzić księgowość.</p>
         </div>
 
         <div class="startup__cols">
           <div class="startup__col startup__col--primary">
-            <div class="startup__pill startup__pill--primary">jednoosobowa działalność</div>
-            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
-            <p>Godzina z księgowym, zanim cokolwiek wyślesz. Wychodzisz z wypełnionym wnioskiem na ekranie i wiedzą, dlaczego każde pole wygląda tak, a nie inaczej.</p>
+            <div class="startup__pill startup__pill--primary">wiesz, że chcesz z nami pracować</div>
+            <h3>Pomoc przy założeniu JDG - w cenie współpracy</h3>
+            <p>Podpisujesz umowę o stałą obsługę księgową i na tym kończą się osobne opłaty za start. Pomoc przy zakładaniu jednoosobowej działalności jest elementem tej współpracy. Nie kierujemy Cię wtedy do płatnej konsultacji.</p>
             <ul class="startup__list">
               <li><Icon name="check" size={16}/>Policzone warianty: ryczałt, skala i liniowy na Twoich liczbach, razem ze składką zdrowotną</li>
               <li><Icon name="check" size={16}/>Wniosek CEIDG-1 wypełniony razem, z właściwymi kodami PKD</li>
               <li><Icon name="check" size={16}/>Kod tytułu ubezpieczenia w ZUS: ulga na start, preferencyjny ZUS albo pełny</li>
               <li><Icon name="check" size={16}/>Decyzja o VAT-R i VAT-UE, jeśli są potrzebne, oraz uprawnienia w KSeF</li>
-              <li><Icon name="check" size={16}/>Wsparcie mailowe przez 14 dni po rejestracji</li>
+              <li><Icon name="check" size={16}/>Po rejestracji przechodzimy prosto do onboardingu i pierwszego okresu rozliczeniowego</li>
             </ul>
             <a href="/wycena?tryb=zalozenie" class="btn btn--accent">
-              <span>Umów konsultację</span>
+              <span>Policz cenę obsługi</span>
               <Icon name="arrow-right" size={16}/>
             </a>
           </div>
 
           <div class="startup__col">
-            <div class="startup__pill">spółka</div>
-            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
-            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: dochodzi kapitał, udziały, zarząd i wybór CIT. Przechodzimy przez system S24 na wspólnym spotkaniu.</p>
+            <div class="startup__pill">jeszcze nie zdecydowałeś</div>
+            <h3>Konsultacja przed założeniem działalności - {setupFees.jdg} zł</h3>
+            <p>Godzina z księgowym dla osoby, która potrzebuje szczegółowo omówić start, ale nie wybrała jeszcze biura. Kupujesz ją jak każdą inną usługę, bez podpisywania umowy o obsługę i bez zobowiązania na przyszłość.</p>
             <ul class="startup__list">
-              <li><Icon name="check" size={16}/>Kapitał, liczba i wartość udziałów, skład zarządu i sposób reprezentacji</li>
-              <li><Icon name="check" size={16}/>Policzone warianty CIT: 9%, 19% i estoński, razem ze składkami wspólników</li>
-              <li><Icon name="check" size={16}/>Przejście przez wzorzec umowy w S24 i wybór wariantów klauzul</li>
-              <li><Icon name="check" size={16}/>Lista załączników, których system nie generuje, i danych do e-Doręczeń</li>
-              <li><Icon name="check" size={16}/>Terminy po wpisie: PCC-3, NIP-8, VAT-R, KSeF, ZAW-RD przy estońskim CIT</li>
+              <li><Icon name="check" size={16}/>Policzone warianty opodatkowania na Twoich liczbach: ryczałt, skala i liniowy</li>
+              <li><Icon name="check" size={16}/>ZUS i dostępne ulgi: na start, preferencyjny, mały ZUS plus - z wyliczeniem składek</li>
+              <li><Icon name="check" size={16}/>VAT i VAT-UE: progi, terminy i to, co zmienia rejestracja</li>
+              <li><Icon name="check" size={16}/>Kody PKD, podstawowe obowiązki po starcie i KSeF</li>
+              <li><Icon name="check" size={16}/>Pytania o Twoją planowaną działalność i o samo rozpoczęcie księgowości</li>
             </ul>
-            <a href="/wycena?tryb=zalozenie" class="btn btn--ghost">
-              <span>Umów konsultację</span>
+            <a href="/kontakt" class="btn btn--ghost">
+              <span>Kup konsultację</span>
               <Icon name="arrow-right" size={16}/>
             </a>
           </div>
+        </div>
+
+        <div class="startup__buy">
+          <h3>Jak kupić konsultację</h3>
+          <ol class="startup__steps">
+            <li><span class="startup__step-no">1</span><span>Wybierasz usługę i mówisz nam, czego dotyczy Twój start.</span></li>
+            <li><span class="startup__step-no">2</span><span>Zapoznajesz się z zakresem, ceną i <a href="/regulamin#jednorazowe">regulaminem</a>.</span></li>
+            <li><span class="startup__step-no">3</span><span>Składasz i opłacasz zamówienie. Fakturę wystawiamy na dane, które podasz.</span></li>
+            <li><span class="startup__step-no">4</span><span>Ustalamy termin spotkania, dopasowany do daty, na którą planujesz start.</span></li>
+            <li><span class="startup__step-no">5</span><span>Konsultacja odbywa się online, w umówionym terminie.</span></li>
+          </ol>
+          <p>Nie przygotowujemy osobnej umowy konsultacyjnej - podstawą jest regulamin obowiązujący dla usług Taxun, ten sam dla każdego zamówienia. Jeżeli kupujesz konsultację jako osoba, która nie prowadzi jeszcze działalności, przysługują Ci prawa konsumenta, w tym prawo odstąpienia od umowy; zasady i jedyny wyjątek od nich opisuje <a href="/regulamin#konsument">regulamin</a>.</p>
+        </div>
+
+        <div class="startup__spolka">
+          <h3>Spółka rejestrowana w S24 - {setupFees.s24} zł</h3>
+          <p>Przy spółce z o.o., jawnej i komandytowej dochodzi kapitał, liczba i wartość udziałów, skład zarządu, sposób reprezentacji i wybór CIT, a wzorzec umowy trzeba przejść klauzula po klauzuli. To praca poprzedzająca powstanie spółki, więc wyceniamy ją osobno niezależnie od tego, czy zostaniesz z nami na stałe. Omawiamy też terminy po wpisie: PCC-3, NIP-8, VAT-R, uprawnienia w KSeF i ZAW-RD przy estońskim CIT.</p>
         </div>
 
         <div class="startup__terms">
           <h3>Co robimy my, a co zostaje po Twojej stronie</h3>
           <p>Liczymy, tłumaczymy i sprawdzamy kompletność. <strong>Wniosek podpisujesz i wysyłasz sam</strong> - profilem zaufanym albo podpisem kwalifikowanym, przy spółce razem z pozostałymi wspólnikami i całym zarządem. Nie występujemy w rejestracji jako pełnomocnik i nie chcemy tej roli.</p>
           <p>Nie jest to wyłącznie nasz wybór. Wniosku o pierwszy wpis do CEIDG pełnomocnik nie złoży przez internet - musiałby pójść z pisemnym pełnomocnictwem do urzędu gminy. Spółkę wpisuje sąd rejestrowy, a przed nim reprezentować może wyłącznie adwokat albo radca prawny. Wolimy powiedzieć to wprost, niż obiecywać, że „załatwimy wszystko”.</p>
-          <p>Jeżeli w ciągu {setupFees.creditWithinDays} dni podpiszesz z nami umowę o obsługę księgową, <strong>kwotę konsultacji zaliczamy na poczet pierwszej faktury</strong>. Jeżeli po rozmowie zrezygnujesz z założenia firmy, płacisz tylko za tę rozmowę i nic poza tym.</p>
+          <p>Jeżeli kupiłeś konsultację i w ciągu {setupFees.creditWithinDays} dni od niej wejdzie w życie umowa o stałą obsługę księgową, <strong>zapłaconą kwotę odejmujemy od pierwszej faktury</strong>. Po tym terminie albo bez zawarcia umowy konsultacja pozostaje usługą odpłatną i rabat nie przysługuje. Jeżeli po rozmowie zrezygnujesz z założenia firmy, płacisz tylko za tę rozmowę i nic poza tym.</p>
         </div>
 
         <p class="startup__note">
@@ -643,8 +660,66 @@ const faq = [
 }
 .startup__col .btn { margin-top: auto; align-self: flex-start; }
 
+.startup__buy {
+  margin-top: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.startup__buy h3 { font-size: 1.0625rem; color: var(--ink-900); }
+.startup__steps {
+  list-style: none;
+  margin: 0.875rem 0 0;
+  display: grid;
+  gap: 0.625rem;
+}
+.startup__steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.startup__step-no {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.startup__buy > p {
+  margin-top: 0.875rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 78ch;
+}
+
+.startup__spolka {
+  margin-top: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.startup__spolka h3 { font-size: 1.0625rem; color: var(--ink-900); }
+.startup__spolka p {
+  margin-top: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 78ch;
+}
+
 .startup__terms {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   padding: clamp(1.25rem, 3vw, 1.75rem);
   background: var(--white);
   border: 1px solid var(--border);

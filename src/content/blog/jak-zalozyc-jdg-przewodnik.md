@@ -48,7 +48,7 @@ faq:
   - q: "Czy mogę zawiesić działalność?"
     a: "Tak, w dowolnym momencie, na minimum 30 dni. Górnej granicy nie ma. W okresie zawieszenia nie płacisz składek ZUS i nie składasz plików JPK_V7."
   - q: "Ile kosztuje założenie JDG przez biuro rachunkowe?"
-    a: "W Taxun jest to konsultacja przed startem za 199 zł, a nie rejestracja wykonana za Ciebie. Przechodzimy razem przez wniosek CEIDG-1 na spotkaniu online: policzone warianty opodatkowania, kod tytułu w ZUS, kody PKD, VAT-R i uprawnienia w KSeF. Podpisujesz i wysyłasz sam - pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę księgową zaliczamy tę kwotę na poczet pierwszej faktury."
+    a: "Zależy od tego, czy wiesz już, z kim chcesz prowadzić księgowość. W Taxun przy umowie o stałą obsługę pomoc przy założeniu JDG jest w cenie współpracy i nie doliczamy za to nic osobno. Jeżeli jeszcze nie zdecydowałeś, a chcesz szczegółowo omówić start, kupujesz samodzielną konsultację przed założeniem działalności za 199 zł netto. W obu przypadkach jest to konsultacja, a nie rejestracja wykonana za Ciebie: przechodzimy razem przez wniosek CEIDG-1 na spotkaniu online, a podpisujesz i wysyłasz go sam - pełnomocnik nie złoży tego wniosku przez internet. Jeżeli w ciągu 30 dni od płatnej konsultacji wejdzie w życie umowa o obsługę, zapłaconą kwotę odejmujemy od pierwszej faktury."
   - q: "Kiedy muszę zarejestrować się jako czynny podatnik VAT?"
     a: "Obowiązkowo po przekroczeniu 240 000 zł sprzedaży rocznie albo od pierwszej czynności, jeśli świadczysz usługi wyłączone ze zwolnienia, na przykład doradcze lub prawnicze. Dobrowolnie możesz zarejestrować się w dowolnym momencie."
 ---
@@ -266,7 +266,11 @@ W zakresie VAT jest to w pewnych sytuacjach możliwe przez korektę, natomiast w
 
 Założenie działalności to procedura, którą spokojnie przejdziesz samodzielnie. Pytanie brzmi raczej, czy przejdziesz ją z dobrze podjętymi decyzjami.
 
-Dlatego oferujemy **konsultację przed startem za 199 zł**, a nie rejestrację wykonaną za Ciebie. Godzina online, w czasie której przechodzimy przez wniosek pole po polu: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, kody PKD, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF. Do tego wsparcie mailowe przez 14 dni po rejestracji. Przy umowie o obsługę księgową zaliczamy tę kwotę na poczet pierwszej faktury.
+Zaczynamy zawsze od **bezpłatnej rozmowy wstępnej**: poznajemy Twój pomysł na działalność, ustalamy podstawowe potrzeby księgowe i odpowiadamy na podstawowe pytania. To krótka rozmowa kwalifikacyjna, a nie pełna konsultacja podatkowa, i nie wiąże się z żadną opłatą ani zobowiązaniem.
+
+Co dalej, zależy od jednej rzeczy. **Jeżeli decydujesz się na naszą stałą obsługę, pomoc przy założeniu działalności jest w cenie współpracy.** Nie kierujemy Cię wtedy do żadnej płatnej konsultacji.
+
+**Jeżeli jeszcze nie zdecydowałeś, z kim będziesz prowadzić księgowość**, a potrzebujesz szczegółowo omówić start, kupujesz samodzielną **konsultację przed założeniem działalności za 199 zł netto**, bez podpisywania umowy o obsługę. Godzina online, w czasie której przechodzimy przez wniosek pole po polu: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, dostępne ulgi, kody PKD, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF. Jeżeli w ciągu 30 dni od konsultacji wejdzie w życie umowa o obsługę księgową, zapłaconą kwotę odejmujemy od pierwszej faktury; bez współpracy albo po tym terminie konsultacja pozostaje usługą odpłatną. Warunki opisuje [regulamin](/regulamin#jednorazowe).
 
 **Wniosek podpisujesz i wysyłasz sam** i nie jest to nasza ostrożność. Wniosku o pierwszy wpis do CEIDG pełnomocnik w ogóle nie złoży przez internet - musiałby pójść z pisemnym pełnomocnictwem do urzędu gminy i zapłacić 17 zł opłaty skarbowej. Roli pełnomocnika w rejestracji zresztą nie chcemy: nasza wartość jest w tym, co policzymy i wytłumaczymy przed kliknięciem „wyślij", a nie w samym kliknięciu.
 

@@ -675,7 +675,7 @@ export const steps: Step[] = [
           {
             value: 'nie-wiem',
             label: 'Nie wiem, sprawdźcie to',
-            hint: 'Ocenimy kwalifikowalność na bezpłatnej konsultacji',
+            hint: 'Ocenimy kwalifikowalność na bezpłatnej rozmowie wstępnej',
           },
         ],
       },
@@ -1151,9 +1151,9 @@ export const steps: Step[] = [
         columns: 3,
         required: true,
         rule: { when: { mode: ['zalozenie'] } },
-        label: 'Czy chcesz konsultację przed rejestracją?',
-        shortLabel: 'Konsultacja przed startem',
-        help: 'Spotykamy się online i przechodzimy przez formularz razem: policzone warianty opodatkowania i ZUS, kody PKD, decyzja o VAT, uprawnienia w KSeF. Wniosek zostaje po Twojej stronie i jest to świadomy wybór, a nie ostrożność - pełnomocnikiem w rejestracji nie jesteśmy. Przy jednoosobowej działalności pełnomocnik i tak nie złoży wniosku CEIDG-1 przez internet, a przy spółce umowę podpisują wszyscy wspólnicy, wniosek o wpis wszyscy członkowie zarządu i przed sądem rejestrowym reprezentować może wyłącznie adwokat albo radca prawny. Aport, nietypowa umowa i formy bez wzorca w S24 wymagają notariusza.',
+        label: 'Czy chcesz pomoc przy rejestracji?',
+        shortLabel: 'Pomoc przy rejestracji',
+        help: 'Spotykamy się online i przechodzimy przez formularz razem: policzone warianty opodatkowania i ZUS, kody PKD, decyzja o VAT, uprawnienia w KSeF. Przy jednoosobowej działalności i spółce cywilnej jest to element umowy o stałą obsługę księgową, więc nie doliczamy za to nic osobno. Wniosek zostaje po Twojej stronie i jest to świadomy wybór, a nie ostrożność - pełnomocnikiem w rejestracji nie jesteśmy. Przy jednoosobowej działalności pełnomocnik i tak nie złoży wniosku CEIDG-1 przez internet, a przy spółce umowę podpisują wszyscy wspólnicy, wniosek o wpis wszyscy członkowie zarządu i przed sądem rejestrowym reprezentować może wyłącznie adwokat albo radca prawny. Aport, nietypowa umowa i formy bez wzorca w S24 wymagają notariusza.',
         options: [
           { value: 'tak', label: 'Tak, przejdźmy przez to razem', hint: 'Spotkanie online, formularz, ZUS, VAT i KSeF' },
           { value: 'zlozone', label: 'Wniosek jest już złożony' },
@@ -1454,7 +1454,7 @@ export const steps: Step[] = [
         options: [
           { value: 'email', label: 'E-mail', hint: 'Wycena i plan na piśmie' },
           { value: 'telefon', label: 'Telefon' },
-          { value: 'video', label: 'Wideorozmowa', hint: 'Bezpłatne 30 minut' },
+          { value: 'video', label: 'Wideorozmowa', hint: 'Bezpłatna rozmowa wstępna, 30 minut' },
         ],
       },
       {

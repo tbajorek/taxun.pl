@@ -227,7 +227,7 @@ Obsługa spółki kosztuje zauważalnie więcej, zwykle od 500 do 700 zł miesi�
 
 S24 jest tak zbudowany, że **spółkę rejestrują sami wspólnicy**. Umowę podpisują wszyscy wspólnicy, wniosek o wpis wszyscy członkowie zarządu (art. 164 § 1 k.s.h.), a wzorzec umowy jest niezmienny: wybiera się warianty gotowych klauzul, a nie redaguje treść. Największy koszt błędu leży więc nie w klikaniu, tylko w decyzjach podjętych wcześniej.
 
-**Dlatego oferujemy konsultację przed startem za 499 zł**, a przy umowie o obsługę księgową zaliczamy tę kwotę na poczet pierwszej faktury. W zakresie:
+**Dlatego oferujemy konsultację przed startem za 499 zł netto.** Jeżeli w ciągu 30 dni od niej wejdzie w życie umowa o obsługę księgową, zapłaconą kwotę odejmujemy od pierwszej faktury; bez współpracy albo po tym terminie konsultacja pozostaje usługą odpłatną. W zakresie:
 
 - wspólnicy, kapitał, liczba i wartość udziałów, skład zarządu, sposób reprezentacji, rok obrotowy i kody PKD,
 - policzone warianty opodatkowania - CIT 9%, 19% i estoński - na Twoich liczbach, razem ze składką zdrowotną wspólników,
@@ -237,7 +237,7 @@ S24 jest tak zbudowany, że **spółkę rejestrują sami wspólnicy**. Umowę po
 
 **Wniosek składacie Wy i tak ma zostać.** Pełnomocnikiem w postępowaniu rejestrowym może być wyłącznie osoba z zamkniętej listy z art. 87 § 1 k.p.c., w praktyce adwokat albo radca prawny, a umowa o księgowość tego nie zmienia. Ale nawet gdyby zmieniała, tej roli byśmy nie brali: liczymy, tłumaczymy i sprawdzamy, a odpowiedzialność za podpis zostaje tam, gdzie jest odpowiedzialność za spółkę. Nie zastąpimy też notariusza, więc aport, uprzywilejowane udziały i niestandardowa umowa to ścieżka poza S24 - wtedy zaczynamy od zgłoszeń po wpisie.
 
-Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że wszystkie terminy po rejestracji pilnujemy w ramach standardowej obsługi. [Umów bezpłatną konsultację](/kontakt), a policzymy jednoosobową działalność i spółkę na Twoich liczbach.
+Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że wszystkie terminy po rejestracji pilnujemy w ramach standardowej obsługi. [Umów bezpłatną rozmowę wstępną](/kontakt) - powiemy, od czego zależy wybór między jednoosobową działalnością a spółką; oba warianty liczymy na Twoich liczbach na konsultacji przed startem albo już w ramach obsługi.
 
 ## Źródła i podstawy prawne
 
