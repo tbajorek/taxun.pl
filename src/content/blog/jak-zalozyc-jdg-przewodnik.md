@@ -48,7 +48,7 @@ faq:
   - q: "Czy mogę zawiesić działalność?"
     a: "Tak, w dowolnym momencie, na minimum 30 dni. Górnej granicy nie ma. W okresie zawieszenia nie płacisz składek ZUS i nie składasz plików JPK_V7."
   - q: "Ile kosztuje założenie JDG przez biuro rachunkowe?"
-    a: "W Taxun jest to konsultacja przed startem za 199 zł, a nie rejestracja wykonana za Ciebie. Przechodzimy razem przez wniosek CEIDG-1 na spotkaniu online: policzone warianty opodatkowania, kod tytułu w ZUS, kody PKD, VAT-R i uprawnienia w KSeF. Podpisujesz i wysyłasz sam - pełnomocnik nie złoży tego wniosku przez internet. Przy umowie o obsługę księgową zaliczamy tę kwotę na poczet pierwszej faktury."
+    a: "Zależy od tego, czy wiesz już, z kim chcesz prowadzić księgowość. Jeżeli chcesz od początku korzystać ze stałej obsługi Taxun, przechodzimy prosto do umowy o obsługę księgową i pomoc przy założeniu JDG jest wtedy elementem współpracy - nie doliczamy za nią nic osobno. Jeżeli jeszcze nie zdecydowałeś, a chcesz szczegółowo omówić start, kupujesz samodzielną usługę „Konsultacja przed założeniem działalności gospodarczej” za 199 zł netto + VAT. W obu przypadkach jest to konsultacja, a nie rejestracja wykonana za Ciebie: przechodzimy razem przez wniosek CEIDG-1 na spotkaniu online, a podpisujesz i wysyłasz go sam - pełnomocnik nie złoży tego wniosku przez internet. Jeżeli po płatnej konsultacji podpiszesz umowę na stałą obsługę w ciągu 30 dni, dostajesz rabat równy zapłaconej kwocie netto na pierwszą fakturę."
   - q: "Kiedy muszę zarejestrować się jako czynny podatnik VAT?"
     a: "Obowiązkowo po przekroczeniu 240 000 zł sprzedaży rocznie albo od pierwszej czynności, jeśli świadczysz usługi wyłączone ze zwolnienia, na przykład doradcze lub prawnicze. Dobrowolnie możesz zarejestrować się w dowolnym momencie."
 ---
@@ -266,7 +266,13 @@ W zakresie VAT jest to w pewnych sytuacjach możliwe przez korektę, natomiast w
 
 Założenie działalności to procedura, którą spokojnie przejdziesz samodzielnie. Pytanie brzmi raczej, czy przejdziesz ją z dobrze podjętymi decyzjami.
 
-Dlatego oferujemy **konsultację przed startem za 199 zł**, a nie rejestrację wykonaną za Ciebie. Godzina online, w czasie której przechodzimy przez wniosek pole po polu: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS, kody PKD, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF. Do tego wsparcie mailowe przez 14 dni po rejestracji. Przy umowie o obsługę księgową zaliczamy tę kwotę na poczet pierwszej faktury.
+Zaczynamy od zwykłego kontaktu. **Rozmowa wstępna jest bezpłatna** i prowadzimy ją tak, jak Ci wygodniej - mailem, telefonicznie albo przez wideo. Ustalamy na niej wstępne kwestie: co planujesz robić, czego potrzebujesz i o co chcesz zapytać. To nie jest pełna konsultacja podatkowa i nie wiąże się z żadną opłatą ani zobowiązaniem.
+
+Co dalej, zależy od jednej rzeczy. **Jeżeli chcesz od początku korzystać z naszej stałej obsługi**, przechodzimy prosto do umowy o obsługę księgową - możesz ją zawrzeć jeszcze przed rejestracją działalności - a **pomoc przy założeniu JDG jest wtedy elementem współpracy i nie jest dodatkowo płatna**. Nie kierujemy Cię wtedy do żadnej płatnej konsultacji.
+
+**Jeżeli jeszcze nie zdecydowałeś, z kim będziesz prowadzić księgowość**, a potrzebujesz szczegółowo omówić start, kupujesz samodzielną usługę **„Konsultacja przed założeniem działalności gospodarczej” za 199 zł netto + VAT**, bez umowy o stałą obsługę i bez odrębnej umowy konsultacyjnej. Godzina online, w czasie której przechodzimy przez wniosek pole po polu: policzone warianty ryczałtu, skali i liniowego na Twoich liczbach, kod tytułu ubezpieczenia w ZUS i dostępne ulgi, kody PKD, decyzja o VAT-R i VAT-UE, uprawnienia w KSeF, podstawowe obowiązki po starcie.
+
+Jeżeli po takiej konsultacji podpiszesz z nami umowę na stałą obsługę księgową w ciągu 30 dni od dnia konsultacji, dostajesz **rabat 199 zł netto na pierwszą fakturę za obsługę księgową**. Jeżeli nie podejmiesz współpracy albo zrobisz to później, konsultacja pozostaje usługą odpłatną. Warunki opisuje [regulamin](/regulamin#jednorazowe).
 
 **Wniosek podpisujesz i wysyłasz sam** i nie jest to nasza ostrożność. Wniosku o pierwszy wpis do CEIDG pełnomocnik w ogóle nie złoży przez internet - musiałby pójść z pisemnym pełnomocnictwem do urzędu gminy i zapłacić 17 zł opłaty skarbowej. Roli pełnomocnika w rejestracji zresztą nie chcemy: nasza wartość jest w tym, co policzymy i wytłumaczymy przed kliknięciem „wyślij", a nie w samym kliknięciu.
 

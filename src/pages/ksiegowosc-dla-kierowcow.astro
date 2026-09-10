@@ -347,7 +347,7 @@ const startupSteps = [
 ];
 
 const process = [
-  { title: 'Bezpłatna konsultacja na start', description: 'Rozmawiamy o tym, ile jeździsz, czym i dla kogo, oraz jakie ponosisz koszty. Bez zobowiązań i sprzedażowego nacisku.' },
+  { title: 'Bezpłatna rozmowa wstępna', description: 'Rozmawiamy o tym, ile jeździsz, czym i dla kogo, oraz jakie ponosisz koszty. Bez zobowiązań i sprzedażowego nacisku.' },
   { title: 'Wycena i umowa', description: 'Przygotowujemy przejrzystą ofertę z gwarancją ceny przez 12 miesięcy. Ustalamy w niej wprost, jak liczymy dokumenty, żeby nie było niespodzianki na pierwszej fakturze.' },
   { title: 'Przejęcie dokumentacji', description: 'Wypowiedzenie umowy z poprzednim biurem, odbiór dokumentów i pełnomocnictwa załatwiamy za Ciebie. Ustalamy też, jak będziesz przesyłać raporty z kasy i zestawienia z platform.' },
   { title: 'Stała obsługa', description: 'Pilnujemy terminów i limitów, przypominamy o dokumentach i sygnalizujemy ryzyka z wyprzedzeniem. Pracujemy w tle.' },
@@ -428,7 +428,7 @@ const faq = [
   },
   {
     q: 'Jak przenieść księgowość z obecnego biura?',
-    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+    a: 'Pomagamy przejść przez cały proces formalny: wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
   },
 ];
 
@@ -633,7 +633,7 @@ const serviceSchema = {
 
       <p class="drv-note">
         <Icon name="calculator" size={16}/>
-        <span>Kierowca jeżdżący dużo, tankujący codziennie i serwisujący auto co kilka miesięcy często wychodzi lepiej na rozliczeniu kosztowym, mimo że stawka ryczałtu wygląda atrakcyjniej. Kierowca jeżdżący mniej, na starszym i tanim w utrzymaniu aucie, zwykle wychodzi lepiej na ryczałcie. Nie da się tego rozstrzygnąć bez liczb, więc na bezpłatnej konsultacji liczymy oba warianty na Twoich rzeczywistych kosztach z ostatnich miesięcy, razem ze składką zdrowotną, która na każdej z form liczy się inaczej.</span>
+        <span>Kierowca jeżdżący dużo, tankujący codziennie i serwisujący auto co kilka miesięcy często wychodzi lepiej na rozliczeniu kosztowym, mimo że stawka ryczałtu wygląda atrakcyjniej. Kierowca jeżdżący mniej, na starszym i tanim w utrzymaniu aucie, zwykle wychodzi lepiej na ryczałcie. Nie da się tego rozstrzygnąć bez liczb. Na bezpłatnej rozmowie wstępnej ustalamy, ile jeździsz i jakie masz koszty, a oba warianty liczymy na Twoich rzeczywistych kwotach z ostatnich miesięcy - razem ze składką zdrowotną, która na każdej z form liczy się inaczej. Jeśli zaczynasz i nie zdecydowałeś jeszcze, z kim będziesz pracować, to samo wyliczenie dostajesz na płatnej konsultacji przed założeniem działalności.</span>
       </p>
     </div>
   </section>
@@ -752,7 +752,7 @@ const serviceSchema = {
             <h3>Dane raportowane przez platformy</h3>
           </div>
           <p>Od {DAC7_OD} operatorzy platform mają obowiązek przekazywać administracji skarbowej dane o osobach, które za ich pośrednictwem zarabiają. Przy usługach świadczonych osobiście, a więc także przy przewozie osób, nie obowiązuje żaden próg liczby transakcji ani kwoty. Raporty trafiają do urzędu do {DAC7_RAPORT_DO} za rok poprzedni, a kopię zestawienia otrzymuje również kierowca.</p>
-          <p>Sam raport nie oznacza jeszcze podatku, ale pozwala porównać wysokość zarobków z tym, co wykazałeś w rozliczeniu. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy zgadza się z Twoimi deklaracjami, sprawdzimy to na bezpłatnej konsultacji. Ten sam obowiązek opisujemy szerzej przy <a href="/ksiegowosc-dla-e-commerce#raportowanie">sprzedaży na platformach</a>, bo obie grupy podlegają dokładnie tym samym przepisom.</p>
+          <p>Sam raport nie oznacza jeszcze podatku, ale pozwala porównać wysokość zarobków z tym, co wykazałeś w rozliczeniu. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy zgadza się z Twoimi deklaracjami, na bezpłatnej rozmowie wstępnej ustalimy zakres pracy, a samo porównanie robimy w ramach obsługi. Ten sam obowiązek opisujemy szerzej przy <a href="/ksiegowosc-dla-e-commerce#raportowanie">sprzedaży na platformach</a>, bo obie grupy podlegają dokładnie tym samym przepisom.</p>
         </article>
       </div>
     </div>
@@ -927,7 +927,7 @@ const serviceSchema = {
     items={process}
     eyebrow="Jak pracujemy"
     title="Jak wygląda start współpracy"
-    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, pomagamy Ci przejść przez formalności, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
   />
 
   <FAQ
@@ -938,7 +938,7 @@ const serviceSchema = {
 
   <CTA
     title="Porozmawiajmy o rozliczeniach Twojej firmy"
-    description="Jeśli jeździsz na aplikacjach, prowadzisz taksówkę, rozwozisz paczki albo dopiero planujesz start, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje przychody i koszty, policzymy formy opodatkowania i powiemy wprost, co da się uprościć. Bez zobowiązań i sprzedażowego nacisku."
+    description="Jeśli jeździsz na aplikacjach, prowadzisz taksówkę, rozwozisz paczki albo dopiero planujesz start, odezwij się do nas - mailem, telefonicznie albo przez formularz. W bezpłatnej rozmowie wstępnej ustalimy, jak wyglądają Twoje przychody i koszty i czego potrzebujesz od księgowości. Bez opłat, bez zobowiązań i bez sprzedażowego nacisku."
     primaryHref="/wycena?tryb=przeniesienie&branza=transport"
   />
 </BaseLayout>

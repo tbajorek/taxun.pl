@@ -116,7 +116,7 @@ Pamiętaj też, że rozliczenia z lat ubiegłych można korygować przez pięć 
 
 Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że obsługa IP Box wchodzi w zakres [pakietu dla programistów B2B](/ksiegowosc-dla-programistow). Nie musisz samodzielnie pilnować ani ewidencji, ani terminów.
 
-Jeśli rozważasz IP Box, [umów bezpłatną konsultację](/kontakt). Sprawdzimy, czy w Twojej sytuacji ma to sens i ile realnie możesz zyskać.
+Jeśli rozważasz IP Box, [umów bezpłatną rozmowę wstępną](/kontakt). Powiemy, od czego zależy kwalifikowalność i czego wymaga jej sprawdzenie w Twojej sytuacji; samą analizę i ewidencję prowadzimy już w ramach obsługi.
 
 ## Źródła i podstawy prawne
 

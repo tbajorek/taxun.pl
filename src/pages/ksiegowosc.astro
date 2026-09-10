@@ -65,10 +65,22 @@ const benefits = [
   { icon: 'lock', title: 'Bezpieczeństwo danych', description: 'Dokumenty wymieniamy przez szyfrowany portal klienta. Biuro posiada ubezpieczenie OC i działa zgodnie z wymogami RODO.' },
 ];
 
-const process = [
-  { title: 'Bezpłatna konsultacja', description: 'Rozmawiamy o tym, jak działa Twoja firma i czy możemy Ci realnie pomóc. Bez zobowiązań i sprzedażowego nacisku.' },
+/* Dwie ścieżki, bo klient trafia do nas na dwa sposoby i kroki są różne.
+   Zakładający firmę nie ma czego przejmować od poprzedniego biura, a zmieniający
+   biuro ma już nadany NIP i trwający rok podatkowy. Wspólny jest tylko początek:
+   bezpłatna rozmowa wstępna. */
+const processNew = [
+  { title: 'Bezpłatna rozmowa wstępna', description: 'Poznajemy planowaną działalność i Twoją sytuację, ustalamy podstawowe potrzeby księgowe, odpowiadamy na podstawowe pytania i zbieramy dane potrzebne do oferty. Oceniamy też wstępnie, czy możemy Ci realnie pomóc. Bez opłat i bez zobowiązania.' },
+  { title: 'Umowa o obsługę księgową', description: 'Jeśli chcesz od początku korzystać z naszej stałej obsługi, przechodzimy prosto do umowy - możesz ją zawrzeć jeszcze przed rejestracją działalności. Pomoc przy założeniu jednoosobowej działalności jest wtedy elementem współpracy.' },
+  { title: 'Rejestracja działalności', description: 'Zbieramy dane niezbędne do rejestracji, ustalamy najważniejsze parametry podatkowe i organizacyjne, przygotowujemy i weryfikujemy dane do CEIDG. Wniosek składasz Ty, a my przechodzimy przez niego razem z Tobą.' },
+  { title: 'Onboarding księgowy', description: 'Po uzyskaniu danych firmy potwierdzamy je, zbieramy wymagane informacje i dostępy, ustalamy pierwszy okres rozliczeniowy i przekazujemy zasady dostarczania dokumentów.' },
+  { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej uwagi i jesteśmy w stałym kontakcie.' },
+];
+
+const processTransfer = [
+  { title: 'Bezpłatna rozmowa wstępna', description: 'Poznajemy Twoją firmę, ustalamy podstawowe potrzeby księgowe, odpowiadamy na podstawowe pytania i zbieramy dane do oferty. Bez opłat, bez zobowiązania i bez sprzedażowego nacisku.' },
   { title: 'Wycena i umowa', description: 'Przygotowujemy ofertę z gwarancją ceny przez 12 miesięcy. Bez ukrytych kosztów.' },
-  { title: 'Przejęcie dokumentacji', description: 'Formalności z poprzednim biurem bierzemy na siebie. Konfigurujemy portal klienta i e-fakturowanie. Bez przerwy w rozliczeniach.' },
+  { title: 'Przejęcie dokumentacji', description: 'Pomagamy Ci przejść przez formalności z poprzednim biurem: wypowiedzenie, odbiór dokumentacji i pełnomocnictwa. Konfigurujemy portal klienta i e-fakturowanie. Bez przerwy w rozliczeniach.' },
   { title: 'Stała obsługa', description: 'Pilnujemy terminów, informujemy o tym, co wymaga Twojej uwagi i jesteśmy w stałym kontakcie.' },
 ];
 
@@ -115,7 +127,7 @@ const serviceSchema = {
 
 const faq = [
   { q: 'Czy mogę zmienić formę opodatkowania w trakcie roku?', a: 'Zmianę formy opodatkowania można zgłosić do 20. dnia miesiąca następującego po miesiącu, w którym pojawił się pierwszy przychód w danym roku. Pomożemy ocenić skutki podatkowe i przygotujemy stosowne oświadczenie do urzędu skarbowego.' },
-  { q: 'Jak przebiega przejęcie ksiąg z poprzedniego biura?', a: 'Całość formalności, czyli wypowiedzenie umowy, odbiór dokumentów i uzyskanie pełnomocnictw, bierzemy na siebie. Standardowo proces zajmuje od 7 do 14 dni i nie wpływa na bieżące rozliczenia.' },
+  { q: 'Jak przebiega przejęcie ksiąg z poprzedniego biura?', a: 'Pomagamy przy całości formalności: wypowiedzeniu umowy, odbiorze dokumentów i uzyskaniu pełnomocnictw. Standardowo proces zajmuje od 7 do 14 dni i nie wpływa na bieżące rozliczenia.' },
   { q: 'Czy obsługujecie e-fakturę i KSeF?', a: 'Tak. Pomagamy skonfigurować integrację z KSeF, weryfikujemy poprawność wystawianych faktur i monitorujemy zmiany w przepisach. Możemy wystawiać faktury w Twoim imieniu lub wesprzeć Twój zespół w obsłudze systemu.' },
   { q: 'Jakie dokumenty wliczają się do limitu pakietu?', a: 'Każdy wpis księgowy jest traktowany jako dokument, a więc: faktura sprzedaży, faktura kosztowa, wyciąg bankowy, lista płac i ewidencja środków trwałych. Deklaracje wysyłane do urzędów, takie jak JPK_V7, ZUS i PIT, nie są wliczane do limitu.' },
   { q: 'Czy doradzicie w wyborze ulgi IP Box lub B+R?', a: 'Tak. Przeprowadzamy analizę kwalifikowalności, przygotowujemy ewidencję IP Box, wnioski o interpretację indywidualną i oceniamy ryzyka podatkowe.' },
@@ -383,50 +395,67 @@ const faq = [
         <div class="startup__head">
           <span class="eyebrow">Zakładanie firmy</span>
           <h2>Zakładasz firmę? Przejdziemy przez to razem</h2>
-          <p class="lede">Wypełnienie wniosku jest najprostszą częścią. Trudniejsze są decyzje, które w nim zapadają: forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT, kody PKD. Spotykamy się online i przechodzimy przez to punkt po punkcie, z policzonymi wariantami zamiast ogólników.</p>
+          <p class="lede">Wypełnienie wniosku jest najprostszą częścią. Trudniejsze są decyzje, które w nim zapadają: forma opodatkowania, kod tytułu ubezpieczenia w ZUS, rejestracja do VAT, kody PKD. Zaczyna się zawsze od bezpłatnej rozmowy wstępnej - zwykłego pierwszego kontaktu, mailem, telefonicznie albo przez wideo. To, co dzieje się dalej, zależy od jednej rzeczy: czy wiesz już, z kim chcesz prowadzić księgowość.</p>
         </div>
 
         <div class="startup__cols">
           <div class="startup__col startup__col--primary">
-            <div class="startup__pill startup__pill--primary">jednoosobowa działalność</div>
-            <h3>Konsultacja przed startem - {setupFees.jdg} zł</h3>
-            <p>Godzina z księgowym, zanim cokolwiek wyślesz. Wychodzisz z wypełnionym wnioskiem na ekranie i wiedzą, dlaczego każde pole wygląda tak, a nie inaczej.</p>
+            <div class="startup__pill startup__pill--primary">wiesz, że chcesz z nami pracować</div>
+            <h3>Pomoc przy założeniu JDG - w cenie współpracy</h3>
+            <p>Przechodzimy wtedy prosto do umowy o obsługę księgową; możesz ją zawrzeć jeszcze przed rejestracją działalności. <strong>Pomoc przy założeniu jednoosobowej działalności jest elementem stałej współpracy i nie jest dodatkowo płatna</strong> - nie kierujemy Cię do płatnej konsultacji.</p>
             <ul class="startup__list">
+              <li><Icon name="check" size={16}/>Zbieramy dane niezbędne do rejestracji i ustalamy parametry podatkowe</li>
               <li><Icon name="check" size={16}/>Policzone warianty: ryczałt, skala i liniowy na Twoich liczbach, razem ze składką zdrowotną</li>
-              <li><Icon name="check" size={16}/>Wniosek CEIDG-1 wypełniony razem, z właściwymi kodami PKD</li>
+              <li><Icon name="check" size={16}/>Przygotowujemy i weryfikujemy dane do CEIDG, z właściwymi kodami PKD</li>
               <li><Icon name="check" size={16}/>Kod tytułu ubezpieczenia w ZUS: ulga na start, preferencyjny ZUS albo pełny</li>
               <li><Icon name="check" size={16}/>Decyzja o VAT-R i VAT-UE, jeśli są potrzebne, oraz uprawnienia w KSeF</li>
-              <li><Icon name="check" size={16}/>Wsparcie mailowe przez 14 dni po rejestracji</li>
             </ul>
             <a href="/wycena?tryb=zalozenie" class="btn btn--accent">
-              <span>Umów konsultację</span>
+              <span>Policz cenę obsługi</span>
               <Icon name="arrow-right" size={16}/>
             </a>
           </div>
 
           <div class="startup__col">
-            <div class="startup__pill">spółka</div>
-            <h3>Konsultacja przed startem - {setupFees.s24} zł</h3>
-            <p>To samo dla spółki z o.o., jawnej i komandytowej, tylko szerzej: dochodzi kapitał, udziały, zarząd i wybór CIT. Przechodzimy przez system S24 na wspólnym spotkaniu.</p>
+            <div class="startup__pill">jeszcze nie zdecydowałeś</div>
+            <h3>Konsultacja przed założeniem działalności gospodarczej - {setupFees.jdg} zł netto + VAT</h3>
+            <p>Dla osoby, która potrzebuje szczegółowo omówić start, ale nie zdecydowała jeszcze, z kim będzie prowadzić księgowość. Samodzielna usługa: kupujesz ją na stronie, bez umowy o stałą obsługę i bez odrębnej umowy konsultacyjnej.</p>
             <ul class="startup__list">
-              <li><Icon name="check" size={16}/>Kapitał, liczba i wartość udziałów, skład zarządu i sposób reprezentacji</li>
-              <li><Icon name="check" size={16}/>Policzone warianty CIT: 9%, 19% i estoński, razem ze składkami wspólników</li>
-              <li><Icon name="check" size={16}/>Przejście przez wzorzec umowy w S24 i wybór wariantów klauzul</li>
-              <li><Icon name="check" size={16}/>Lista załączników, których system nie generuje, i danych do e-Doręczeń</li>
-              <li><Icon name="check" size={16}/>Terminy po wpisie: PCC-3, NIP-8, VAT-R, KSeF, ZAW-RD przy estońskim CIT</li>
+              <li><Icon name="check" size={16}/>Policzone warianty opodatkowania na Twoich liczbach</li>
+              <li><Icon name="check" size={16}/>ZUS i dostępne ulgi: na start, preferencyjny, mały ZUS plus</li>
+              <li><Icon name="check" size={16}/>VAT i VAT-UE: progi, terminy i to, co zmienia rejestracja</li>
+              <li><Icon name="check" size={16}/>Kody PKD oraz podstawowe obowiązki po rozpoczęciu działalności</li>
+              <li><Icon name="check" size={16}/>KSeF i pytania o Twoją planowaną działalność oraz rozpoczęcie księgowości</li>
             </ul>
-            <a href="/wycena?tryb=zalozenie" class="btn btn--ghost">
-              <span>Umów konsultację</span>
+            <a href="/kontakt" class="btn btn--ghost">
+              <span>Zamów konsultację</span>
               <Icon name="arrow-right" size={16}/>
             </a>
           </div>
+        </div>
+
+        <div class="startup__buy">
+          <h3>Jak kupić konsultację</h3>
+          <ol class="startup__steps">
+            <li><span class="startup__step-no">1</span><span>Wybierasz usługę i mówisz nam, czego dotyczy Twój start.</span></li>
+            <li><span class="startup__step-no">2</span><span>Zapoznajesz się z warunkami i <a href="/regulamin#jednorazowe">regulaminem</a>.</span></li>
+            <li><span class="startup__step-no">3</span><span>Składasz i opłacasz zamówienie. Fakturę wystawiamy na dane, które podasz.</span></li>
+            <li><span class="startup__step-no">4</span><span>Ustalamy termin konsultacji, dopasowany do daty, na którą planujesz start.</span></li>
+            <li><span class="startup__step-no">5</span><span>Konsultacja odbywa się online.</span></li>
+          </ol>
+          <p>Nie przygotowujemy indywidualnej umowy dla każdej konsultacji - podstawą świadczenia jest regulamin obowiązujący dla usług Taxun, ten sam dla każdego zamówienia. Jeżeli kupujesz konsultację jako osoba, która nie prowadzi jeszcze działalności, przysługują Ci prawa konsumenta, w tym prawo odstąpienia od umowy; zasady i jedyny wyjątek od nich opisuje <a href="/regulamin#konsument">regulamin</a>.</p>
+        </div>
+
+        <div class="startup__buy">
+          <h3>Konsultacja przed założeniem spółki (S24) - {setupFees.s24} zł netto + VAT</h3>
+          <p>Przy spółce z o.o., jawnej i komandytowej dochodzi kapitał, liczba i wartość udziałów, skład zarządu, sposób reprezentacji i wybór CIT, a wzorzec umowy trzeba przejść klauzula po klauzuli. Omawiamy też terminy po wpisie: PCC-3, NIP-8, VAT-R, uprawnienia w KSeF i ZAW-RD przy estońskim CIT. Kupujesz ją tak samo jak konsultację przed założeniem jednoosobowej działalności.</p>
         </div>
 
         <div class="startup__terms">
           <h3>Co robimy my, a co zostaje po Twojej stronie</h3>
           <p>Liczymy, tłumaczymy i sprawdzamy kompletność. <strong>Wniosek podpisujesz i wysyłasz sam</strong> - profilem zaufanym albo podpisem kwalifikowanym, przy spółce razem z pozostałymi wspólnikami i całym zarządem. Nie występujemy w rejestracji jako pełnomocnik i nie chcemy tej roli.</p>
           <p>Nie jest to wyłącznie nasz wybór. Wniosku o pierwszy wpis do CEIDG pełnomocnik nie złoży przez internet - musiałby pójść z pisemnym pełnomocnictwem do urzędu gminy. Spółkę wpisuje sąd rejestrowy, a przed nim reprezentować może wyłącznie adwokat albo radca prawny. Wolimy powiedzieć to wprost, niż obiecywać, że „załatwimy wszystko”.</p>
-          <p>Jeżeli w ciągu {setupFees.creditWithinDays} dni podpiszesz z nami umowę o obsługę księgową, <strong>kwotę konsultacji zaliczamy na poczet pierwszej faktury</strong>. Jeżeli po rozmowie zrezygnujesz z założenia firmy, płacisz tylko za tę rozmowę i nic poza tym.</p>
+          <p>Jeżeli kupiłeś konsultację i w ciągu {setupFees.creditWithinDays} dni od jej dnia podpiszesz z nami umowę na stałą obsługę księgową, otrzymujesz <strong>rabat {setupFees.jdg} zł netto na pierwszą fakturę za obsługę księgową</strong>. Jeżeli nie podejmiesz współpracy albo zrobisz to po upływie {setupFees.creditWithinDays} dni, konsultacja pozostaje usługą odpłatną i rabat nie przysługuje.</p>
         </div>
 
         <p class="startup__note">
@@ -437,7 +466,9 @@ const faq = [
     </div>
   </section>
 
-  <ProcessSteps items={process} eyebrow="Rozpoczęcie współpracy" title="Płynne przejęcie księgowości w 14 dni" description="Zmiana biura rachunkowego nie musi oznaczać chaosu. Prowadzimy cały proces od pierwszej rozmowy po uruchomienie portalu klienta. Dbamy o to, żebyś na żadnym etapie nie musiał martwić się o terminy."/>
+  <ProcessSteps items={processNew} eyebrow="Zakładasz firmę" title="Od pierwszego kontaktu do pierwszego rozliczenia" description="Jeśli dopiero zakładasz działalność, nie masz czego przejmować od poprzedniego biura. Ta ścieżka prowadzi od rozmowy wstępnej przez rejestrację po pierwszy okres rozliczeniowy."/>
+
+  <ProcessSteps items={processTransfer} eyebrow="Zmieniasz biuro" title="Płynne przejęcie księgowości w 14 dni" description="Zmiana biura rachunkowego nie musi oznaczać chaosu. Pomagamy Ci przejść przez cały proces od pierwszej rozmowy po uruchomienie portalu klienta i pilnujemy, żebyś na żadnym etapie nie musiał martwić się o terminy."/>
 
   <FAQ
     eyebrow="FAQ"
@@ -642,8 +673,50 @@ const faq = [
 }
 .startup__col .btn { margin-top: auto; align-self: flex-start; }
 
+.startup__buy {
+  margin-top: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.startup__buy h3 { font-size: 1.0625rem; color: var(--ink-900); }
+.startup__steps {
+  list-style: none;
+  margin: 0.875rem 0 0;
+  display: grid;
+  gap: 0.625rem;
+}
+.startup__steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.startup__step-no {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-50);
+  color: var(--accent-700);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.startup__buy > p {
+  margin-top: 0.875rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 78ch;
+}
+
 .startup__terms {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   padding: clamp(1.25rem, 3vw, 1.75rem);
   background: var(--white);
   border: 1px solid var(--border);

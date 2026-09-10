@@ -157,7 +157,7 @@ Bezpośrednio nie. O stawce decyduje PKWiU konkretnej usługi. Rażąca rozbież
 
 Analiza PKWiU i dobór stawki to część standardowej [obsługi księgowej dla programistów](/ksiegowosc-dla-programistow) w Taxun. Przygotowujemy też wnioski o interpretację indywidualną w sprawach dotyczących ryczałtu w IT, także jako usługę jednorazową.
 
-Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że przy zmianie zakresu Twoich usług sami sygnalizujemy potrzebę weryfikacji stawki. [Umów bezpłatną konsultację](/kontakt), a sprawdzimy, czy w Twojej sytuacji jest realna oszczędność do wykorzystania.
+Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że przy zmianie zakresu Twoich usług sami sygnalizujemy potrzebę weryfikacji stawki. [Umów bezpłatną rozmowę wstępną](/kontakt) - ustalimy, czego dotyczy Twoja wątpliwość i czy jest tu czego szukać; samo porównanie stawek na Twoich liczbach robimy w ramach obsługi.
 
 ## Źródła i podstawy prawne
 

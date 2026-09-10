@@ -514,31 +514,33 @@ export function estimate(answers: Answers): Estimate {
   // `setupFees`). Etykieta i nota muszą to nieść same, bo w wiadomości do
   // biura i w bocznym panelu widać tylko je.
   //
-  // Kwota jest tu realna, a nie zerowa: pracę wykonujemy niezależnie od tego,
-  // czy dojdzie do stałej współpracy, więc wchodzi do sumy opłat
-  // jednorazowych. Przy podpisaniu umowy zaliczamy ją na poczet pierwszej
-  // faktury i o tym mówi nota.
+  // Przy jednoosobowej działalności i spółce cywilnej kwota jest zerowa i to nie
+  // jest gest handlowy, tylko konsekwencja procedury: kto wypełnia kreator, pyta
+  // o stałą obsługę, a klient zdecydowany przechodzi prosto do umowy o obsługę,
+  // w której pomoc przy założeniu firmy się mieści. Płatna konsultacja za
+  // `setupFees.jdg` zostaje osobnym produktem dla osoby, która nie zdecydowała
+  // jeszcze, z kim będzie prowadzić księgowość - tej ścieżki kreator nie
+  // wycenia, bo ona nie prowadzi do abonamentu.
   //
-  // Formy spoza listy S24 (`inne` - akcyjna, partnerska, fundacja) nie mają
-  // w systemie wzorca, a `nie-wiem` nie wskazuje jeszcze żadnej procedury.
-  // W obu przypadkach nie wystawiamy pozycji: zakres ustala biuro po
-  // przeczytaniu zgłoszenia.
+  // Przy spółce rejestrowanej w S24 kwota jest realna: przejście przez wzorzec
+  // umowy, kapitał, udziały i wybór CIT to praca poprzedzająca powstanie spółki
+  // i wykonujemy ją niezależnie od tego, czy dojdzie do stałej współpracy.
+  //
   if (asText(answers.mode) === 'zalozenie' && asText(answers.registration) === 'tak') {
     const legalForm = asText(answers.legalForm);
-    const credit = `Zaliczamy ją na poczet pierwszej faktury, jeśli w ciągu ${setupFees.creditWithinDays} dni podpiszesz umowę o obsługę.`;
     if (legalForm === 'jdg' || legalForm === 'sc') {
       once.push({
         id: 'setup',
-        label: 'Konsultacja przed założeniem firmy',
-        amount: setupFees.jdg,
-        note: `${credit} Wniosek CEIDG-1 podpisujesz i wysyłasz sam - pełnomocnik nie złoży go przez internet.`,
+        label: 'Pomoc przy założeniu firmy',
+        amount: 0,
+        note: 'W cenie umowy o stałą obsługę księgową. Wniosek CEIDG-1 podpisujesz i wysyłasz sam - pełnomocnik nie złoży go przez internet.',
       });
     } else if (S24_LEGAL_FORMS.includes(legalForm)) {
       once.push({
         id: 'setup',
         label: 'Konsultacja przed założeniem spółki',
         amount: setupFees.s24,
-        note: `${credit} Umowę spółki i wniosek o wpis podpisują oraz składają wspólnicy i zarząd.`,
+        note: `Rabat równy tej kwocie na pierwszą fakturę, jeśli w ciągu ${setupFees.creditWithinDays} dni od konsultacji podpiszesz umowę na stałą obsługę. Umowę spółki i wniosek o wpis podpisują oraz składają wspólnicy i zarząd.`,
       });
     }
   }

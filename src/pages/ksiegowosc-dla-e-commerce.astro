@@ -352,7 +352,7 @@ const benefits = [
 
 const process = [
   {
-    title: 'Bezpłatna konsultacja na start',
+    title: 'Bezpłatna rozmowa wstępna',
     description: 'Przechodzimy przez Twoje kanały sprzedaży, asortyment, umowy z dostawcami i sprzedaż zagraniczną. Bez zobowiązań i sprzedażowego nacisku.',
   },
   {
@@ -384,7 +384,7 @@ const faq = [
   },
   {
     q: 'Sprzedaję kosmetyki online i nie jestem podatnikiem VAT. Czy to problem?',
-    a: 'Prawdopodobnie tak. Sprzedaż preparatów kosmetycznych i toaletowych na odległość jest wyłączona ze zwolnienia ze względu na wartość sprzedaży, więc obowiązek rejestracji do VAT powstaje przy pierwszej takiej transakcji. Im wcześniej to uporządkujesz, tym mniejsze konsekwencje, bo zaległość rośnie z każdym miesiącem, a podatku od sprzedaży konsumenckiej nie da się już przerzucić na klienta. Umów się na bezpłatną konsultację, przejdziemy przez Twój asortyment pozycja po pozycji.',
+    a: 'Prawdopodobnie tak. Sprzedaż preparatów kosmetycznych i toaletowych na odległość jest wyłączona ze zwolnienia ze względu na wartość sprzedaży, więc obowiązek rejestracji do VAT powstaje przy pierwszej takiej transakcji. Im wcześniej to uporządkujesz, tym mniejsze konsekwencje, bo zaległość rośnie z każdym miesiącem, a podatku od sprzedaży konsumenckiej nie da się już przerzucić na klienta. Umów się na bezpłatną rozmowę wstępną - powiemy, czego dotyczy problem i jak wygląda jego uporządkowanie, a przez asortyment przechodzimy pozycja po pozycji już w ramach obsługi.',
   },
   {
     q: 'Czy potrzebuję kasy fiskalnej w sklepie internetowym?',
@@ -404,7 +404,7 @@ const faq = [
   },
   {
     q: 'Dostałem raport DAC7 z Allegro. Co to znaczy?',
-    a: `Że platforma przekazała Krajowej Administracji Skarbowej dane o Twojej sprzedaży. Obowiązek dotyczy sprzedawców, którym platforma umożliwiła w ciągu roku co najmniej ${DAC7_PROG_TRANSAKCJE} transakcji sprzedaży towarów albo wypłaciła wynagrodzenie przekraczające równowartość ${num(DAC7_PROG_EUR)} euro. Sam raport nie oznacza jeszcze podatku, ale pozwala urzędowi porównać sprzedaż z Twoimi deklaracjami. Jeśli nie masz pewności, czy się zgadzają, sprawdzimy to na bezpłatnej konsultacji.`,
+    a: `Że platforma przekazała Krajowej Administracji Skarbowej dane o Twojej sprzedaży. Obowiązek dotyczy sprzedawców, którym platforma umożliwiła w ciągu roku co najmniej ${DAC7_PROG_TRANSAKCJE} transakcji sprzedaży towarów albo wypłaciła wynagrodzenie przekraczające równowartość ${num(DAC7_PROG_EUR)} euro. Sam raport nie oznacza jeszcze podatku, ale pozwala urzędowi porównać sprzedaż z Twoimi deklaracjami. Jeśli nie masz pewności, czy się zgadzają, na bezpłatnej rozmowie wstępnej ustalimy, czego dotyczy różnica i czego wymaga jej wyjaśnienie; samo porównanie raportu z deklaracjami robimy już w ramach obsługi.`,
   },
   {
     q: 'Czy muszę ręcznie przygotowywać zestawienia sprzedaży?',
@@ -436,7 +436,7 @@ const faq = [
   },
   {
     q: 'Jak przenieść księgowość z obecnego biura?',
-    a: 'Cały proces formalny bierzemy na siebie, czyli wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
+    a: 'Pomagamy przejść przez cały proces formalny: wypowiedzenie umowy, odbiór dokumentacji i uzyskanie pełnomocnictw. Standardowo trwa to od 7 do 14 dni i nie powoduje przerwy w rozliczeniach. Przejęcie dokumentacji w trakcie roku jest bezpłatne, jeśli dokumenty są uporządkowane.',
   },
 ];
 
@@ -718,7 +718,7 @@ const serviceSchema = {
           <h3>Raportowanie przez platformy</h3>
           <p>Od {DAC7_OD} operatorzy platform sprzedażowych przekazują Krajowej Administracji Skarbowej dane o sprzedawcach. Raportowanie obejmuje sprzedawców, którym platforma umożliwiła w ciągu roku co najmniej {DAC7_PROG_TRANSAKCJE} transakcji sprzedaży towarów albo wypłaciła wynagrodzenie przekraczające równowartość {num(DAC7_PROG_EUR)} euro.</p>
           <p>Przy usługach oraz najmie nieruchomości i środków transportu próg nie obowiązuje, raportowana jest każda transakcja. Raporty trafiają do urzędu do {DAC7_RAPORT_DO} za rok poprzedni, a kopię zestawienia otrzymuje również sprzedawca.</p>
-          <p class="ecom-duo__note">Same dane nie oznaczają jeszcze podatku, ale pozwalają urzędowi porównać sprzedaż z deklaracjami. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy Twoje rozliczenia się z nim zgadzają, sprawdzamy to na bezpłatnej konsultacji.</p>
+          <p class="ecom-duo__note">Same dane nie oznaczają jeszcze podatku, ale pozwalają urzędowi porównać sprzedaż z deklaracjami. Jeżeli dostałeś takie zestawienie i nie masz pewności, czy Twoje rozliczenia się z nim zgadzają, na bezpłatnej rozmowie wstępnej ustalimy zakres pracy, a samo porównanie robimy w ramach obsługi.</p>
         </article>
         <article class="ecom-duo__col">
           <div class="ecom-duo__icon"><Icon name="zap" size={22}/></div>
@@ -927,7 +927,7 @@ const serviceSchema = {
     items={process}
     eyebrow="Jak pracujemy"
     title="Jak wygląda start współpracy"
-    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, formalności bierzemy na siebie, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
+    description="Proponujemy czytelne kroki i jasne terminy. Jeśli zmieniasz biuro, pomagamy Ci przejść przez formalności, a przeniesienie zajmuje standardowo od 7 do 14 dni i nie powoduje przerwy w rozliczeniach."
   />
 
   <FAQ
@@ -938,7 +938,7 @@ const serviceSchema = {
 
   <CTA
     title="Porozmawiajmy o rozliczeniach Twojego sklepu"
-    description="Jeśli prowadzisz sklep internetowy, sprzedajesz na marketplace'ach albo dopiero planujesz wejście na rynki zagraniczne, umów się na bezpłatną konsultację online. W 30 minut przejdziemy przez Twoje kanały sprzedaży, asortyment i model współpracy z dostawcami, a potem powiemy wprost, co wymaga uporządkowania. Bez zobowiązań i sprzedażowego nacisku."
+    description="Jeśli prowadzisz sklep internetowy, sprzedajesz na marketplace'ach albo dopiero planujesz wejście na rynki zagraniczne, odezwij się do nas - mailem, telefonicznie albo przez formularz. W bezpłatnej rozmowie wstępnej ustalimy, jakie masz kanały sprzedaży, asortyment i model współpracy z dostawcami, i powiemy, czego wymaga uporządkowanie. Bez opłat, bez zobowiązań i bez sprzedażowego nacisku."
     primaryHref="/wycena?tryb=przeniesienie&branza=ecommerce"
   />
 </BaseLayout>

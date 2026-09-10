@@ -303,7 +303,7 @@ Ta lista jest punktem wyjścia, a nie gotowym rozstrzygnięciem. Granice bywają
 
 ---
 
-Jeśli jesteś naszym klientem, sprawdzenie, czy kasa jest u Ciebie obowiązkowa, i pilnowanie limitu 20 000 zł realizujemy w ramach standardowej obsługi. Prowadzimy też ewidencję sprzedaży z raportów fiskalnych i rozliczamy ulgę na zakup kasy w JPK_V7. Jeśli dopiero rozważasz zmianę biura, [umów bezpłatną konsultację](/kontakt) - policzymy Twój limit i pokażemy, w którym miejscu przepisów się znajdujesz.
+Jeśli jesteś naszym klientem, sprawdzenie, czy kasa jest u Ciebie obowiązkowa, i pilnowanie limitu 20 000 zł realizujemy w ramach standardowej obsługi. Prowadzimy też ewidencję sprzedaży z raportów fiskalnych i rozliczamy ulgę na zakup kasy w JPK_V7. Jeśli dopiero rozważasz zmianę biura, [odezwij się do nas](/kontakt) - w bezpłatnej rozmowie wstępnej ustalimy, czego dotyczy Twoja wątpliwość, a limit liczymy i pilnujemy już w ramach obsługi.
 
 ## Źródła i podstawy prawne
 

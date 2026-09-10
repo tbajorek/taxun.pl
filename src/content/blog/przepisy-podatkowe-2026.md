@@ -122,7 +122,7 @@ Tę listę warto traktować jako punkt wyjścia, a nie gotowy plan działania. K
 
 ---
 
-Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że wszystkie wymienione kroki realizujemy w ramach standardowej obsługi, bez dopłat i bez podpisywania aneksów. Jeśli rozważasz zmianę biura, [umów bezpłatną konsultację](/kontakt), a pokażemy Ci konkretne skutki tych zmian dla Twojej firmy.
+Jeśli jesteś lub zamierzasz zostać naszym klientem, to pamiętaj, że wszystkie wymienione kroki realizujemy w ramach standardowej obsługi, bez dopłat i bez podpisywania aneksów. Jeśli rozważasz zmianę biura, [umów bezpłatną rozmowę wstępną](/kontakt) - poznamy Twoją sytuację i powiemy, które z tych zmian dotyczą Twojej firmy.
 
 ## Źródła i podstawy prawne
 

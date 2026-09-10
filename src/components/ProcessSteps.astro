@@ -25,7 +25,10 @@ const { items, eyebrow = 'Jak pracujemy', title = 'Jak wygląda start współpra
 .process__list {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* 200 px, a nie 220: ścieżka zakładania firmy ma pięć kroków i przy 220 px
+     piąta karta zawijała się sama do drugiego rzędu. Listy czterokrokowe
+     układają się tak samo jak dotąd. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.25rem;
   counter-reset: process;
 }

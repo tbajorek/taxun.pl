@@ -95,9 +95,14 @@ export const tables: PricingTable[] = [
  * jako płatny. PIT-28 z najmu prywatnego jest płatny tylko wtedy, gdy jest
  * osobnym drukiem: u ryczałtowca najem wchodzi do tego samego zeznania, które
  * i tak składamy za działalność, więc tam mieści się w abonamencie.
+ *
+ * Zakładanie firmy jest tu zawężone tak samo: pomoc przy założeniu
+ * jednoosobowej działalności jest w cenie przy umowie o stałą obsługę, a
+ * płatna konsultacja w `setupFees` dotyczy osoby, która takiej umowy nie
+ * zawiera, bo nie zdecydowała jeszcze, z kim będzie prowadzić księgowość.
  */
 export const includedInPlan = [
-  { icon: 'briefcase', label: 'Założenie JDG: CEIDG + ZUS + US + VAT-R' },
+  { icon: 'briefcase', label: 'Pomoc przy założeniu JDG: CEIDG + ZUS + US + VAT-R' },
   { icon: 'shield', label: 'Obsługa ZUS właściciela JDG' },
   { icon: 'file', label: 'JPK_V7M / JPK_V7K' },
   { icon: 'zap', label: 'KSeF - wysyłka i odbiór e-faktur' },
@@ -146,6 +151,36 @@ export const hourlyRate = 150;
  * Trzymamy je tutaj, żeby katalog usług dodatkowych i opisy na stronach nie
  * mogły się rozjechać.
  *
+ * Trzy sytuacje, których nie wolno mieszać w treści - procedura wdrażania
+ * nowego klienta rozdziela je wprost:
+ *
+ * 1. **Bezpłatna rozmowa wstępna.** Zwykły pierwszy kontakt - mailem,
+ *    telefonicznie albo przez wideo - w którym poznajemy planowaną działalność
+ *    i sytuację klienta, ustalamy podstawowe potrzeby księgowe, oceniamy
+ *    wstępnie możliwość współpracy, zbieramy dane do oferty i odpowiadamy na
+ *    podstawowe pytania. Nie jest pełną konsultacją podatkową, nie wymaga
+ *    zawierania umowy i nie ma z góry ustalonej formy ani długości. Treść
+ *    stron nie może więc obiecywać ani „30 minut”, ani spotkania online.
+ * 2. **Stała obsługa księgowa u klienta zdecydowanego.** Kto chce od początku
+ *    korzystać z naszej stałej obsługi, przechodzi prosto do umowy o obsługę
+ *    księgową - można ją zawrzeć jeszcze przed rejestracją działalności -
+ *    a **pomoc przy założeniu jednoosobowej działalności jest wtedy elementem
+ *    współpracy i nie jest dodatkowo płatna**. Takiego klienta nie kierujemy
+ *    do płatnej konsultacji.
+ * 3. **Płatna konsultacja przed założeniem działalności.** Samodzielny produkt
+ *    dla osoby, która potrzebuje szczegółowego omówienia startu, ale nie
+ *    zdecydowała jeszcze, z kim będzie prowadzić księgowość. Sprzedawana na
+ *    stronie, bez odrębnej umowy konsultacyjnej. Kwoty niżej.
+ *
+ * Punkt 2 jest powodem, dla którego kreator wyceny pokazuje przy zakładaniu
+ * jednoosobowej działalności kwotę zerową: kto wypełnia kreator, pyta o stałą
+ * obsługę, czyli jest na ścieżce z punktu 2.
+ *
+ * Kto kupił konsultację i w ciągu `creditWithinDays` dni od jej dnia podpisze
+ * umowę na stałą obsługę, dostaje rabat równy zapłaconej kwocie netto na
+ * pierwszą fakturę. Bez współpracy albo po tym terminie konsultacja pozostaje
+ * usługą odpłatną i rabat nie przysługuje.
+ *
  * To są konsultacje, a nie rejestracja wykonana za klienta, i tak muszą być
  * opisane wszędzie. Nie jest to ostrożnościowa formuła, tylko jedyny zakres,
  * jaki możemy wykonać.
@@ -169,8 +204,7 @@ export const hourlyRate = 150;
  * rozmowę: policzone warianty opodatkowania i ZUS, przejście przez formularz
  * na spotkaniu online i sprawdzenie, czy nic nie zostało pominięte. Klika
  * klient. Dlatego pozycje nazywają się „konsultacja”, a nie „założenie
- * firmy”, i nie ma tu wariantu bezpłatnego: pracę wykonujemy tak samo
- * niezależnie od tego, czy dojdzie do stałej współpracy.
+ * firmy”.
  *
  * Pełnomocnictwa, które bierzemy przy stałej obsłudze (UPL-1 do deklaracji,
  * ZUS-PEL, uprawnienia w KSeF), to co innego - dotyczą prowadzenia
@@ -182,10 +216,12 @@ export const setupFees = {
   /** Konsultacja przed założeniem spółki, razem z przejściem przez S24. */
   s24: 499,
   /**
-   * Ile dni od konsultacji ma wejść w życie umowa o obsługę, żeby zaliczyć
-   * jej kwotę na poczet pierwszej faktury. Nie ma tu warunku minimalnego
-   * czasu współpracy: klient zapłacił z góry, więc nie ma czego dochodzić,
-   * gdyby zrezygnował wcześniej.
+   * Ile dni od konsultacji ma wejść w życie umowa o obsługę, żeby dostać
+   * rabat w wysokości zapłaconej kwoty na pierwszą fakturę. Nie ma tu warunku
+   * minimalnego czasu współpracy: klient zapłacił z góry, więc nie ma czego
+   * dochodzić, gdyby zrezygnował wcześniej. Po tym terminie konsultacja
+   * pozostaje usługą odpłatną i rabat nie przysługuje - to samo zdanie ma
+   * stać w treści stron, żeby termin nie wyglądał na uznaniowy.
    */
   creditWithinDays: 30,
 };
@@ -468,7 +504,7 @@ export type AdditionalService = {
  * opisują tę samą granicę: my liczymy i tłumaczymy, klient podpisuje.
  */
 const setupConsultationNote =
-  `wniosek podpisujesz i składasz samodzielnie - nie jesteśmy pełnomocnikiem w rejestracji; kwotę zaliczamy na poczet pierwszej faktury, jeśli w ciągu ${setupFees.creditWithinDays} dni podpiszesz umowę o obsługę`;
+  `dla osoby, która nie zdecydowała jeszcze, z kim będzie prowadzić księgowość - przy umowie o stałą obsługę pomoc przy założeniu jednoosobowej działalności jest w cenie; wniosek podpisujesz i składasz samodzielnie, nie jesteśmy pełnomocnikiem w rejestracji; rabat równy zapłaconej kwocie netto na pierwszą fakturę, jeśli w ciągu ${setupFees.creditWithinDays} dni od konsultacji podpiszesz umowę na stałą obsługę`;
 
 export const additional: AdditionalService[] = [
   { category: 'free', icon: 'shield', name: 'Obsługa ZUS właściciela JDG', price: 'w cenie' },
@@ -477,11 +513,12 @@ export const additional: AdditionalService[] = [
   { category: 'free', icon: 'check-circle', name: 'Rejestracja do VAT-UE i informacje podsumowujące', price: 'w cenie' },
   { category: 'free', icon: 'globe', name: 'Pierwszy kanał sprzedaży internetowej', price: 'w cenie', note: 'własny sklep albo jedna platforma sprzedażowa' },
   { category: 'free', icon: 'briefcase', name: 'Porównanie form opodatkowania i wyliczenie ZUS', price: 'w cenie' },
+  { category: 'free', icon: 'briefcase', name: 'Pomoc przy założeniu JDG', price: 'w cenie', note: 'przy umowie o stałą obsługę księgową' },
   { category: 'free', icon: 'globe', name: 'Rozliczenie importu usług u czynnego podatnika VAT', price: 'w cenie' },
   { category: 'free', icon: 'search', name: 'Weryfikacja obowiązku w podatku u źródła (WHT)', price: 'w cenie' },
   { category: 'free', icon: 'shield', name: 'Przegląd dotychczasowych rozliczeń pod kątem IFT-2R i importu usług', price: 'w cenie', note: 'jednorazowo, przy zawarciu umowy' },
 
-  { category: 'paid', icon: 'briefcase', name: 'Konsultacja przed założeniem JDG', price: `${setupFees.jdg} zł`, note: setupConsultationNote },
+  { category: 'paid', icon: 'briefcase', name: 'Konsultacja przed założeniem działalności gospodarczej', price: `${setupFees.jdg} zł`, note: setupConsultationNote },
   { category: 'paid', icon: 'briefcase', name: 'Konsultacja przed założeniem spółki (S24)', price: `${setupFees.s24} zł`, note: setupConsultationNote },
   { category: 'paid', icon: 'globe', name: `Faktury walutowe (powyżej ${currencyInvoices.freeLimit} szt./mies.)`, price: `${currencyInvoices.rate} zł / dok.` },
   { category: 'paid', icon: 'file', name: 'Korekta deklaracji podatkowej (z winy klienta)', price: '80 zł / mies.' },
