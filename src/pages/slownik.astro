@@ -7,6 +7,10 @@ import LegalNotice from '../components/LegalNotice.astro';
 // Liczba haseł w opisie meta liczy się z kolekcji - wpisana ręcznie rozjechała
 // się z zawartością strony (tytuł mówił o 30 pojęciach przy 52 hasłach).
 import { plural } from '../lib/blog';
+// Limity i stawki kasy fiskalnej biorą się z konfiguracji, a nie z treści hasła -
+// ta sama kwota stoi w kalkulatorze limitu i w artykule na blogu.
+import { KASA_LIMIT_ROCZNY, KASA_TERMIN_MIESIACE, KASA_ULGA_RATE, KASA_ULGA_MAX } from '../lib/tax-constants';
+import { zl, pct } from '../lib/format';
 
 interface Term {
   term: string;
@@ -36,6 +40,7 @@ const terms: Term[] = [
   { term: 'Skala podatkowa', category: 'Podatki', def: 'Podstawowa forma opodatkowania dochodów osób fizycznych. Do 120 000 zł dochodu obowiązuje stawka 12%, powyżej tego progu 32%. Kwota wolna od podatku wynosi 30 000 zł. Pozwala na wspólne rozliczenie z małżonkiem i korzystanie z większości ulg.' },
   { term: 'Podatek liniowy', category: 'Podatki', def: 'Forma opodatkowania działalności gospodarczej stałą stawką 19%, niezależnie od wysokości dochodu. Wyklucza wspólne rozliczenie z małżonkiem, kwotę wolną od podatku oraz większość ulg podatkowych. Rozliczany na formularzu PIT-36L.' },
   { term: 'JPK_V7', alt: ['JPK_V7M', 'JPK_V7K'], category: 'Podatki', def: 'Jednolity Plik Kontrolny dla VAT, zawierający ewidencję sprzedaży i zakupów oraz część deklaracyjną. W wariancie V7M całość składa się co miesiąc. W wariancie V7K ewidencję przesyła się miesięcznie, a część deklaracyjną kwartalnie.' },
+  { term: 'Kasa fiskalna', alt: ['Kasa rejestrująca', 'Kasa online'], category: 'Podatki', def: `Urządzenie ewidencjonujące sprzedaż na rzecz osób fizycznych nieprowadzących działalności gospodarczej oraz rolników ryczałtowych (art. 111 ustawy o VAT). Sprzedaż wyłącznie do firm nie wymaga jej w ogóle. Podstawowe zwolnienie obejmuje podatników, u których sprzedaż konsumencka nie przekroczyła ${zl(KASA_LIMIT_ROCZNY)} w poprzednim roku, a przy starcie w trakcie roku limit liczy się proporcjonalnie do liczby dni; po jego przekroczeniu kasa musi działać po upływie ${KASA_TERMIN_MIESIACE} miesięcy następujących po miesiącu przekroczenia. Wybrane rodzaje działalności, między innymi usługi fryzjerskie i kosmetyczne, gastronomia stacjonarna, naprawa pojazdów, opieka medyczna lekarzy i doradztwo podatkowe, wymagają kasy od pierwszej sprzedaży niezależnie od obrotu. Nowe urządzenia to wyłącznie kasy online przesyłające dane do Centralnego Repozytorium Kas albo kasy w postaci oprogramowania, dostępne dla zamkniętego katalogu branż. Przy rozpoczęciu ewidencji przysługuje ulga na zakup: ${pct(KASA_ULGA_RATE)} ceny netto, nie więcej niż ${zl(KASA_ULGA_MAX)} na jedno urządzenie.` },
   { term: 'VAT-R', category: 'Podatki', def: 'Zgłoszenie rejestracyjne w zakresie podatku od towarów i usług. Składane przed pierwszą czynnością opodatkowaną VAT albo dobrowolnie, jeszcze przed przekroczeniem limitu zwolnienia podmiotowego, który od 2026 r. wynosi 240 000 zł sprzedaży rocznie.' },
   { term: 'VAT-UE', category: 'Podatki', def: 'Informacja podsumowująca o wewnątrzwspólnotowych transakcjach VAT (WNT, WDT, import i eksport usług). Składana co miesiąc w terminie do 25. dnia miesiąca następującego po miesiącu, w którym powstał obowiązek podatkowy.' },
   { term: 'VAT-OSS', alt: ['One Stop Shop', 'OSS'], category: 'Podatki', def: 'Unijna procedura pozwalająca rozliczyć VAT od sprzedaży B2C do wszystkich krajów UE w jednej kwartalnej deklaracji składanej w Polsce. Po przekroczeniu łącznego progu 10 000 euro (42 000 zł) sprzedaż opodatkowuje się stawką kraju nabywcy. Rejestracja odbywa się na formularzu VIU-R.' },

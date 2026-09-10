@@ -10,7 +10,7 @@ import { setupFees } from '../data/pricing';
 const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY as string | undefined;
 
 const channels = [
-  { icon: 'mail', title: 'E-mail', value: site.email, href: `mailto:${site.email}`, note: 'Standardowo odpowiedź do 4 h roboczych' },
+  { icon: 'mail', title: 'E-mail', value: site.email, href: `mailto:${site.email}`, note: 'Odpowiadamy szybko, w godzinach roboczych' },
   { icon: 'phone', title: 'Telefon', value: site.phoneDisplay, href: `tel:${site.phoneHref}`, note: 'Pon-pt 8:00-18:00' },
   { icon: 'pin', title: 'Lokalizacja', value: `${site.address.city}`, note: 'Obsługa online w całej Polsce' },
   { icon: 'clock', title: 'Godziny pracy', value: 'Pon - pt: 8:00 - 18:00', note: 'Spotkania wideo w umówionym terminie' },
@@ -18,7 +18,7 @@ const channels = [
 
 const faq = [
   { q: 'Chcę poznać cenę obsługi. Gdzie zacząć?', a: 'Najszybciej przez <a href="/wycena">formularz wyceny</a>. Zadaje kilka pytań o formie prawnej, sposobie rozliczenia i liczbie dokumentów, dzięki czemu w odpowiedzi dostajesz orientacyjną kwotę i zakres obsługi, a nie prośbę o rozmowę. Ostateczną stawkę potwierdzamy przed podpisaniem umowy. Wypełnienie zajmuje około dwóch minut.' },
-  { q: 'Jak szybko otrzymam odpowiedź?', a: 'Standardowo odpowiadamy w ciągu 4 godzin roboczych. W szczególnych przypadkach (np. kontrola US/ZUS), zgłoszenia naszych klientów oznaczone jako pilne możemy obsługiwać także poza standardowymi godzinami.' },
+  { q: 'Jak szybko otrzymam odpowiedź?', a: 'Na wiadomości odpowiadamy szybko, w godzinach pracy biura. W szczególnych przypadkach (np. kontrola US/ZUS), zgłoszenia naszych klientów oznaczone jako pilne możemy obsługiwać także poza standardowymi godzinami.' },
   { q: 'Czy pierwsza rozmowa jest płatna?', a: 'Nie. Rozmowa wstępna jest bezpłatna i nie wiąże się z zobowiązaniem. Prowadzimy ją tak, jak Ci wygodniej - mailem, telefonicznie albo przez wideo. Ustalamy na niej wstępne kwestie: jak wygląda Twoja sytuacja, czego potrzebujesz od księgowości i jakich danych potrzebujemy do oferty. Po rozmowie otrzymasz pisemne podsumowanie i wycenę współpracy.' },
   { q: 'Czym różni się rozmowa wstępna od płatnej konsultacji?', a: `Rozmowa wstępna jest bezpłatna i służy ustaleniu wstępnych kwestii - czy i jak możemy Ci pomóc, czego potrzebujesz i ile to będzie kosztować. Nie jest pełną konsultacją podatkową. <strong>Jeżeli chcesz od początku korzystać z naszej stałej obsługi, przechodzimy prosto do umowy o obsługę księgową, a pomoc przy założeniu jednoosobowej działalności jest wtedy w cenie współpracy</strong> - nie kierujemy Cię do płatnej konsultacji. <strong>Jeżeli nie zdecydowałeś jeszcze, z kim będziesz prowadzić księgowość</strong>, a potrzebujesz szczegółowo omówić start, możesz kupić samodzielną usługę „Konsultacja przed założeniem działalności gospodarczej” za <strong>${setupFees.jdg} zł netto + VAT</strong> (spółka w S24: ${setupFees.s24} zł). Nie wymaga ona odrębnej umowy konsultacyjnej. Jeżeli w ciągu ${setupFees.creditWithinDays} dni od konsultacji podpiszesz umowę na stałą obsługę, otrzymujesz rabat równy zapłaconej kwocie netto na pierwszą fakturę. Warunki opisuje <a href="/regulamin#jednorazowe">regulamin</a>.` },
   { q: 'Czy musimy spotkać się osobiście?', a: 'Nie. Obsługę prowadzimy w pełni zdalnie - przez portal klienta, e-mail i telefon. Spotkania wideo umawiamy dla bardziej złożonych tematów, takich jak wybór formy opodatkowania czy podsumowanie roku. Cały model współpracy opisujemy na stronie <a href="/ksiegowosc-online">księgowość online</a>.' },
@@ -27,7 +27,7 @@ const faq = [
 ---
 <BaseLayout
   title="Kontakt - biuro rachunkowe online Taxun, Kraków"
-  description="Telefon, e-mail i formularz do biura rachunkowego Taxun w Krakowie. Standardowo odpowiedź w 4 godziny robocze, bezpłatna rozmowa wstępna bez zobowiązania."
+  description="Telefon, e-mail i formularz do biura rachunkowego Taxun w Krakowie. Szybka odpowiedź w godzinach roboczych, bezpłatna rozmowa wstępna bez zobowiązania."
   schema={{
     '@type': 'ContactPage',
     name: 'Kontakt - Taxun',
@@ -67,7 +67,7 @@ const faq = [
           <header class="contact-form__head">
             <span class="eyebrow">Formularz kontaktowy</span>
             <h2>Zadaj pytanie</h2>
-            <p>Standardowo odpowiadamy mailem w ciągu 4 godzin roboczych. Bez automatycznych szablonów.</p>
+            <p>Odpowiadamy mailem szybko, w godzinach roboczych. Bez automatycznych szablonów.</p>
           </header>
 
           <aside class="quote-hint">
@@ -134,7 +134,7 @@ const faq = [
           <div class="sla">
             <span class="sla__icon" aria-hidden="true"><Icon name="clock" size={18}/></span>
             <div class="sla__body">
-              <p class="sla__headline">Standardowo odpowiadamy w&nbsp;ciągu <strong>4 godzin roboczych</strong></p>
+              <p class="sla__headline">Na wiadomości odpowiadamy <strong>szybko</strong></p>
               <p class="sla__detail">Pon - pt 8:00 - 18:00. Wiadomości spoza godzin roboczych odbieramy następnego dnia rano.</p>
             </div>
           </div>
@@ -560,7 +560,7 @@ const faq = [
         });
 
         if (result.ok) {
-          showNotice('Dziękujemy! Otrzymaliśmy Twoją wiadomość. Odpowiemy w ciągu 4 godzin roboczych.');
+          showNotice('Dziękujemy! Otrzymaliśmy Twoją wiadomość. Odpowiemy najszybciej, jak to możliwe w godzinach roboczych.');
           form.reset();
         } else {
           showNotice(result.message, true);
