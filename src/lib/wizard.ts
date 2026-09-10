@@ -514,19 +514,12 @@ export function estimate(answers: Answers): Estimate {
   // `setupFees`). Etykieta i nota muszą to nieść same, bo w wiadomości do
   // biura i w bocznym panelu widać tylko je.
   //
-  // Przy jednoosobowej działalności i spółce cywilnej kwota jest zerowa i to
-  // nie jest gest handlowy, tylko konsekwencja procedury: kto wypełnia kreator,
-  // pyta o stałą obsługę, a przy umowie o obsługę pomoc przy założeniu firmy
-  // jest jej elementem. Płatna konsultacja za `setupFees.jdg` zostaje osobnym
-  // produktem dla osoby, która nie zdecydowała jeszcze, z kim będzie prowadzić
-  // księgowość - tej ścieżki kreator nie wycenia, bo ona nie prowadzi do
-  // abonamentu.
-  //
-  // Przy spółce rejestrowanej w S24 kwota jest realna: przejście przez wzorzec
-  // umowy, kapitał, udziały i wybór CIT to praca poprzedzająca powstanie spółki
-  // i wykonujemy ją niezależnie od tego, czy dojdzie do stałej współpracy.
-  // Przy umowie o obsługę w ciągu `creditWithinDays` dni odejmujemy ją od
-  // pierwszej faktury i o tym mówi nota.
+  // Kwota jest tu realna, a nie zerowa: sama pomoc przy zakładaniu działalności
+  // to już płatna konsultacja, zamawiana osobno i niewchodząca do abonamentu.
+  // Pracę wykonujemy tak samo niezależnie od tego, czy dojdzie do stałej
+  // współpracy, więc pozycja wchodzi do sumy opłat jednorazowych. Przy umowie
+  // o obsługę w ciągu `creditWithinDays` dni odejmujemy tę kwotę od pierwszej
+  // faktury i o tym mówi nota.
   //
   // Formy spoza listy S24 (`inne` - akcyjna, partnerska, fundacja) nie mają
   // w systemie wzorca, a `nie-wiem` nie wskazuje jeszcze żadnej procedury.
@@ -534,19 +527,20 @@ export function estimate(answers: Answers): Estimate {
   // przeczytaniu zgłoszenia.
   if (asText(answers.mode) === 'zalozenie' && asText(answers.registration) === 'tak') {
     const legalForm = asText(answers.legalForm);
+    const credit = `Kupujesz ją osobno, także przed podpisaniem umowy o obsługę; jeśli taka umowa wejdzie w życie w ciągu ${setupFees.creditWithinDays} dni, jej kwota wraca jako rabat na pierwszej fakturze.`;
     if (legalForm === 'jdg' || legalForm === 'sc') {
       once.push({
         id: 'setup',
-        label: 'Pomoc przy założeniu firmy',
-        amount: 0,
-        note: 'W cenie umowy o stałą obsługę księgową. Wniosek CEIDG-1 podpisujesz i wysyłasz sam - pełnomocnik nie złoży go przez internet.',
+        label: 'Konsultacja przed założeniem działalności',
+        amount: setupFees.jdg,
+        note: `${credit} Wniosek CEIDG-1 podpisujesz i wysyłasz sam - pełnomocnik nie złoży go przez internet.`,
       });
     } else if (S24_LEGAL_FORMS.includes(legalForm)) {
       once.push({
         id: 'setup',
         label: 'Konsultacja przed założeniem spółki',
         amount: setupFees.s24,
-        note: `Odejmujemy ją od pierwszej faktury, jeśli w ciągu ${setupFees.creditWithinDays} dni wejdzie w życie umowa o obsługę. Umowę spółki i wniosek o wpis podpisują oraz składają wspólnicy i zarząd.`,
+        note: `${credit} Umowę spółki i wniosek o wpis podpisują oraz składają wspólnicy i zarząd.`,
       });
     }
   }

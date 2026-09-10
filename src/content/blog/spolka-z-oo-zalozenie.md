@@ -227,7 +227,7 @@ Obsługa spółki kosztuje zauważalnie więcej, zwykle od 500 do 700 zł miesi�
 
 S24 jest tak zbudowany, że **spółkę rejestrują sami wspólnicy**. Umowę podpisują wszyscy wspólnicy, wniosek o wpis wszyscy członkowie zarządu (art. 164 § 1 k.s.h.), a wzorzec umowy jest niezmienny: wybiera się warianty gotowych klauzul, a nie redaguje treść. Największy koszt błędu leży więc nie w klikaniu, tylko w decyzjach podjętych wcześniej.
 
-**Dlatego oferujemy konsultację przed startem za 499 zł netto.** Jeżeli w ciągu 30 dni od niej wejdzie w życie umowa o obsługę księgową, zapłaconą kwotę odejmujemy od pierwszej faktury; bez współpracy albo po tym terminie konsultacja pozostaje usługą odpłatną. W zakresie:
+**Dlatego oferujemy konsultację przed startem za 499 zł netto.** Kupujesz ją osobno, jeszcze przed podpisaniem umowy o stałą obsługę. Jeżeli w ciągu 30 dni od konsultacji taka umowa wejdzie w życie, dostajesz rabat równy zapłaconej kwocie netto na pierwszej fakturze; bez współpracy albo po tym terminie konsultacja pozostaje usługą odpłatną. W zakresie:
 
 - wspólnicy, kapitał, liczba i wartość udziałów, skład zarządu, sposób reprezentacji, rok obrotowy i kody PKD,
 - policzone warianty opodatkowania - CIT 9%, 19% i estoński - na Twoich liczbach, razem ze składką zdrowotną wspólników,
