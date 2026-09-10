@@ -1,0 +1,122 @@
+---
+/*
+ * Zdjęcie w bloku powitalnym - jedno dla strony głównej i dla podstron, żeby
+ * ramka, warianty plików i moment pobierania nie rozjeżdżały się między nimi.
+ */
+import { getImage } from 'astro:assets';
+import type { SiteImage } from '../data/images';
+
+interface Props {
+  photo: SiteImage;
+}
+const { photo } = Astro.props;
+
+/** Poniżej tej szerokości ramka jest schowana i zdjęcie ma się nie pobierać. */
+const DESKTOP = '(min-width: 981px)';
+
+/** Ramka ma najwyżej 500 px, a węższa kolumna schodzi do około 40% okna. */
+const SIZES = 'min(500px, 40vw)';
+
+/*
+ * Przezroczysty piksel dla przeglądarki, w której żaden `<source>` nie pasuje -
+ * czyli na telefonie. Waży 70 bajtów i siedzi w dokumencie, więc nie jest
+ * żądaniem.
+ */
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+const WIDTHS = [500, 750, 1000];
+
+/*
+ * Warianty składamy sami, bo `<Picture>` nie przepuszcza `media` do `<source>`.
+ * Kolejność ma znaczenie: przeglądarka bierze pierwszy pasujący typ, więc AVIF
+ * musi stać przed WebP, a WebP przed JPEG-iem.
+ */
+const sources = await Promise.all(
+  (['avif', 'webp', 'jpeg'] as const).map(async (format) => {
+    const variants = await Promise.all(
+      WIDTHS.filter((width) => width <= photo.file.width).map(async (width) => {
+        const built = await getImage({ src: photo.file, format, width });
+        return `${built.src} ${width}w`;
+      }),
+    );
+    return { type: `image/${format}`, srcset: variants.join(', ') };
+  }),
+);
+---
+{/*
+  Ramka bierze proporcję z samego pliku, więc kadru nie przycinamy i każde
+  kolejne zdjęcie wstawione w to miejsce trafia tu takie, jakie jest. Proporcja
+  jest ustawiona z góry, więc układ nie skacze podczas ładowania.
+*/}
+<figure class="hero-photo" style={`--photo-ratio: ${photo.file.width} / ${photo.file.height}`}>
+  {/*
+    `loading="eager"` i wysoki priorytet, bo zdjęcie leży nad zgięciem i na
+    desktopie bywa największym elementem treści. Przy `lazy` przeglądarka
+    odkrywała je dopiero po pierwszym wyliczeniu układu i przez tę chwilę
+    w ramce stał opis alternatywny - widać to było przy każdym odświeżeniu.
+    Teraz zdjęcie znajduje skaner wstępnego wczytywania, jeszcze w trakcie
+    parsowania HTML-a, i pobieranie startuje razem z dokumentem.
+
+    `media` na źródłach pilnuje, żeby to nie kosztowało telefonu ani bajta:
+    poniżej 981 px ramka jest schowana przez `display: none`, żaden `<source>`
+    nie pasuje i zostaje przezroczysty piksel w `src`. Astro tego nie ustawi -
+    `<Picture>` nie przyjmuje `media` - więc adresy składamy `getImage()`
+    i piszemy `<picture>` wprost.
+  */}
+  <picture>
+    {sources.map((source) => (
+      <source type={source.type} srcset={source.srcset} sizes={SIZES} media={DESKTOP} />
+    ))}
+    <img
+      src={BLANK}
+      alt={photo.alt}
+      width={photo.file.width}
+      height={photo.file.height}
+      loading="eager"
+      fetchpriority="high"
+      decoding="async"
+      class="hero-photo__img"
+    />
+  </picture>
+</figure>
+
+<style>
+/*
+ * Zdjęcie wypełnia swoją kolumnę. Wcześniej stało tu sztywne 420 px, dobrane
+ * pod kadr pionowy - kadr poziomy wychodził przy nim mały i wyglądał jak
+ * doklejony obok tekstu, zamiast robić za drugą połowę bloku powitalnego.
+ *
+ * Drugi człon `min()` pilnuje, żeby wysoki kadr nie rozepchnął bloku na kilka
+ * ekranów. Robi to zwężeniem ramki, a nie `max-height`: `max-height` przy
+ * ustalonej proporcji przyciął zdjęcie zamiast je zmniejszyć.
+ */
+.hero-photo {
+  margin: 0 0 0 auto;
+  width: min(100%, calc(560px * (var(--photo-ratio, 4 / 5))));
+  aspect-ratio: var(--photo-ratio, 4 / 5);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  /*
+   * Tło na tę chwilę, zanim zdjęcie się namaluje. Nie jest to podgląd zdjęcia,
+   * tylko materiał ramki - ten sam, z którego zrobione są karty na ciemnym tle.
+   * Kosztuje zero bajtów, a pusta ramka wygląda jak coś, co się nie wczytało.
+   */
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+}
+.hero-photo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*
+ * Na telefonie zdjęcie odpada. Blok powitalny ma tam zmieścić nagłówek
+ * i przyciski bez przewijania, a zdjęcie zepchnęłoby je poniżej zgięcia.
+ */
+@media (max-width: 980px) {
+  .hero-photo { display: none; }
+}
+</style>

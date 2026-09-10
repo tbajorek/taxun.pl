@@ -9,6 +9,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "covers": "node scripts/optimize-covers.mjs",
+    "brand": "node scripts/build-brand.mjs",
     "fonts": "node scripts/build-fonts.mjs",
     "assets": "npm run fonts && npm run covers",
     "predev": "npm run assets",

@@ -230,10 +230,17 @@ const legalUpdated = legalUpdatedFor(Astro.url.pathname);
   <meta name="geo.region" content="PL-MA" />
   <meta name="geo.placename" content={site.address.city} />
 
-  <!-- Icons -->
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
-  <link rel="mask-icon" href="/favicon.svg" color="#0A1A35" />
+  {/*
+    Ikony. Obie składa `npm run brand` ze znaku wyciętego z logo, więc pokazują
+    dokładnie to samo co nagłówek serwisu. Wcześniej stał tu rysunek wektorowy
+    znaku, przygotowany osobno i przez to trochę inny.
+
+    Znika `mask-icon`: to przypięte karty w Safari, a te wymagają jednokolorowego
+    SVG. Znaku nie da się do tego sprowadzić bez rysowania go drugi raz, czyli
+    bez wrócenia do problemu, który ta zmiana rozwiązuje.
+  */}
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
   {/*
     Kroje hostujemy u siebie (definicje @font-face w src/styles/global.css)
