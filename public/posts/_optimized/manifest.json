@@ -277,6 +277,75 @@
         ]
       }
     },
+    "kasa-fiskalna-kto-musi-miec.jpg": {
+      "hash": "0991c45c",
+      "width": 4500,
+      "height": 3000,
+      "fallback": {
+        "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-fallback.jpg",
+        "width": 960,
+        "height": 640
+      },
+      "og": {
+        "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-og.jpg",
+        "width": 1200,
+        "height": 630
+      },
+      "variants": {
+        "avif": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-320.avif"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-480.avif"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-640.avif"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-960.avif"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-1280.avif"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-1600.avif"
+          }
+        ],
+        "webp": [
+          {
+            "width": 320,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-320.webp"
+          },
+          {
+            "width": 480,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-480.webp"
+          },
+          {
+            "width": 640,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-640.webp"
+          },
+          {
+            "width": 960,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-960.webp"
+          },
+          {
+            "width": 1280,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-1280.webp"
+          },
+          {
+            "width": 1600,
+            "src": "/posts/_optimized/kasa-fiskalna-kto-musi-miec.0991c45c-1600.webp"
+          }
+        ]
+      }
+    },
     "ksef-praktyczny-przewodnik.jpg": {
       "hash": "9c2dfa47",
       "width": 6720,

@@ -28,4 +28,4 @@ export const heroPhoto: ImageMetadata | null = path ? files[path].default : null
  * (pokazuje, kto prowadzi biuro), więc nie zostawiamy pustego `alt`.
  * Po podmianie pliku zmień to zdanie na to, co faktycznie widać.
  */
-export const heroPhotoAlt = 'Zespół biura rachunkowego Taxun przy pracy';
+export const heroPhotoAlt = 'Biuro rachunkowe online przy pracy';

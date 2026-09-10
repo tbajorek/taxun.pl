@@ -101,24 +101,6 @@ const breadcrumbs = [{ label: 'O nas' }];
           <p class="lede">Od ponad 10 lat tworzę oprogramowanie dla różnych firm, wspierając technologicznie ich rozwój. Gdy w pewnym momencie sam założyłem działalność gospodarczą, szybko przekonałem się, że rynek biur rachunkowych pozostawia wiele do życzenia. Dotyczy to zarówno jakości obsługi, jak i podejścia do nowoczesnych narzędzi.</p>
           <p>Wierzę, że droga do sukcesu to ciągły rozwój. Biuro księgowe powinno być dla przedsiębiorcy partnerem, a nie kolejnym problemem do rozwiązania. Dlatego zbudowałem biuro rachunkowe Taxun w taki sposób, jak sam chciałbym, żeby wyglądała księgowość, z której usług będę korzystał. Jej podstawowe cechy to publiczny i konkurencyjny cennik, bez ukrytych opłat, maksymalna automatyzacja procesów, rzetelna obsługa i realne wsparcie w sprawach księgowych i kadrowych.</p>
           <p>Możesz skontaktować się ze mną bezpośrednio poprzez mój adres mailowy <a href={`mailto:${site.founder.email}`}>{site.founder.email}</a>.</p>
-          <dl class="founder__facts">
-            <div>
-              <dt>Rola w Taxun</dt>
-              <dd>{site.founder.role}. Odpowiadam za produkt, technologię, kontakt z klientami oraz za treści merytoryczne publikowane w serwisie: artykuły w dziale Wiedza, opisy usług i kalkulatory podatkowe. Pod każdym artykułem widnieje nazwisko autora i data ostatniej aktualizacji - <a href="/wiedza/autor/tomasz-bajorek">wszystkie teksty opublikowane pod moim nazwiskiem</a> są dostępne w jednym miejscu.</dd>
-            </div>
-            <div>
-              <dt>Doświadczenie</dt>
-              <dd>Ponad 10 lat tworzenia oprogramowania dla firm i prowadzenia projektów SaaS, w tym własnej działalności gospodarczej. Integrację Taxun z Krajowym Systemem e-Faktur zbudowaliśmy samodzielnie, w oparciu o dokumentację Ministerstwa Finansów.</dd>
-            </div>
-            <div>
-              <dt>Kto prowadzi księgi</dt>
-              <dd>Za prowadzenie ksiąg i rozliczeń odpowiada zespół księgowy Taxun. Ja odpowiadam za stronę produktową i technologiczną biura oraz za to, żeby publikowane przez nas informacje były aktualne i zgodne z przepisami.</dd>
-            </div>
-            <div>
-              <dt>Odpowiedzialność</dt>
-              <dd>Działalność prowadzi {site.legalName} pod marką Taxun. Posiadamy {site.insurance.phrase} z sumą gwarancyjną {site.insurance.coverage}. Dane rejestrowe firmy możesz zweryfikować samodzielnie w <a href="#registry">publicznych rejestrach</a>.</dd>
-            </div>
-          </dl>
           <div class="founder__links">
             <a href={site.founder.linkedin} rel="noopener" target="_blank" class="btn btn--ghost btn--sm">
               <Icon name="linkedin" size={14}/>
@@ -288,25 +270,6 @@ const breadcrumbs = [{ label: 'O nas' }];
 </BaseLayout>
 
 <style>
-.founder__facts {
-  margin-top: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1.5rem;
-}
-.founder__facts dt {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-  color: var(--accent-700);
-  margin-bottom: 0.25rem;
-}
-.founder__facts dd { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6; }
-.founder__facts a { color: var(--accent-700); text-decoration: underline; text-underline-offset: 2px; }
-
 .founder {
   display: grid;
   grid-template-columns: 200px 1fr;

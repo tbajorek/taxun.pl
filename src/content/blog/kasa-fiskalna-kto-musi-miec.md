@@ -10,6 +10,7 @@ tags: ["kasa fiskalna", "VAT", "paragon", "JDG", "e-commerce", "2026"]
 readingTime: 17
 featured: true
 author: "tomasz-bajorek"
+cover: "kasa-fiskalna-kto-musi-miec.jpg"
 summary:
   - "Obowiązek dotyczy wyłącznie sprzedaży <strong>na rzecz osób fizycznych nieprowadzących działalności i rolników ryczałtowych</strong>. Jeśli sprzedajesz tylko firmom, kasa nie jest Ci potrzebna w ogóle."
   - "Podstawowe zwolnienie to <strong>20 000 zł sprzedaży konsumenckiej rocznie</strong>. Przy starcie w trakcie roku limit jest proporcjonalny do liczby dni."
