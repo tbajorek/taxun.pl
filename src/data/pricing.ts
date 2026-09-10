@@ -96,12 +96,13 @@ export const tables: PricingTable[] = [
  * osobnym drukiem: u ryczałtowca najem wchodzi do tego samego zeznania, które
  * i tak składamy za działalność, więc tam mieści się w abonamencie.
  *
- * Z tego samego powodu nie ma tu zakładania firmy. Pomoc przy zakładaniu
- * działalności jest płatną konsultacją zamawianą osobno (patrz `setupFees`),
- * więc wpisana na tę listę obiecywałaby w abonamencie coś, za co obok
- * pobieramy 199 zł. Abonament zaczyna się od prowadzenia ksiąg.
+ * Zakładanie firmy jest tu zawężone tak samo: pomoc przy założeniu
+ * jednoosobowej działalności jest w cenie przy umowie o stałą obsługę, a
+ * płatna konsultacja w `setupFees` dotyczy osoby, która takiej umowy nie
+ * zawiera, bo nie zdecydowała jeszcze, z kim będzie prowadzić księgowość.
  */
 export const includedInPlan = [
+  { icon: 'briefcase', label: 'Pomoc przy założeniu JDG: CEIDG + ZUS + US + VAT-R' },
   { icon: 'shield', label: 'Obsługa ZUS właściciela JDG' },
   { icon: 'file', label: 'JPK_V7M / JPK_V7K' },
   { icon: 'zap', label: 'KSeF - wysyłka i odbiór e-faktur' },
@@ -150,26 +151,35 @@ export const hourlyRate = 150;
  * Trzymamy je tutaj, żeby katalog usług dodatkowych i opisy na stronach nie
  * mogły się rozjechać.
  *
- * Trzy rzeczy, których nie wolno mieszać w treści:
+ * Trzy sytuacje, których nie wolno mieszać w treści - procedura wdrażania
+ * nowego klienta rozdziela je wprost:
  *
- * 1. **Bezpłatna rozmowa wstępna.** Zwykły kontakt - mailem, telefonicznie
- *    albo przez wideo - w którym ustalamy wstępne kwestie: czym ma być
- *    działalność, czego klient potrzebuje i jakich danych potrzebujemy do
- *    oferty. Nie jest pełną konsultacją podatkową, nie ma z góry ustalonej
- *    formy ani długości i nie ma tu kwoty, bo nie ma czego wyceniać. Treść
+ * 1. **Bezpłatna rozmowa wstępna.** Zwykły pierwszy kontakt - mailem,
+ *    telefonicznie albo przez wideo - w którym poznajemy planowaną działalność
+ *    i sytuację klienta, ustalamy podstawowe potrzeby księgowe, oceniamy
+ *    wstępnie możliwość współpracy, zbieramy dane do oferty i odpowiadamy na
+ *    podstawowe pytania. Nie jest pełną konsultacją podatkową, nie wymaga
+ *    zawierania umowy i nie ma z góry ustalonej formy ani długości. Treść
  *    stron nie może więc obiecywać ani „30 minut”, ani spotkania online.
- * 2. **Płatna konsultacja przed założeniem działalności.** Sama pomoc przy
- *    zakładaniu działalności to już ta konsultacja - gotowy produkt, który
- *    klient zamawia i opłaca, bez zawierania umowy o stałą obsługę. Kwoty
- *    niżej. Zamówić ją może każdy, także osoba zdecydowana już na Taxun.
- * 3. **Stała obsługa księgowa.** Osobna umowa i osobna cena, opisana tabelami
- *    z `tables`. Zaczyna się od prowadzenia ksiąg już działającej firmy;
- *    rejestracja do niej nie wchodzi.
+ * 2. **Stała obsługa księgowa u klienta zdecydowanego.** Kto chce od początku
+ *    korzystać z naszej stałej obsługi, przechodzi prosto do umowy o obsługę
+ *    księgową - można ją zawrzeć jeszcze przed rejestracją działalności -
+ *    a **pomoc przy założeniu jednoosobowej działalności jest wtedy elementem
+ *    współpracy i nie jest dodatkowo płatna**. Takiego klienta nie kierujemy
+ *    do płatnej konsultacji.
+ * 3. **Płatna konsultacja przed założeniem działalności.** Samodzielny produkt
+ *    dla osoby, która potrzebuje szczegółowego omówienia startu, ale nie
+ *    zdecydowała jeszcze, z kim będzie prowadzić księgowość. Sprzedawana na
+ *    stronie, bez odrębnej umowy konsultacyjnej. Kwoty niżej.
  *
- * Konsultację można kupić także przed podpisaniem umowy o stałą obsługę. Kto
- * ją kupił i w ciągu `creditWithinDays` dni wejdzie w taką umowę, dostaje
- * rabat równy zapłaconej kwocie netto na pierwszej fakturze. To jedyne powiązanie punktów 2 i 3 - nie ma wariantu bezpłatnego:
- * pracę wykonujemy tak samo niezależnie od tego, czy dojdzie do współpracy.
+ * Punkt 2 jest powodem, dla którego kreator wyceny pokazuje przy zakładaniu
+ * jednoosobowej działalności kwotę zerową: kto wypełnia kreator, pyta o stałą
+ * obsługę, czyli jest na ścieżce z punktu 2.
+ *
+ * Kto kupił konsultację i w ciągu `creditWithinDays` dni od jej dnia podpisze
+ * umowę na stałą obsługę, dostaje rabat równy zapłaconej kwocie netto na
+ * pierwszą fakturę. Bez współpracy albo po tym terminie konsultacja pozostaje
+ * usługą odpłatną i rabat nie przysługuje.
  *
  * To są konsultacje, a nie rejestracja wykonana za klienta, i tak muszą być
  * opisane wszędzie. Nie jest to ostrożnościowa formuła, tylko jedyny zakres,
@@ -494,7 +504,7 @@ export type AdditionalService = {
  * opisują tę samą granicę: my liczymy i tłumaczymy, klient podpisuje.
  */
 const setupConsultationNote =
-  `usługa zamawiana osobno, także przed podpisaniem umowy o stałą obsługę; wniosek podpisujesz i składasz samodzielnie - nie jesteśmy pełnomocnikiem w rejestracji; rabat równy zapłaconej kwocie netto na pierwszej fakturze, jeśli w ciągu ${setupFees.creditWithinDays} dni od konsultacji wejdzie w życie umowa o obsługę`;
+  `dla osoby, która nie zdecydowała jeszcze, z kim będzie prowadzić księgowość - przy umowie o stałą obsługę pomoc przy założeniu jednoosobowej działalności jest w cenie; wniosek podpisujesz i składasz samodzielnie, nie jesteśmy pełnomocnikiem w rejestracji; rabat równy zapłaconej kwocie netto na pierwszą fakturę, jeśli w ciągu ${setupFees.creditWithinDays} dni od konsultacji podpiszesz umowę na stałą obsługę`;
 
 export const additional: AdditionalService[] = [
   { category: 'free', icon: 'shield', name: 'Obsługa ZUS właściciela JDG', price: 'w cenie' },
@@ -503,6 +513,7 @@ export const additional: AdditionalService[] = [
   { category: 'free', icon: 'check-circle', name: 'Rejestracja do VAT-UE i informacje podsumowujące', price: 'w cenie' },
   { category: 'free', icon: 'globe', name: 'Pierwszy kanał sprzedaży internetowej', price: 'w cenie', note: 'własny sklep albo jedna platforma sprzedażowa' },
   { category: 'free', icon: 'briefcase', name: 'Porównanie form opodatkowania i wyliczenie ZUS', price: 'w cenie' },
+  { category: 'free', icon: 'briefcase', name: 'Pomoc przy założeniu JDG', price: 'w cenie', note: 'przy umowie o stałą obsługę księgową' },
   { category: 'free', icon: 'globe', name: 'Rozliczenie importu usług u czynnego podatnika VAT', price: 'w cenie' },
   { category: 'free', icon: 'search', name: 'Weryfikacja obowiązku w podatku u źródła (WHT)', price: 'w cenie' },
   { category: 'free', icon: 'shield', name: 'Przegląd dotychczasowych rozliczeń pod kątem IFT-2R i importu usług', price: 'w cenie', note: 'jednorazowo, przy zawarciu umowy' },
