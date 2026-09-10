@@ -1,5 +1,17 @@
 ---
+import { Picture } from 'astro:assets';
 import Icon from './Icon.astro';
+import { heroPhoto, heroPhotoAlt } from '../data/hero-photo';
+
+/*
+ * Chipy powtarzają obietnice z listy pod przyciskami, więc dla czytnika ekranu
+ * są ozdobą - stąd `aria-hidden` na całej liście, a nie na każdym z osobna.
+ */
+const chips = [
+  { icon: 'shield', label: 'Pełne bezpieczeństwo' },
+  { icon: 'zap', label: 'Wygodny dostęp do danych' },
+  { icon: 'headset', label: 'Dedykowany opiekun kadrowo - księgowy' },
+];
 ---
 <section class="home-hero">
   <div class="home-hero__bg" aria-hidden="true">
@@ -41,54 +53,68 @@ import Icon from './Icon.astro';
       </ul>
     </div>
 
-    <div class="home-hero__visual" aria-hidden="true">
-      <div class="hero-card hero-card--main">
-        <div class="hero-card__head">
-          <div class="hero-card__chip">
-            <span class="hero-card__bullet"></span>
-            Twoje rozliczenia
-          </div>
-          <span class="hero-card__date">maj 2026</span>
-        </div>
-        <div class="hero-card__metric">
-          <div class="hero-card__label">Wynik miesiąca</div>
-          <div class="hero-card__value">+42 380 <span>PLN</span></div>
-          <div class="hero-card__trend">
-            <Icon name="trending-up" size={14}/>
-            <span>+12,4% vs. poprzedni miesiąc</span>
-          </div>
-        </div>
-        <div class="hero-card__sparkline" aria-hidden="true">
-          <svg viewBox="0 0 220 60" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#10B981" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <path d="M0,42 L25,38 L50,44 L75,30 L100,34 L125,22 L150,26 L175,14 L200,18 L220,8 L220,60 L0,60 Z" fill="url(#sparkFill)"/>
-            <path d="M0,42 L25,38 L50,44 L75,30 L100,34 L125,22 L150,26 L175,14 L200,18 L220,8" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <ul class="hero-card__items">
-          <li><span>JPK_V7</span><strong>wysłane</strong></li>
-          <li><span>ZUS DRA</span><strong>opłacone</strong></li>
-          <li><span>PIT-5L</span><strong>w toku</strong></li>
+    {heroPhoto ? (
+      <div class="home-hero__visual home-hero__visual--photo">
+        <figure class="hero-photo">
+          {/*
+            `loading="lazy"` zamiast `eager`: poniżej 981 px cała kolumna jest
+            schowana przez `display: none`, więc leniwe zdjęcie nigdy nie
+            przetnie się z widokiem i telefon go w ogóle nie pobiera. Na
+            desktopie leży nad zgięciem, więc pobieranie i tak startuje przy
+            pierwszym wyliczeniu układu.
+          */}
+          <Picture
+            src={heroPhoto}
+            formats={['avif', 'webp']}
+            widths={[420, 560, 840]}
+            sizes="min(420px, 40vw)"
+            alt={heroPhotoAlt}
+            loading="lazy"
+            decoding="async"
+            class="hero-photo__img"
+          />
+        </figure>
+        <ul class="hero-chips" aria-hidden="true">
+          {chips.map((chip) => (
+            <li class="hero-chip">
+              <Icon name={chip.icon} size={16}/>
+              <span>{chip.label}</span>
+            </li>
+          ))}
         </ul>
       </div>
-      <div class="hero-chip hero-chip--1">
-        <Icon name="shield" size={16}/>
-        <span>Pełne bezpieczeństwo</span>
+    ) : (
+      /*
+        Wariant zapasowy na czas, zanim w `src/assets/hero/` znajdzie się
+        zdjęcie. Panel pokazuje wyłącznie to, co faktycznie robimy - statusy
+        deklaracji i moduły w cenie. Nie ma tu kwot ani wykresu wyniku: liczba
+        wzięta z powietrza w roli dowodu to slogan, a nie deklaracja
+        weryfikowalna.
+      */
+      <div class="home-hero__visual home-hero__visual--card" aria-hidden="true">
+        <div class="hero-card">
+          <div class="hero-card__head">
+            <span class="hero-card__chip">
+              <span class="hero-card__bullet"></span>
+              Twoje rozliczenia
+            </span>
+          </div>
+          <ul class="hero-card__items">
+            <li><span>JPK_V7</span><strong>wysłane</strong></li>
+            <li><span>ZUS DRA</span><strong>opłacone</strong></li>
+            <li><span>PIT-5L</span><strong class="is-pending">w toku</strong></li>
+          </ul>
+          <ul class="hero-card__chips">
+            {chips.map((chip) => (
+              <li>
+                <Icon name={chip.icon} size={15}/>
+                <span>{chip.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <div class="hero-chip hero-chip--2">
-        <Icon name="zap" size={16}/>
-        <span>Wygodny dostęp do danych</span>
-      </div>
-      <div class="hero-chip hero-chip--3">
-        <Icon name="headset" size={16}/>
-        <span>Dedykowany opiekun kadrowo - księgowy</span>
-      </div>
-    </div>
+    )}
   </div>
 </section>
 
@@ -201,12 +227,97 @@ import Icon from './Icon.astro';
 .home-hero__trust li { display: inline-flex; align-items: center; gap: 0.4rem; }
 .home-hero__trust svg { color: var(--accent-400); }
 
-/* Hero visual */
+/* Wizual po prawej */
 .home-hero__visual {
   position: relative;
-  min-height: 460px;
 }
+
+/* Zdjęcie */
+.hero-photo {
+  position: relative;
+  margin: 0 0 0 auto;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  isolation: isolate;
+}
+.hero-photo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/*
+ * Przyciemnienie dołu: chip leżący na jasnym fragmencie zdjęcia gubi kontrast,
+ * a sam kadr ma się schodzić z granatowym tłem hero, a nie kończyć krawędzią.
+ */
+.hero-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6,17,42,0) 45%, rgba(6,17,42,0.55) 100%);
+  pointer-events: none;
+}
+
+/*
+ * Chipy przy zdjęciu leżą na kadrze - na zdjęciu nie ma tekstu, więc nic nie
+ * zasłaniają. Wcześniej ta sama trójka leżała na panelu z liczbami i przykrywała
+ * nagłówek karty oraz wiersz ze zmianą miesiąc do miesiąca.
+ *
+ * Odsunięcia w prawo trzymamy poniżej 1,25 rem: sekcja ma `overflow: hidden`,
+ * a najmniejszy odstęp kontenera od krawędzi to 1,5 rem.
+ */
+.hero-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hero-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--white);
+  color: var(--ink-900);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: var(--shadow-lg);
+}
+.hero-chip svg { color: var(--accent-600); flex-shrink: 0; }
+.hero-chip:nth-child(1) {
+  top: 7%;
+  left: -1.5rem;
+  animation: floatY 7s ease-in-out infinite 0.4s;
+}
+.hero-chip:nth-child(2) {
+  top: 44%;
+  right: -1.25rem;
+  animation: floatY 5.5s ease-in-out infinite 1s;
+}
+.hero-chip:nth-child(3) {
+  bottom: 6%;
+  left: -1.5rem;
+  max-width: 88%;
+  animation: floatY 6.5s ease-in-out infinite 0.7s;
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Wariant zapasowy: panel ze statusem rozliczeń */
 .hero-card {
+  width: 100%;
+  max-width: 420px;
+  margin-left: auto;
   background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255,255,255,0.12);
@@ -214,17 +325,7 @@ import Icon from './Icon.astro';
   padding: 1.75rem;
   box-shadow: var(--shadow-xl);
   color: var(--white);
-}
-.hero-card--main {
-  width: 100%;
-  max-width: 420px;
-  margin-left: auto;
-  position: relative;
   animation: floatY 6s ease-in-out infinite;
-}
-@keyframes floatY {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
 }
 .hero-card__head {
   display: flex;
@@ -243,82 +344,62 @@ import Icon from './Icon.astro';
   font-weight: 600;
 }
 .hero-card__bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-400); }
-.hero-card__date { color: rgba(255,255,255,0.55); font-variant-numeric: tabular-nums; }
-.hero-card__metric { margin-top: 1.25rem; }
-.hero-card__label {
-  font-size: 0.8125rem;
-  color: rgba(255,255,255,0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.hero-card__value {
-  font-family: var(--font-display);
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin-top: 0.25rem;
-}
-.hero-card__value span {
-  font-size: 1rem;
-  color: rgba(255,255,255,0.55);
-  font-weight: 600;
-  margin-left: 0.25rem;
-}
-.hero-card__trend {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--accent-400);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  margin-top: 0.375rem;
-}
-.hero-card__sparkline {
-  margin: 1.25rem -0.25rem 0;
-  height: 60px;
-}
-.hero-card__sparkline svg { width: 100%; height: 100%; }
 .hero-card__items {
   list-style: none;
   margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255,255,255,0.08);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 .hero-card__items li {
   display: flex;
   justify-content: space-between;
-  font-size: 0.875rem;
+  gap: 1rem;
+  font-size: 0.9375rem;
 }
 .hero-card__items span { color: rgba(255,255,255,0.6); }
 .hero-card__items strong {
   font-weight: 600;
   color: var(--accent-400);
 }
-.hero-card__items li:last-child strong { color: #F59E0B; }
-
-.hero-chip {
-  position: absolute;
-  display: inline-flex;
+.hero-card__items .is-pending { color: #F59E0B; }
+/*
+ * Chipy w wariancie zapasowym stoją w karcie, a nie na niej: karta jest węższa
+ * niż kolumna tylko o kilkadziesiąt pikseli, więc każdy chip odsunięty na bok
+ * i tak wracał na tekst.
+ */
+.hero-card__chips {
+  list-style: none;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.hero-card__chips li {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 0.875rem;
-  background: var(--white);
-  color: var(--ink-900);
-  border-radius: var(--radius-full);
   font-size: 0.8125rem;
   font-weight: 600;
-  box-shadow: var(--shadow-lg);
+  color: rgba(226,232,240,0.9);
 }
-.hero-chip svg { color: var(--accent-600); }
-.hero-chip--1 { top: 8%; left: -4%; animation: floatY 7s ease-in-out infinite 0.4s; }
-.hero-chip--2 { top: 38%; right: -4%; animation: floatY 5.5s ease-in-out infinite 1s; }
-.hero-chip--3 { bottom: 4%; left: 4%; animation: floatY 6.5s ease-in-out infinite 0.7s; }
+.hero-card__chips svg { color: var(--accent-400); flex-shrink: 0; }
 
 @media (max-width: 980px) {
   .home-hero__inner { grid-template-columns: 1fr; }
   .home-hero__visual { display: none; }
+}
+
+/*
+ * Unoszenie się kart to dekoracja, a nie treść - kto prosi system o mniej ruchu,
+ * dostaje ten sam układ bez nieskończonej animacji.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hero-card,
+  .hero-chip {
+    animation: none;
+  }
 }
 </style>
