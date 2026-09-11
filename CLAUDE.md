@@ -189,10 +189,17 @@ i WebP składa potok obrazów Astro w budowaniu, więc tych plików nie
 commitujemy; commitujemy sam obrazek źródłowy, bo bez niego nie ma z czego ich
 złożyć.
 
-Źródło zapisujemy skompresowane. PNG jest formatem dla grafiki z płaskimi
-kolorami, nie dla zdjęcia - ta sama fotografia potrafi ważyć w nim
-kilkanaście razy więcej niż w JPEG-u, którego nikt od niej nie odróżni,
-a różnicę zapłaci każdy, kto klonuje repozytorium.
+Źródło zapisujemy skompresowane i w rozdzielczości, której strona faktycznie
+używa. Najszerszy wariant, jaki `HeroPhoto` składa, ma 1000 px - tyle potrzebuje
+ramka szerokości 499 px na ekranie o podwójnej gęstości - więc źródło ma 1000 px
+szerokości i ani piksela więcej. Wyżej nikt tych pikseli nie pobiera: potok
+obrazów i tak zejdzie do wariantu, a nadmiar płaci każdy, kto klonuje
+repozytorium (cztery zdjęcia schudły z 626 do 332 kB przy niezmienionym
+wyglądzie strony).
+
+PNG jest formatem dla grafiki z płaskimi kolorami, nie dla zdjęcia - ta sama
+fotografia potrafi ważyć w nim kilkanaście razy więcej niż w JPEG-u, którego
+nikt od niej nie odróżni.
 
 Blok powitalny podstrony bierze zdjęcie przez `image="nazwa"` w `PageHero`,
 a strona główna przez `image('hero')` w `HomeHero`. Rysuje je jeden komponent,
@@ -204,13 +211,23 @@ zaproszenie, a nie zależność.
 Kadru nie przycinamy: ramka bierze proporcję z pliku, a bardzo wysoki obrazek
 zwężamy, zamiast obcinać mu górę i dół. Zdjęcie wypełnia swoją kolumnę -
 sztywna szerokość dobrana pod kadr pionowy zostawiała kadr poziomy małym
-i doklejonym z boku.
+i doklejonym z boku. Zwężanie ma swoją granicę w `MAX_HEIGHT` w `HeroPhoto`
+i ta sama liczba idzie do `sizes`, bo inaczej przeglądarka dobiera wariant pod
+szerokość, której ramka nigdy nie osiąga - pionowy kadr pobierał wariant 1000 px
+na ramkę szerokości 293 px.
+
+**Zanim zdjęcie się załaduje, nie ma go widać w żaden sposób.** Ramka nie ma
+obwódki, cienia ani tła, a `color: transparent` na obrazku gasi opis
+alternatywny - inaczej przez tę jedną chwilę przed pobraniem w bloku
+powitalnym mrugała obrysowana skrzynka z białym akapitem w środku. Proporcja
+zostaje, więc miejsce jest zarezerwowane i układ nie skacze. Atrybutu `alt`
+nie ruszamy: jest dla czytników ekranu i wyszukiwarek, a nie do oglądania.
 
 Poniżej 981 px zdjęcie znika, bo blok powitalny ma na telefonie zmieścić
 nagłówek i przyciski bez przewijania. Nie znaczy to jednak `loading="lazy"`:
 przy leniwym ładowaniu przeglądarka odkrywała zdjęcie dopiero po pierwszym
-wyliczeniu układu i przez tę chwilę malowała w ramce opis alternatywny - widać
-to było przy każdym odświeżeniu. Dlatego zdjęcie jest `eager`, z wysokim
+wyliczeniu układu, czyli zwlekała z pobraniem dokładnie tam, gdzie zdjęcie widać
+od razu. Dlatego zdjęcie jest `eager`, z wysokim
 priorytetem, a `<picture>` piszemy wprost, z `media="(min-width: 981px)"` na
 każdym `<source>` i przezroczystym pikselem w `src`. Telefon nie pobiera wtedy
 ani bajta, desktop startuje razem z dokumentem, a `<Picture>` z Astro tu nie
