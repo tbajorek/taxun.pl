@@ -380,14 +380,23 @@ można bez wdrożenia, bo router Vercela leży w `node_modules`:
 `getTransformedRoutes` z `@vercel/routing-utils` zwraca gotowe wyrażenia
 z `vercel.json`.
 
-`permanent: true` daje kod 308, nie 301. Dla wyszukiwarek to bez różnicy
-(oba są przekierowaniem stałym i przenoszą pozycję), ale w testach
-sprawdzamy 308.
+Kod odpowiedzi ustawiamy wprost przez `statusCode: 301`, a nie przez
+`permanent: true`, bo `permanent` daje 308. Dla samego indeksowania to bez
+różnicy (oba są przekierowaniem stałym i przenoszą pozycję), ale narzędzie
+"Zmiana adresu" w Search Console szuka dokładnie 301 na stronie głównej starej
+domeny i przy 308 kończy się komunikatem, że nie udało się pobrać strony.
+Skoro przenosiny z `taxen.pl` mają przejść przez to narzędzie, przekierowanie
+musi mówić 301. W testach sprawdzamy więc 301, nie 308.
 
-Sama reguła nie wystarczy. Stara domena musi być dopisana do projektu
+Sama reguła nie wystarczy. Każda z czterech nazw - `taxen.pl`,
+`www.taxen.pl`, `taxun.pl` i `www.taxun.pl` - musi być dopisana do projektu
 w panelu Vercela i wskazywać na niego rekordem DNS, inaczej żądanie nie
-dotrze tam, gdzie reguła je czeka. Kod odpowiada tylko za to, co się dzieje
-po dotarciu żądania.
+dotrze tam, gdzie reguła je czeka. Nazwa z rekordem DNS, ale bez wpisu
+w projekcie, zrywa połączenie jeszcze przed HTTPS, więc reguła z `vercel.json`
+nigdy się nie uruchomi. Tak samo blokuje robota ochrona wdrożenia
+(Deployment Protection) i zapora - jeżeli Googlebot dostaje wyzwanie zamiast
+odpowiedzi, weryfikacja zmiany adresu widzi to jako brak możliwości pobrania
+strony. Kod odpowiada tylko za to, co się dzieje po dotarciu żądania.
 
 ## Weryfikacja przed oddaniem pracy
 

@@ -10,7 +10,7 @@
         }
       ],
       "destination": "https://taxun.pl/:path",
-      "permanent": true
+      "statusCode": 301
     },
     {
       "source": "/:path(.*)",
@@ -21,7 +21,7 @@
         }
       ],
       "destination": "https://taxun.pl/:path",
-      "permanent": true
+      "statusCode": 301
     },
     {
       "source": "/:path(.*)",
@@ -32,7 +32,7 @@
         }
       ],
       "destination": "https://taxun.pl/:path",
-      "permanent": true
+      "statusCode": 301
     }
   ],
   "headers": [
